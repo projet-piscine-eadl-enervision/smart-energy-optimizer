@@ -26,7 +26,7 @@ Vérifié et sain : `assign-pr-author.yml` utilise `pull_request` (pas `pull_req
 - **P2. Retour arrière du staging incohérent.** Avec `IMAGE_TAG` figé, `update-staging.sh` fait quand même `reset --hard origin/main` sur le fichier compose : d'anciennes images tournent avec un compose récent. En production le problème n'existe pas, le workflow faisant un checkout du tag. **Traité le 22/10/2026** : le script ramène le fichier compose au commit figé (`sha-<40 caractères>` ou tag `vX.Y.Z`) et laisse le reste du dépôt, scripts compris, sur `main`. Testé sur des dépôts jetables, pas encore sur la VM.
 - **P2. Exposition.** Le staging publie l'API sur le port 8000 alors que le proxy `/api` du frontend la rend inutile en direct. À trancher : conserver l'accès direct pour la recette, ou le fermer. **Laissé en l'état le 22/10/2026** : le workflow `Release` et le guide de recette lisent le sha sur `:8000/health`, et la VM n'est joignable que depuis le réseau de l'école.
 - **P3. Fichier compose.** `docker-compose.staging.yml` sert aussi de fichier de production : le nom induit en erreur (envisager `docker-compose.prod.yml` ou un nom neutre). **Écarté le 22/10/2026** : `deploy-production.yml` nomme le fichier en dur, un retour arrière vers un ancien tag échouerait après un renommage.
-- **P3. Supervision.** Aucune image n'a de `HEALTHCHECK` et le compose n'en définit pas pour `api`. Aucune alerte si le minuteur de mise à jour échoue. **Partiellement traité le 23/10/2026** : `HEALTHCHECK` ajouté aux images `api`, `etl` et `frontend` (pas `ml`, qui n'est pas un service). Aucune alerte sur le minuteur pour l'instant.
+- **P3. Supervision.** Aucune image n'a de `HEALTHCHECK` et le compose n'en définit pas pour `api`. Aucune alerte si le minuteur de mise à jour échoue. **Partiellement traité le 23/10/2026** : `HEALTHCHECK` ajouté aux images `api` et `frontend` (pas `ml`, qui n'est pas un service) ; celui de `etl` est dans la branche `etl`, avec la route `/health`. Aucune alerte sur le minuteur pour l'instant.
 
 ## Tests
 
@@ -38,7 +38,7 @@ Vérifié et sain : `assign-pr-author.yml` utilise `pull_request` (pas `pull_req
 
 - **P2. Aucun pilote de base dans l'API.** `DATABASE_URL` est passée à l'API, mais `api/requirements.in` ne contient ni `psycopg` ni `sqlalchemy` : elle ne peut pas se connecter à la base.
 - **P2. Divergence entre l'API et l'ETL.** L'API accepte l'absence d'identifiants du mock (URL interne de l'école) et normalise l'URL. L'ETL lève une `RuntimeError` non gérée (erreur 500), n'a pas d'URL par défaut ni de `rstrip`. C'est la cause du contournement `-` dans `staging.env` : aligner l'ETL sur l'API.
-- **P3. Nom du paquet de l'ETL.** Le dossier `etl/api_mock` suggérait une simulation de l'API Mock alors qu'il contient le client. **Traité le 23/10/2026** : renommé `etl/mock_client`.
+- **P3. Nom du paquet de l'ETL.** Le dossier `etl/api_mock` suggère qu'il s'agit d'une simulation de l'API Mock alors qu'il contient le client. À renommer en `client` ou `sources`.
 - **Normal à ce stade, à suivre** : l'ETL n'écrit pas encore dans TimescaleDB (ni schéma, ni hypertable, ni migrations, ni modèle `EnergyReading`) ; le ML se limite à un `SELECT 1` et à un run MLflow de vérification ; il n'existe ni détection de pics, ni recommandations, ni tableau de bord.
 
 ## Nettoyage du dépôt
@@ -53,11 +53,9 @@ Tout ce qui suit est **traité le 22/10/2026**.
 
 ## Notes du 23/10/2026 (à reprendre)
 
-- **L'image `etl` de `main` plante au démarrage.** Le commit `74a47de` (#121) a remplacé `import httpx` par `import httpx2` dans `etl/api_mock/routers/sites.py` et `services/site_service.py`, sans toucher à `etl/requirements.in` (`httpx`) ni à `requirements.txt` (`httpx==0.28.1`). Reproduit en lançant l'image : `ModuleNotFoundError: No module named 'httpx2'`. La CI ne le voit pas (`ruff` n'importe pas les modules, `etl/tests/` est vide). Deux issues : revenir à `httpx` dans l'ETL, ou passer l'ETL à `httpx2` avec ses dépendances. Le choix de `httpx2` dans l'API reste à justifier (paquet publié sur PyPI depuis mai 2026, mainteneur non vérifié). À traiter avec le rebase de la PR #97, qui utilise `httpx`.
-- **L'ETL devrait avoir un `/health`**, indépendant du mock, comme l'API (avec un `/health/mock` séparé si besoin). La sonde Docker de l'ETL utilise `/openapi.json` en attendant : à remplacer par `/health` une fois la route ajoutée.
-- **Sondes Docker non observées à l'état `healthy`.** Les trois images se construisent et la sonde est enregistrée, mais l'image `api` seule s'arrête faute de `DATABASE_URL` et `SECRET_KEY` (sans valeur par défaut dans `app/core/config.py`). À vérifier avec la pile complète : `docker compose up -d` puis `docker ps`.
-- **Job Cypress probablement inutile.** Le front teste avec Vitest (`ng test`), `package.json` ne contient aucune dépendance Cypress et `frontend/cypress/` ne contient qu'un `.gitkeep`. À décider : supprimer le job `e2e`, son entrée dans `needs` de `ci-ok` et la mention dans `CONTRIBUTING.md`, ou introduire un outil de bout en bout (Cypress ou Playwright) le jour où un test est prévu.
-- **Nom du paquet `etl/api_mock`.** Il contient le client de l'API Mock (routers, services, schémas, config), pas une simulation : le nom prête à confusion. À renommer en `client` ou `sources` après la fusion de la PR #97, qui ajoute des fichiers dans ce dossier (conflit sinon).
-- **`/auth/register` est ouvert à tous.** À trancher : inscription libre voulue, ou réservée à un rôle.
-- **Réglages GitHub à activer par un propriétaire** (hors du code) : signalement privé de vulnérabilités (désactivé au 23/10), secret scanning et protection au push (désactivés), politique d'approbation des workflows externes (`first_time_contributors`).
-- **Scan Trivy des images** (P3) : non traité, à faire dans une PR séparée car il modifie le workflow de publication.
+- **ETL** (branche `etl`, PR #97) : `/health` ajouté avec sa sonde Docker, routes métier et Swagger supprimés, dossier renommé `etl/mock_client`. Le plantage `httpx2` de l'image n'a existé qu'entre #121 et #127.
+- **Sondes Docker** : celle de l'ETL est vérifiée `healthy`. Celles de `api` et `frontend` sont construites mais pas observées `healthy` (l'API exige `DATABASE_URL` et `SECRET_KEY`) : à vérifier avec la pile complète.
+- **Job Cypress** : probablement inutile (le front teste avec Vitest, aucune dépendance Cypress). Supprimer le job `e2e` et son entrée dans `needs` de `ci-ok`, ou introduire un outil de bout en bout.
+- **`/auth/register`** est ouvert à tous : à trancher.
+- **Réglages GitHub** à activer par un propriétaire : signalement privé, secret scanning et protection au push, approbation des workflows externes (`first_time_contributors` aujourd'hui).
+- **Trivy sur les images** : non traité, à faire dans une PR séparée.

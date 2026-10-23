@@ -2,26 +2,14 @@
 
 ## Signaler une vulnérabilité
 
-Ne pas ouvrir d'issue publique. Utiliser le signalement privé de GitHub : onglet **Security** du dépôt, puis **Report a vulnerability**. Le rapport n'est visible que des mainteneurs.
-
-Merci d'indiquer :
-
-- le composant concerné (`api`, `etl`, `ml`, `frontend`, workflows, `infra`) ;
-- les étapes pour reproduire, avec la version ou le sha du commit (visible sur `/health`) ;
-- l'impact estimé.
-
-N'envoyez ni secret réel ni donnée personnelle dans le rapport.
+Pas d'issue publique : onglet **Security** du dépôt, puis **Report a vulnerability** (rapport visible des seuls mainteneurs). Indiquer le composant (`api`, `etl`, `ml`, `frontend`, workflows, `infra`), les étapes de reproduction avec le sha du commit (visible sur `/health`) et l'impact. Aucun secret ni donnée personnelle dans le rapport.
 
 ## Délais
 
-Projet pédagogique mené par une équipe étudiante : accusé de réception sous 3 jours ouvrés, première évaluation sous 7 jours, correctif ou mesure de contournement selon la gravité. Les échéances du projet peuvent allonger ces délais, nous le dirons dans la réponse.
+Projet pédagogique : accusé de réception sous 3 jours ouvrés, première évaluation sous 7 jours.
 
 ## Périmètre
 
-Dans le périmètre : le code du dépôt, les workflows GitHub Actions, les images publiées sur GHCR, la configuration Terraform.
-
-Hors périmètre : l'API Mock et les machines virtuelles fournies par l'école, les vulnérabilités des dépendances tierces sans lien d'exploitation avec notre code (à signaler à leurs mainteneurs), les attaques par déni de service.
-
-## Versions couvertes
+Inclus : code du dépôt, workflows GitHub Actions, images GHCR, configuration Terraform. Exclus : API Mock et VM de l'école, vulnérabilités de dépendances sans lien avec notre code (à signaler à leurs mainteneurs), déni de service.
 
 Seule la version de `main` (et la dernière release `vX.Y.Z`) reçoit des correctifs.
