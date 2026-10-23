@@ -3,3 +3,4 @@ dist
 .angular
 .vscode
 cypress
+.env

@@ -142,9 +142,8 @@ jobs:
         uses: cypress-io/github-action@v7
         with:
           working-directory: frontend
-          build: npm run build
-          start: npm run preview
-          wait-on: "http://localhost:4173"
+          start: npm start
+          wait-on: "http://localhost:4200"
 
   security:
     runs-on: ubuntu-24.04

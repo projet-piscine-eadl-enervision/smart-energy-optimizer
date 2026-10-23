@@ -49,4 +49,9 @@ USER node
 
 EXPOSE 4000
 
+# Sonde d'état : toute réponse inférieure à 500 prouve que le serveur répond (un 400 du contrôle
+# d'hôte SSR reste acceptable si NG_ALLOWED_HOSTS ne contient pas 127.0.0.1)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+
 CMD ["node", "dist/enervision/server/server.mjs"]
