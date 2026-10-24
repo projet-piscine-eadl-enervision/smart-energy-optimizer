@@ -1,0 +1,115 @@
+# Pages du wiki générées depuis le dépôt (infra/scripts/sync-wiki.py).
+# L'ordre des entrées fixe l'ordre des pages dans la barre latérale. Le titre devient le nom de
+# la page : lettres, chiffres et espaces seulement. `optional = true` : la page est ignorée tant
+# que le fichier n'existe pas (par exemple ml/README.md, absent de main avant sa fusion).
+# Tout README.md, CONTRIBUTING.md, SECURITY.md et docs/*.md versionné doit figurer ici ou dans
+# `ignore` : sinon `sync-wiki.py --check` échoue.
+
+repo = "projet-piscine-eadl-enervision/smart-energy-optimizer"
+ignore = []
+
+[[page]]
+source = "README.md"
+title = "Présentation"
+section = "Démarrer"
+
+[[page]]
+source = "CONTRIBUTING.md"
+title = "Contribuer"
+section = "Démarrer"
+
+[[page]]
+source = "docs/reglages-github.md"
+title = "Réglages GitHub"
+section = "Démarrer"
+
+[[page]]
+source = "docs/environnements-techniques.md"
+title = "Environnements techniques"
+section = "Architecture et modules"
+
+[[page]]
+source = "api/README.md"
+title = "API"
+section = "Architecture et modules"
+
+[[page]]
+source = "etl/README.md"
+title = "ETL"
+section = "Architecture et modules"
+
+[[page]]
+source = "ml/README.md"
+title = "ML"
+section = "Architecture et modules"
+optional = true
+
+[[page]]
+source = "frontend/README.md"
+title = "Frontend"
+section = "Architecture et modules"
+
+[[page]]
+source = "infra/README.md"
+title = "Infrastructure"
+section = "Architecture et modules"
+
+[[page]]
+source = "docs/analyse-api-mock.md"
+title = "Analyse API Mock"
+section = "Données"
+
+[[page]]
+source = "docs/donnees-dvc.md"
+title = "Données et DVC"
+section = "Données"
+
+[[page]]
+source = "docs/migrations-base-de-donnees.md"
+title = "Migrations de la base"
+section = "Données"
+
+[[page]]
+source = "docs/ml-seed-dev-et-schema.md"
+title = "Schéma et données de développement du ML"
+section = "Données"
+
+[[page]]
+source = "docs/deploiement-staging.md"
+title = "Déploiement du staging"
+section = "Exploitation"
+
+[[page]]
+source = "docs/mise-en-production.md"
+title = "Mise en production"
+section = "Exploitation"
+
+[[page]]
+source = "docs/aws-poste-developpeur.md"
+title = "Poste AWS"
+section = "Exploitation"
+
+[[page]]
+source = "infra/terraform/aws/README.md"
+title = "Terraform AWS"
+section = "Exploitation"
+
+[[page]]
+source = "infra/terraform/staging/README.md"
+title = "Terraform staging"
+section = "Exploitation"
+
+[[page]]
+source = "SECURITY.md"
+title = "Sécurité"
+section = "Qualité et sécurité"
+
+[[page]]
+source = "docs/qualite-et-securite-ci.md"
+title = "Qualité et sécurité de la CI"
+section = "Qualité et sécurité"
+
+[[page]]
+source = "docs/audit-depot.md"
+title = "Audit du dépôt"
+section = "Qualité et sécurité"
