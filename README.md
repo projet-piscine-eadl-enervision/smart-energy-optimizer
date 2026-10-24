@@ -242,7 +242,7 @@ Les jeux de données de `etl/` sont suivis avec DVC, pas avec Git. Mise en place
 
 ## Staging
 
-Le staging est déployé automatiquement sur la VM de l'école : à chaque merge sur `main` dont la CI est verte, une image Docker par module ayant un `Dockerfile` est publiée sur GHCR, puis la VM tire les images toutes les 2 minutes et relance les conteneurs. La base, l'API, l'ETL et le frontend y tournent ; `ml` n'a pas de service sur le staging. Les migrations de la base y sont appliquées à chaque déploiement, par une image `db` du même tag.
+Le staging est déployé automatiquement sur la VM de l'école : à chaque merge sur `main` dont la CI est verte, une image Docker par module ayant un `Dockerfile` est publiée sur GHCR, puis la VM tire les images toutes les 2 minutes, relance les conteneurs et annonce à GitHub (onglet *Deployments*) que le staging est à jour. La base, l'API, l'ETL et le frontend y tournent ; `ml` n'a pas de service sur le staging. Les migrations de la base y sont appliquées à chaque déploiement, par une image `db` du même tag.
 
 - API du staging : http://10.43.43.50:8000/docs (réseau de l'école)
 - Frontend du staging : http://10.43.43.50:4000

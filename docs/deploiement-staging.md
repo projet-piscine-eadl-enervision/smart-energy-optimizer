@@ -7,11 +7,12 @@ L'API du staging est accessible depuis le réseau de l'école : http://10.43.43.
 ## Principe
 
 ```
-merge sur main -> CI verte -> publish-images.yml -> image sur GHCR -> minuteur de la VM -> conteneurs relancés
+merge sur main -> CI verte -> job publish (ci.yml) -> images sur GHCR -> minuteur de la VM -> conteneurs relancés -> déploiement « staging » annoncé à GitHub
 ```
 
-1. Un merge sur `main` dont la CI est verte lance `publish-images.yml`, qui construit une image par module (dossier avec un `Dockerfile`) et la publie sur GHCR : `ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer/<module>`, avec les tags `main` et `sha-<commit>`.
+1. Un merge sur `main` dont la CI est verte lance le job `publish` de `ci.yml`, qui publie sur GHCR une image par module (dossier avec un `Dockerfile`) : `ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer/<module>`, avec les tags `sha-<commit>` et `main` (`main` n'avance que si ce commit est encore la tête de `main`). Un module dont le dossier n'a pas changé réutilise son image (étiquette `tree-<empreinte>-<semaine>`) ; seule `api` est toujours reconstruite, car son `/health` affiche le sha du commit. Tout est reconstruit chaque semaine pour reprendre les mises à jour des images de base. Chaque image construite est scannée par Trivy, dont le rapport va dans l'onglet *Security* du dépôt.
 2. Toutes les 2 minutes, `update-staging.timer` lance `infra/scripts/update-staging.sh` sur la VM : il aligne le dépôt sur `origin/main`, tire les images puis relance les conteneurs modifiés. Un merge est donc visible sur le staging une fois la CI et la publication terminées, avec au plus 2 minutes de minuteur en plus : le sha de `/health` le confirme.
+3. Une fois les conteneurs relancés, `report-staging-deployment.sh` annonce à GitHub le commit qui tourne : un déploiement `staging` apparaît dans l'onglet *Deployments* (voir « Annonce du staging à GitHub »). C'est le signal « la recette peut commencer ».
 
 La suite (recette, release, production, retour arrière) est dans [`mise-en-production.md`](mise-en-production.md).
 
@@ -34,7 +35,7 @@ L'image `frontend` publiée (cible `prod` du `Dockerfile`) contient le build de 
 }
 ```
 
-Le titre et le sha sont passés à la construction de l'image (`build-args` de `publish-images.yml`). En local, l'image est construite sans ces arguments et affiche `dev`.
+Le titre et le sha sont passés à la construction de l'image (`build-args` du job `publish` de `ci.yml`). En local, l'image est construite sans ces arguments et affiche `dev`.
 
 L'environnement (`dev`, `staging` ou `production`) vient de la variable `APP_ENV`, lue au lancement du conteneur. Elle n'est pas dans l'image, car la même image est promue du staging vers la production. Le compose du staging la fixe à `staging` par défaut ; l'environnement de production devra définir `APP_ENV=production`. L'environnement est aussi rappelé en tête de la page `/docs`.
 
@@ -149,7 +150,8 @@ docker compose -f /opt/enervision/docker-compose.staging.yml --env-file /etc/ene
 |---|---|
 | `denied` ou `unauthorized` dans le journal | jeton GHCR expiré ou révoqué : refaire le `docker login` |
 | `manquant dans staging.env` | variable absente ou vide dans `/etc/enervision/staging.env` |
-| `manifest unknown` | l'image du tag demandé n'est pas (encore) publiée : vérifier la CI et `publish-images.yml` |
+| `manifest unknown` | l'image du tag demandé n'est pas (encore) publiée : vérifier la CI et son job `publish` |
+| La release dit que le staging n'a rien annoncé | jeton de la VM absent ou expiré, ou passage du minuteur pas encore fait : voir « Annonce du staging à GitHub » |
 | L'ancienne version tourne encore | CI ou publication non terminée, ou minuteur arrêté |
 | `api` et `etl` ne démarrent pas, `migrate` est en `Exited (2)` | une migration échoue : lire le journal de `migrate`, corriger par une nouvelle migration (voir [`migrations-base-de-donnees.md`](migrations-base-de-donnees.md)) |
 | `manifest unknown` sur l'image `db`, juste après un merge | l'image `db` du commit n'est pas encore publiée : le passage suivant du minuteur suffit |

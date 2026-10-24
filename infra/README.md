@@ -92,7 +92,7 @@ flowchart LR
 
     subgraph GH["GitHub"]
         REPO("Dépôt enervision")
-        ACT("GitHub Actions<br/>ci · publish-images · release · deploy-production")
+        ACT("GitHub Actions<br/>ci (tests, publication) · release · promotion · deploy-production")
         GHCR("GHCR<br/>images api, etl, frontend, ml")
     end
 
@@ -159,13 +159,13 @@ Le détail des ressources, des variables et des pièges connus est dans
 
 ```mermaid
 flowchart TD
-    A("Merge sur main") --> B("ci.yml : tests")
-    B -->|vert| C("publish-images.yml<br/>images :sha-commit + :main")
-    C --> D("VM staging : recette")
-    D --> E("release.yml (lancé à la main)<br/>tag vX.Y.Z via la GitHub App")
-    E --> F("publish-images.yml (promote)<br/>tag :vX.Y.Z sur les images existantes")
-    E --> G("deploy-production.yml<br/>résumé pour l'approbateur")
-    F --> H
+    A("Merge sur main") --> B("ci.yml : tests des modules touchés")
+    B -->|vert| C("ci.yml, job publish<br/>images :sha-commit + :main")
+    C --> D("VM staging : mise à jour,<br/>déploiement « staging » annoncé à GitHub")
+    D --> R("recette")
+    R --> E("release.yml (lancé à la main)<br/>vérifie l'annonce du staging, tag vX.Y.Z")
+    E --> F("publish-images.yml (promotion)<br/>tag :vX.Y.Z sur les images existantes + SBOM")
+    F --> G("deploy-production.yml<br/>résumé pour l'approbateur")
     G --> H("⏸ approbation : environnement production")
     H --> I("SSM sur l'EC2 : git checkout du tag,<br/>sauvegarde de la base, docker compose pull + up")
     I --> J("contrôle de /health :<br/>environment = production, bon commit")
@@ -182,7 +182,7 @@ Aucun secret n'est dans le dépôt. Pour mémoire :
 |---|---|---|
 | Variables de prod (mot de passe de la base, identifiants de l'API mock…) | `/etc/enervision/production.env` sur l'EC2, droits `600 root` | créé à la main par Session Manager |
 | Jeton de lecture GHCR (`read:packages`) | `/root/.docker/config.json` sur l'EC2 | jeton personnel, **avec une date d'expiration** : à renouveler s'il expire avant la fin |
-| Clé de la GitHub App de release | secrets de l'organisation (`RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY`) | permet aux tags de déclencher les workflows |
+| Jeton du staging (`/etc/enervision/github-deploy.token`) | sur la VM de staging, droits `600 root` | jeton à grain fin (Deployments, un dépôt), **avec une date d'expiration** : il sert à annoncer le staging à GitHub (voir `docs/deploiement-staging.md`) |
 | State Terraform | bucket S3 privé | peut contenir des valeurs sensibles : jamais dans Git |
 | `terraform.tfvars`, `backend.hcl` | sur le poste de chacun | non versionnés, partagés en message privé |
 

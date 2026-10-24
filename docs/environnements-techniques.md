@@ -10,7 +10,7 @@ Documents liés : [déploiement du staging](deploiement-staging.md), [mise en pr
 |---|---|---|---|
 | Où | poste de chaque membre (WSL2 Debian + Docker Desktop) | VM Proxmox de l'école, `10.43.43.50` (LXC Debian 13, 4 CPU, 16 Go de RAM, 64 Go) | AWS, instance EC2 Debian 13 (WIP) |
 | Compose | `docker-compose.yml` | `docker-compose.staging.yml` | WIP (même compose que le staging prévu) |
-| Déclenchement | `docker compose up -d` à la main | automatique : un minuteur de la VM tire les images GHCR toutes les 2 minutes | tag `vX.Y.Z` posé à la main après la recette du staging, puis approbation de l'environnement GitHub `production` (procédure dans [`mise-en-production.md`](mise-en-production.md)) ; déploiement par AWS Systems Manager (WIP) |
+| Déclenchement | `docker compose up -d` à la main | automatique : un minuteur de la VM tire les images GHCR toutes les 2 minutes, puis annonce le déploiement à GitHub | workflow Release lancé à la main après la recette du staging (tag `vX.Y.Z`, promotion des images), puis approbation de l'environnement GitHub `production` (procédure dans [`mise-en-production.md`](mise-en-production.md)) ; déploiement par AWS Systems Manager (WIP) |
 | Origine des images | construites localement (`build:`) | publiées par la CI sur GHCR (tags `main` et `sha-<commit>`) | mêmes images que le staging, promues par le tag de version, sans reconstruction |
 | `APP_ENV` | `dev` | `staging` | `production` |
 | Mock utilisé | interne ou public, au choix | interne | public (WIP) |
