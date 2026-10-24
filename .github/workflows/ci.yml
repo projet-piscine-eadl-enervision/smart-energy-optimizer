@@ -270,8 +270,10 @@ jobs:
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         with:
+          # La porte de qualité bloque les PR. Sur main, l'analyse est publiée sans bloquer : un défaut
+          # déjà fusionné ne doit pas empêcher la publication des images ni le staging.
           args: >
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.wait=${{ github.event_name == 'pull_request' }}
             -Dsonar.qualitygate.timeout=300
 
   # Point d'entrée unique pour la règle de protection de main :
