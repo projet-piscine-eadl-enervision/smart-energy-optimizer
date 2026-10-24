@@ -1,12 +1,23 @@
-name: Publication des images
+name: Promotion des images
 
-# Promotion des images : tag vX.Y.Z, posé à la main par le workflow Release après la recette. L'image
-# du commit taggé reçoit le tag de version, sans reconstruction, pour que la production déploie
-# exactement ce qui a été validé en staging.
-# La construction des images de chaque commit (:sha-<commit> et :main) est dans ci.yml, job publish.
+# L'image de chaque module, construite pour le commit du tag (ci.yml, job publish), reçoit le tag
+# de version vX.Y.Z sans reconstruction : la production déploie exactement ce qui a été recetté en
+# staging. Le SBOM (CycloneDX) de chaque image versionnée est joint à la GitHub Release.
+# Appelé par release.yml. Se relance aussi à la main (Actions > Promotion des images) si une
+# promotion a échoué, avec le tag déjà créé.
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Version à promouvoir, par exemple v1.4.2"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version déjà créée par la release, par exemple v1.4.2"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,34 +29,65 @@ env:
 
 jobs:
   promote:
+    name: promote (${{ matrix.module }})
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         module: [frontend, api, etl, ml, db]
+    env:
+      TAG: ${{ inputs.tag }}
+      MODULE: ${{ matrix.module }}
     steps:
+      - name: Contrôler le tag
+        run: |
+          # Le nom du tag est repris dans des commandes : on n'accepte que vX.Y.Z.
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Tag $TAG refusé : seuls les tags vX.Y.Z sont promus."; exit 1; }
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
       - uses: docker/login-action@v4
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v4
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
       - name: Ajouter le tag de version à l'image du commit
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
         run: |
-          src="$IMAGE_PREFIX/${{ matrix.module }}:sha-$GITHUB_SHA"
-          # Le tag est posé après la recette du staging, donc l'image du commit existe déjà. La
-          # boucle d'attente ne sert que si le tag est créé à la main avant la fin de la publication.
-          for i in $(seq 1 40); do
-            if docker buildx imagetools inspect "$src" >/dev/null 2>&1; then
-              docker buildx imagetools create -t "$IMAGE_PREFIX/${{ matrix.module }}:$GITHUB_REF_NAME" "$src"
-              exit 0
-            fi
-            echo "Image $src absente, nouvel essai dans 60 s ($i/40)"
-            sleep 60
-          done
-          echo "::error::Image $src introuvable : la CI de ce commit a-t-elle réussi ?"
-          exit 1
+          # L'image du commit existe déjà : elle est publiée avant la recette du staging.
+          src="$IMAGE_PREFIX/$MODULE:sha-$(git rev-parse HEAD)"
+          docker buildx imagetools inspect "$src" >/dev/null 2>&1 \
+            || { echo "::error::Image $src introuvable : la CI de ce commit a-t-elle publié ses images ?"; exit 1; }
+          docker buildx imagetools create -t "$IMAGE_PREFIX/$MODULE:$TAG" "$src"
+      - name: SBOM de l'image versionnée
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0, même version que le job security (voir CONTRIBUTING.md)
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:${{ inputs.tag }}
+          format: cyclonedx
+          output: sbom-${{ matrix.module }}.cdx.json
+          exit-code: "0"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.module }}
+          path: sbom-${{ matrix.module }}.cdx.json
+
+  # Les cinq SBOM sont joints à la GitHub Release du tag.
+  sbom:
+    needs: promote
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sbom-*
+          merge-multiple: true
+          path: sbom
+      - name: Joindre les SBOM à la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" sbom/*.cdx.json --clobber --repo "$GITHUB_REPOSITORY"

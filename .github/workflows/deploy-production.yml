@@ -1,7 +1,8 @@
 name: Déploiement en production
 
-# Deux déclencheurs, une seule logique :
-# - push d'un tag vX.Y.Z (créé par release.yml) : mise en production d'une nouvelle version ;
+# Deux usages, une seule logique :
+# - appelé par release.yml (new_release) : mise en production d'une nouvelle version, juste après la
+#   promotion des images ;
 # - lancement manuel avec un tag déjà publié (Actions > Déploiement en production > Run workflow) :
 #   retour arrière vers cette version.
 # Le job de déploiement attend l'approbation de l'environnement GitHub `production`, puis déploie
@@ -19,8 +20,17 @@ name: Déploiement en production
 # Un lancement manuel s'exécute depuis la branche main : l'environnement `production` doit autoriser
 # les branches `main` en plus des tags `v*`.
 on:
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Version à déployer, par exemple v1.4.2"
+        required: true
+        type: string
+      new_release:
+        description: "Vrai quand l'appel vient de release.yml (nouvelle version) ; faux pour un retour arrière"
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       tag:
@@ -62,7 +72,7 @@ jobs:
       - name: Déterminer la version et le commit
         id: cible
         env:
-          TAG: ${{ inputs.tag || github.ref_name }}
+          TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
           # Le nom du tag est repris dans une commande exécutée sur l'instance : on n'accepte que vX.Y.Z.
@@ -85,11 +95,11 @@ jobs:
         env:
           TAG: ${{ steps.cible.outputs.tag }}
           SHA: ${{ steps.cible.outputs.sha }}
-          EVENT: ${{ github.event_name }}
+          NEW_RELEASE: ${{ inputs.new_release }}
           RELEASE_URL: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.cible.outputs.tag }}
         run: |
           {
-            if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$NEW_RELEASE" != "true" ]; then
               echo "### Retour arrière vers $TAG"
             else
               echo "### Mise en production de $TAG"
@@ -100,7 +110,7 @@ jobs:
             echo "- Ce sont les images déjà recettées en staging qui sont déployées, sans reconstruction."
             echo "- Une sauvegarde de la base est faite sur l'instance avant le déploiement."
             echo
-            if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$NEW_RELEASE" != "true" ]; then
               echo "Avant d'approuver : vérifier que $TAG est bien la version vers laquelle l'équipe a décidé de revenir."
             else
               echo "Avant d'approuver : la recette a été confirmée au lancement de la release. Il reste à vérifier que ce tag est bien celui annoncé à l'équipe."
@@ -143,22 +153,14 @@ jobs:
         env:
           TAG: ${{ needs.resume.outputs.tag }}
         run: |
-          # Le push du tag lance aussi publish-images.yml (job promote), qui ajoute le tag de version
-          # à l'image déjà construite pour ce commit : on attend jusqu'à 10 minutes qu'il apparaisse.
-          # Pour un retour arrière, le tag existe déjà et la boucle sort au premier essai.
+          # Le tag de version est posé sur les images par la promotion, qui précède ce job ; pour un
+          # retour arrière, il existe depuis la release d'origine.
           for module in frontend api etl ml db; do
             [ -f "$module/Dockerfile" ] || continue
             image="$IMAGE_PREFIX/$module:$TAG"
-            for i in $(seq 1 20); do
-              if docker buildx imagetools inspect "$image" >/dev/null 2>&1; then
-                echo "Image $image trouvée."
-                continue 2
-              fi
-              echo "Image $image absente, nouvel essai dans 30 s ($i/20)"
-              sleep 30
-            done
-            echo "::error::Image $image introuvable : la CI du commit taggé a-t-elle réussi ?"
-            exit 1
+            docker buildx imagetools inspect "$image" >/dev/null 2>&1 \
+              || { echo "::error::Image $image introuvable : la promotion de $TAG a-t-elle réussi ?"; exit 1; }
+            echo "Image $image trouvée."
           done
 
       # Action épinglée sur le SHA de la v6.3.0 (même précaution que pour trivy-action).
