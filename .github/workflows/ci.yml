@@ -86,10 +86,13 @@ jobs:
             echo "== $t"
             bash "infra/scripts/$t.sh"
           done
+          python3 infra/scripts/test-prefix-coverage.py
       - name: Modules touchés
         id: modules
         env:
-          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          # Sur un push de main, pas de base : tout est testé (filet de sécurité, et Sonar a besoin de la
+          # couverture de tous les modules pour son analyse de la branche).
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash infra/scripts/changed-modules.sh "$BASE" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
 
@@ -126,7 +129,15 @@ jobs:
       - name: Tests (pytest)
         if: hashFiles(format('{0}/requirements.txt', matrix.component)) != ''
         # code 5 = aucun test collecté : toléré tant que le composant démarre
-        run: pytest --cov=. --cov-report=term-missing || [ $? -eq 5 ]
+        run: pytest --cov=. --cov-report=term-missing --cov-report=xml || [ $? -eq 5 ]
+      - name: Préparer la couverture pour Sonar
+        if: hashFiles(format('{0}/coverage.xml', matrix.component)) != ''
+        run: python3 ../infra/scripts/prefix-coverage.py coverage.xml "${{ matrix.component }}"
+      - uses: actions/upload-artifact@v4
+        if: hashFiles(format('{0}/coverage.xml', matrix.component)) != ''
+        with:
+          name: coverage-${{ matrix.component }}
+          path: ${{ matrix.component }}/coverage.xml
 
   frontend:
     needs: changes
@@ -151,7 +162,16 @@ jobs:
         run: npm run lint --if-present
       - name: Tests unitaires
         if: hashFiles('frontend/package-lock.json') != ''
-        run: npm test --if-present
+        run: npm test --if-present -- --coverage --coverage-reporters=lcov
+      - name: Préparer la couverture pour Sonar
+        if: hashFiles('frontend/coverage/enervision/lcov.info') != ''
+        # Sonar lit les chemins depuis la racine du dépôt : src/app/app.ts devient frontend/src/app/app.ts
+        run: sed -i 's#^SF:#SF:frontend/#' coverage/enervision/lcov.info
+      - uses: actions/upload-artifact@v4
+        if: hashFiles('frontend/coverage/enervision/lcov.info') != ''
+        with:
+          name: coverage-frontend
+          path: frontend/coverage/enervision/lcov.info
       - name: Build
         if: hashFiles('frontend/package-lock.json') != ''
         run: npm run build --if-present
@@ -224,11 +244,41 @@ jobs:
             enervision-migrate status | tee statut.txt
           grep -q "Pending: 0" statut.txt
 
+  # Analyse SonarQube Cloud : qualité du code, couverture et porte de qualité (80 % de couverture sur
+  # le code neuf). Elle échoue si la porte n'est pas franchie. Sans SONAR_TOKEN (PR venant d'un fork,
+  # ou avant la mise en place de Sonar), les étapes sont ignorées et le job réussit.
+  sonar:
+    needs: [python, frontend]
+    if: >-
+      !cancelled()
+      && needs.python.result != 'failure' && needs.python.result != 'cancelled'
+      && needs.frontend.result != 'failure' && needs.frontend.result != 'cancelled'
+    runs-on: ubuntu-24.04
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0 # Sonar attribue les lignes nouvelles à partir de l'historique
+      - uses: actions/download-artifact@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          pattern: coverage-*
+          path: coverage-reports
+      - name: Analyse Sonar
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
+
   # Point d'entrée unique pour la règle de protection de main :
   # seul ce job est à exiger, quels que soient les composants présents.
   ci-ok:
     if: always()
-    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, security, migrations]
+    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, security, migrations, sonar]
     runs-on: ubuntu-24.04
     steps:
       - name: Vérifier les résultats
