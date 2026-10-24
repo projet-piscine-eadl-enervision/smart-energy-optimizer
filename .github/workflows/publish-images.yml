@@ -1,16 +1,10 @@
 name: Publication des images
 
-# Une image par module (dossier contenant un Dockerfile), publiée sur GHCR.
-# - CI verte sur main : image :sha-<commit> pour chaque commit, puis :main si ce commit est encore
-#   la tête de main (c'est :main que la VM de staging récupère).
-# - Tag vX.Y.Z, posé à la main par le workflow Release après la recette : l'image du commit taggé
-#   reçoit le tag de version, sans reconstruction, pour que la production déploie exactement ce
-#   qui a été validé en staging.
+# Promotion des images : tag vX.Y.Z, posé à la main par le workflow Release après la recette. L'image
+# du commit taggé reçoit le tag de version, sans reconstruction, pour que la production déploie
+# exactement ce qui a été validé en staging.
+# La construction des images de chaque commit (:sha-<commit> et :main) est dans ci.yml, job publish.
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
   push:
     tags: ["v*"]
 
@@ -23,73 +17,7 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository }}
 
 jobs:
-  build:
-    # `branches: [main]` filtre sur le nom de la branche d'origine : une PR d'un fork dont la branche
-    # s'appelle main déclencherait ce job, qui dispose de packages: write. On exige donc un push sur
-    # ce dépôt, et non un run de pull_request.
-    if: >-
-      github.event_name == 'workflow_run'
-      && github.event.workflow_run.conclusion == 'success'
-      && github.event.workflow_run.event == 'push'
-      && github.event.workflow_run.head_repository.full_name == github.repository
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        module: [frontend, api, etl, ml, db]
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-      - uses: docker/login-action@v4
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@v4
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-      - name: Version du commit (titre et sha court)
-        id: version
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-        # Le message du commit est une entrée non fiable : il passe par l'environnement,
-        # jamais directement dans le script. Seule la première ligne est gardée.
-        env:
-          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          title=$(printf '%s' "$COMMIT_MESSAGE" | head -n 1 | tr -d '\r')
-          echo "title=$title" >> "$GITHUB_OUTPUT"
-          echo "sha=${HEAD_SHA::7}" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v7
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-        with:
-          context: ${{ matrix.module }}
-          push: true
-          build-args: |
-            GIT_TITLE=${{ steps.version.outputs.title }}
-            GIT_SHA=${{ steps.version.outputs.sha }}
-          tags: ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:sha-${{ github.event.workflow_run.head_sha }}
-      - name: Avancer :main si ce commit est encore la tête de main
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          MODULE: ${{ matrix.module }}
-        run: |
-          # Deux merges rapprochés peuvent se terminer dans le désordre : seul le commit le plus
-          # récent a le droit de déplacer :main, sinon un commit plus ancien ferait reculer le
-          # staging. Les images sha-<commit> sont toutes conservées. Si le commit plus récent échoue
-          # en CI, :main reste en retard jusqu'au prochain commit vert.
-          tete=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
-          if [ "$tete" != "$HEAD_SHA" ]; then
-            echo "::notice::${HEAD_SHA::7} n'est plus la tête de main (${tete::7}) : :main n'est pas déplacé."
-            exit 0
-          fi
-          docker buildx imagetools create -t "$IMAGE_PREFIX/$MODULE:main" "$IMAGE_PREFIX/$MODULE:sha-$HEAD_SHA"
-
   promote:
-    if: github.event_name == 'push'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
