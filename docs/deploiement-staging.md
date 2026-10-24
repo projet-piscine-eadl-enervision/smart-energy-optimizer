@@ -115,6 +115,27 @@ Les images GHCR d'un dépôt public sont privées par défaut. Le staging utilis
 
 Le jeton est stocké en clair dans `/root/.docker/config.json` (lisible par root seulement). Il expire : sans renouvellement, le `pull` du minuteur échoue sans bruit et le staging cesse de se mettre à jour. Le renouveler avant l'échéance en refaisant l'étape 2. Il est lié au compte qui l'a créé.
 
+### Annonce du staging à GitHub
+
+À chaque passage, `update-staging.sh` appelle `report-staging-deployment.sh`. Une fois la mise à jour terminée, il lit le sha affiché par l'API sur `/health` et crée un déploiement `staging` (statut `success`) pour ce commit, une seule fois par commit. C'est le signal « le staging est à jour, la recette peut commencer », visible dans l'onglet *Deployments* du dépôt ; le workflow Release s'appuie dessus. Sans jeton ou sans réseau, le script le dit dans le journal et la mise à jour continue.
+
+Mise en place du jeton, une fois :
+
+1. GitHub, *Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate new token*. Propriétaire : l'organisation. Dépôt : `smart-energy-optimizer` seul. Permission *Repository > Deployments* : lecture et écriture. Expiration : la fin du projet.
+2. Sur la VM, en root, sans afficher le jeton :
+   ```bash
+   install -m 600 -o root -g root /dev/null /etc/enervision/github-deploy.token
+   read -rs -p "Jeton : " T && echo && printf '%s' "$T" > /etc/enervision/github-deploy.token && unset T
+   ```
+3. Vérifier la lecture (réponse attendue : `200`) :
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $(cat /etc/enervision/github-deploy.token)" \
+     "https://api.github.com/repos/projet-piscine-eadl-enervision/smart-energy-optimizer/deployments?environment=staging&per_page=1"
+   ```
+4. Au passage suivant du minuteur, `journalctl -u update-staging.service -n 20` doit montrer `annonce GitHub : staging annoncé à jour sur <sha>`.
+
+Le jeton expire : sans renouvellement, l'annonce s'arrête sans bruit et la release sera refusée faute de déploiement `staging`. Le renouveler avant l'échéance en refaisant les étapes 1 et 2. Messages du journal : `jeton absent` (fichier manquant), `déploiement refusé` ou `réponse inattendue` (jeton expiré, permissions insuffisantes ou dépôt mal désigné, le corps de la réponse de GitHub est affiché).
+
 ## Suivi et dépannage
 
 ```bash
