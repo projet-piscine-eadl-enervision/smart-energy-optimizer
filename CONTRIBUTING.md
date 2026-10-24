@@ -26,7 +26,8 @@ Chaque composant garde ses tests. Les workflows de CI/CD vivent dans `.github/wo
 5. Merge en **squash**, seule méthode autorisée sur le dépôt (réglages du dépôt : merge commit et rebase désactivés, message du squash = titre de la PR). Le titre de la PR devient donc l'unique commit sur `main` : c'est lui qui décide de la version (`feat:`, `fix:`, `!` pour une rupture), et la CI le vérifie. La branche source est supprimée automatiquement au merge (réglage « Automatically delete head branches ») ; supprimer aussi la copie locale avec `git branch -d`.
 6. Commits en [Conventional Commits](https://www.conventionalcommits.org/fr) avec un type parmi `feat`, `fix`, `docs`, `chore`, `infra`, `test`, `refactor`, `ci`. Le nom de branche, chaque commit et le titre de la PR sont vérifiés par la CI ; un hook local (`pre-commit`, voir le README) applique les mêmes contrôles avant le commit. Chacun commite avec son propre compte et son vrai nom, sur son poste.
 7. Aucun secret dans Git : variables dans un `.env` ignoré, avec un `.env.example` versionné. Les accès (API, VM, AWS) restent hors dépôt.
-8. Un conflit se résout dans la branche de la tâche (`git rebase main` ou `git merge main`), jamais en réécrivant `main`.
+8. Un conflit se résout dans la branche de la tâche (`git rebase main`), jamais en réécrivant `main`. La règle de `main` exige une branche à jour avant le merge : on la met à jour de la même façon, puis on pousse avec `git push --force-with-lease` (jamais `--force`).
+9. Le bouton « Update branch » de GitHub ne sert que sur **sa propre** branche, et en choisissant « Update with rebase » (menu à côté du bouton) : le merge ajoute un commit « Merge branch 'main' » et fait diverger la branche distante de la copie locale. Après l'avoir utilisé, resynchroniser sa copie avec `git pull --rebase`. Ne jamais cliquer dessus sur la branche d'une autre personne.
 
 ## Cycle d'une tâche
 
