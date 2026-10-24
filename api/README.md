@@ -80,7 +80,7 @@ Les routes n'ont pas de préfixe `/api` : c'est le préfixe du proxy du front (`
 
 | Méthode | Route | Accès | Description |
 |---|---|---|---|
-| `POST` | `/auth/register` | public | Inscription (email + mot de passe ≥ 8 caractères) |
+| `POST` | `/auth/register` | public | Inscription (email + mot de passe de 8 caractères et de 72 octets au plus) |
 | `POST` | `/auth/login` | public | Connexion, renvoie un jeton JWT |
 | `GET` | `/auth/me` | connecté | Profil de l'utilisateur courant |
 | `GET` | `/predictions` | connecté | Prédictions de pics de consommation |

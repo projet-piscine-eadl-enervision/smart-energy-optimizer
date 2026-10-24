@@ -24,8 +24,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 
 ### P3
 
-- **Mot de passe de plus de 72 octets : erreur 500** à l'inscription (bcrypt lève `ValueError`, mesuré). Ajouter `max_length=72` à `UserCreate`.
-- **Énumération de comptes** : `/auth/register` répond 409 sur un e-mail connu, `/auth/login` saute `verify_password` quand le compte n'existe pas.
+- **Énumération de comptes** : `/auth/register` répond 409 sur un e-mail connu, `/auth/login` saute `verify_password` quand le compte n'existe pas (temps de réponse différent).
 - **Ports inutiles** : `8001:8000` (ETL) en staging ; PostgreSQL de développement lié à toutes les interfaces avec le mot de passe `dev` (`docker-compose.yml:10`), le lier à `127.0.0.1`.
 - **Trivy ne scanne pas les images construites.** Les actions sont épinglées par tag, sauf Trivy et `configure-aws-credentials` (sha).
 - **Job `e2e` (Cypress) inutile** : le front teste avec Vitest. Supprimer le job et son entrée dans `needs` de `ci-ok`.
@@ -44,6 +43,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Tests sur `main`** : API et ETL (79 tests ETL, couverture 99 %).
 - **[branche] `python-jose` remplacé par `PyJWT`** : `pip-audit` ne trouve plus rien sur l'API.
 - **[branche] `/docs`, `/redoc` et `/openapi.json` fermés en production** (`APP_ENV=production`), ouverts en dev et staging.
+- **[branche] Mot de passe de plus de 72 octets** : refusé à l'inscription (422, compté en octets) et à la connexion (401) au lieu d'une erreur 500.
 - **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
 - **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.
 - **Base** (PR #134) : tables, hypertable, rôles, `analytics.refresh_site_baseline()` ; dix migrations rejouées sans erreur. Reste le chargeur de l'ETL.

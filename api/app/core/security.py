@@ -14,12 +14,17 @@ from app.core.config import settings
 # bcrypt (et non argon2) pour rester compatible avec les hashes déjà en base.
 password_hash = PasswordHash((BcryptHasher(),))
 
+# bcrypt ne lit que 72 octets et refuse davantage : on rejette plus tôt au lieu de tronquer
+MAX_PASSWORD_BYTES = 72
+
 
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    if len(plain.encode()) > MAX_PASSWORD_BYTES:
+        return False
     return password_hash.verify(plain, hashed)
 
 

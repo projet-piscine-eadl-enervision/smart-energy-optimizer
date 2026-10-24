@@ -50,3 +50,8 @@ def test_jeton_modifie():
     entete, contenu, signature = token.split(".")
     falsifie = f"{entete}.{contenu}.{signature[::-1]}"
     assert security.decode_access_token(falsifie) is None
+
+
+def test_verify_password_trop_long_refuse_sans_erreur():
+    hashed = security.hash_password("motdepasse")
+    assert not security.verify_password("a" * 100, hashed)

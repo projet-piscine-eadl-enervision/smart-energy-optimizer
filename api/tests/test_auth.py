@@ -90,3 +90,33 @@ def test_me_utilisateur_desactive(client, make_user):
     token = create_access_token(subject=str(user.id))
     response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 401
+
+
+def test_register_mot_de_passe_de_72_octets(client):
+    response = client.post(
+        "/auth/register", json={"email": "bob@example.com", "password": "a" * 72}
+    )
+    assert response.status_code == 201
+
+
+def test_register_mot_de_passe_trop_long(client):
+    response = client.post(
+        "/auth/register", json={"email": "bob@example.com", "password": "a" * 73}
+    )
+    assert response.status_code == 422
+
+
+def test_register_mot_de_passe_trop_long_en_octets(client):
+    # 37 caractères de 2 octets : 74 octets
+    response = client.post(
+        "/auth/register", json={"email": "bob@example.com", "password": "é" * 37}
+    )
+    assert response.status_code == 422
+
+
+def test_login_mot_de_passe_trop_long(client, make_user):
+    make_user(email="bob@example.com")
+    response = client.post(
+        "/auth/login", data={"username": "bob@example.com", "password": "a" * 100}
+    )
+    assert response.status_code == 401
