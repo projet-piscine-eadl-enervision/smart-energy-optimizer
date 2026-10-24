@@ -11,15 +11,27 @@ Préparer son poste (SSO, outils) : [`docs/aws-poste-developpeur.md`](../../../d
 | Ressource | Nom | Détail |
 |---|---|---|
 | `aws_instance.main` | `enervision-production` | Debian 13 officielle, `t3.large`, disque racine 64 Go gp3 **chiffré**, IMDSv2 obligatoire |
-| `aws_security_group.instance` | `enervision-production-instance` | **aucune entrée** ; sortie TCP 80 et 443 vers Internet |
-| `aws_vpc_security_group_ingress_rule.api` | — | port 8000, seulement si `api_ingress_cidrs` est renseigné (vide par défaut) |
+| `aws_security_group.instance` | `enervision-production-instance` | sortie TCP 80 et 443 vers Internet ; **une seule entrée** : voir la ligne suivante |
+| `aws_vpc_security_group_ingress_rule.frontend_cloudfront` | — | port 4000 (frontend), depuis la liste d'adresses de CloudFront maintenue par AWS, et rien d'autre |
+| `aws_vpc_security_group_ingress_rule.api` | — | port 8000, seulement si `api_ingress_cidrs` est renseigné (vide : l'API n'est pas ouverte, le site la joint par le frontend) |
+| `aws_eip.instance` | `enervision-production` | IP Elastic : adresse fixe de l'instance, par laquelle CloudFront la joint |
+| `aws_cloudfront_distribution.site` | `EnerVision production` | HTTPS en `https://<id>.cloudfront.net`, sans cache, origine HTTP sur le port 4000 de l'instance (`site_url` en sortie) |
+| `aws_s3_bucket.data` + chiffrement, blocage public, cycle de vie | `enervision-production-data-<compte>` | données du projet, privé et chiffré (SSE-S3) : préfixes `dvc/` (remote DVC de production), `etl/` et `backups/` (30 jours) ; `force_destroy` activé |
+| `aws_iam_role_policy.instance_s3` | `enervision-production-instance-s3` | l'instance lit et écrit `etl/` et `backups/`, lit `dvc/`, sans suppression |
 | `aws_iam_role.instance` + instance profile | `enervision-production-instance` | politique `AmazonSSMManagedInstanceCore` : agent SSM, Session Manager |
 | `aws_iam_openid_connect_provider.github` | — | fournisseur OIDC de GitHub (un seul possible par compte) |
 | `aws_iam_role.deploy` + politique | `enervision-production-deploy` | assumable par OIDC depuis l'environnement GitHub `production` ; `ssm:SendCommand` sur **cette instance** et le document `AWS-RunShellScript`, lecture des résultats |
 
-L'instance est dans le **VPC par défaut** du compte. Elle y reçoit une IP publique, qui lui
-sert uniquement à **sortir** (GHCR, dépôts Debian, SSM, API mock). Aucun port n'étant ouvert
-en entrée, elle n'est pas joignable depuis Internet. L'administration passe par SSM, sans SSH.
+L'instance est dans le **VPC par défaut** du compte. Son IP Elastic lui sert à **sortir** (GHCR,
+dépôts Debian, SSM, API mock) et à être jointe par CloudFront. Seul le port 4000 est ouvert en
+entrée, aux adresses de CloudFront : ni l'API (8000), ni l'ETL, ni la base ne sont joignables
+depuis Internet. L'administration passe par SSM, sans SSH.
+
+**Exposition.** Internet atteint CloudFront en HTTPS (certificat `*.cloudfront.net`), qui transmet
+à l'instance en HTTP sur le port 4000 : le frontend sert le site et transmet `/api/` à l'API
+(`API_UPSTREAM`). Limites connues : le trafic entre CloudFront et l'instance n'est pas chiffré, et
+il n'y a pas de nom de domaine. Pour passer plus tard sur un domaine : certificat ACM en
+`us-east-1`, `aliases` sur la distribution et Route 53.
 
 **Hors Terraform**, créés une fois à la main : le bucket du state
 (`enervision-tfstate-dreamteam2026`), IAM Identity Center et l'alerte de budget.
@@ -30,8 +42,10 @@ en entrée, elle n'est pas joignable depuis Internet. L'administration passe par
 |---|---|
 | `versions.tf` | Terraform ≥ 1.10, provider AWS `~> 6.0`, backend S3 partiel, tags par défaut |
 | `variables.tf` | région, réseau, type d'instance, OIDC GitHub… (voir plus bas) |
-| `main.tf` | toutes les ressources ci-dessus |
-| `outputs.tf` | `instance_id`, `deploy_role_arn`, IP, AMI |
+| `main.tf` | instance, groupe de sécurité, rôles IAM, fournisseur OIDC |
+| `public.tf` | IP Elastic, entrée du port 4000 pour CloudFront, distribution CloudFront |
+| `s3.tf` | bucket de données, chiffrement, cycle de vie et droits de l'instance |
+| `outputs.tf` | `instance_id`, `deploy_role_arn`, IP, AMI, `site_url`, `data_bucket` |
 | `user_data.sh` | premier démarrage : Docker + Compose, agent SSM, clone du dépôt dans `/opt/enervision`, dossier `/etc/enervision` |
 | `backend.hcl.example` | modèle de `backend.hcl` (non versionné) |
 | `terraform.tfvars.example` | modèle de `terraform.tfvars` (non versionné) |
@@ -118,7 +132,7 @@ compte), mettre `create_github_oidc_provider = false`.
 | `vpc_id`, `subnet_id` | *(aucun)* | VPC et sous-réseau par défaut du compte, dans `terraform.tfvars` |
 | `instance_type` | `t3.large` | 8 Go de mémoire pour base, API, ETL et frontend |
 | `root_volume_gb` | `64` | taille du disque |
-| `api_ingress_cidrs` | `[]` | CIDR autorisés sur le port 8000 ; vide = rien d'ouvert |
+| `api_ingress_cidrs` | `[]` | CIDR autorisés sur le port 8000 ; vide = l'API n'est pas ouverte (le site passe par CloudFront) |
 | `github_oidc_sub_prefix` | `repo:projet-piscine-eadl-enervision@344791702/enervision@1425243299` | préfixe du `sub` OIDC (format immuable) |
 | `create_github_oidc_provider` | `true` | créer le fournisseur OIDC |
 
@@ -148,13 +162,13 @@ change que si `instance_id` change).
    - `docker login ghcr.io` avec un jeton GitHub *classic* `read:packages`, **en root** (c'est
      root qui exécute les déploiements) ;
    - créer `/etc/enervision/production.env` (`umask 077`) : `APP_ENV=production`,
-     `POSTGRES_PASSWORD` (neuf, lettres et chiffres uniquement), `MOCK_API_URL`,
-     `MOCK_API_USERNAME`, `MOCK_API_PASSWORD`, et `COMPOSE_PROFILES=apps` si les images `etl`
-     et `frontend` existent ;
+     `POSTGRES_PASSWORD` (neuf, lettres et chiffres uniquement), `SECRET_KEY` (32 caractères au
+     moins), `MOCK_API_URL` (l'URL publique du mock), `MOCK_API_USERNAME`, `MOCK_API_PASSWORD`,
+     `COMPOSE_PROFILES=apps` et `NG_ALLOWED_HOSTS` (le nom CloudFront du site, sans `https://`) ;
    - contrôler :
      `docker compose -f docker-compose.staging.yml --env-file /etc/enervision/production.env config >/dev/null`.
 3. **Dans GitHub**, *Settings → Environments → `production`* :
-   - *Required reviewers* : au moins deux personnes ;
+   - *Required reviewers* : l'équipe (l'auteur de la release peut approuver lui-même) ;
    - *Deployment branches and tags* : branche `main` **et** tags `v*` ;
    - variables `AWS_REGION` (`eu-west-3`), `AWS_DEPLOY_ROLE_ARN`, `AWS_INSTANCE_ID`.
 4. **Variable de dépôt** `PRODUCTION_ENABLED=true` (sans elle, `deploy-production.yml` ne fait rien).
@@ -166,14 +180,15 @@ terraform plan -destroy        # relire la liste
 terraform destroy
 ```
 
-Puis, **en dernier** (le `destroy` en a besoin) : vider et supprimer le bucket du state dans
-la console S3 (*Empty*, puis *Delete* : il est versionné). Vérifier quelques jours plus tard dans
+Le `destroy` vide et supprime le bucket de données (`force_destroy`) : le remote DVC de production
+et les sauvegardes disparaissent avec lui, les données de référence restent dans le remote du
+staging et sur les postes. Puis, **en dernier** (le `destroy` en a besoin) : vider et supprimer le
+bucket du state dans la console S3 (*Empty*, puis *Delete* : il est versionné). Vérifier quelques jours plus tard dans
 *Billing → Bills* qu'aucun service ne facture encore. Révoquer aussi le jeton GHCR de l'EC2.
 
 ## Reste à décider
 
-- **Exposition** du site et de l'API pour la démo : HTTPS (80/443) ou port 8000 pour quelques
-  IP (`api_ingress_cidrs`), nom de domaine éventuel. `NG_ALLOWED_HOSTS` est à renseigner dans
-  `production.env` à ce moment-là.
+- **Nom de domaine et chiffrement de bout en bout** : aujourd'hui CloudFront en `*.cloudfront.net`
+  et HTTP jusqu'à l'instance. Voir *Exposition* plus haut.
 - **Dimensionnement** : `t3.large` à confirmer d'après la consommation réelle.
-- **Stockage DVC** : bucket S3 dédié à ajouter dans Terraform.
+- **Service ML et MLflow** : aucun n'est déployé en production.

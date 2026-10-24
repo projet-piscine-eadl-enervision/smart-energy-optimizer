@@ -78,7 +78,7 @@ Le job de déploiement de la release commence par un résumé sur la page du run
 
 Quand la production est activée, la personne qui approuve ouvre le run *Release* (onglet *Actions*), lit le résumé et vérifie que le tag est bien celui annoncé à l'équipe. Elle clique sur *Review deployments*, coche `production`, puis *Approve and deploy*. Les relecteurs sont ceux de *Settings > Environments > production* (six personnes) et l'auteur de la release peut approuver lui-même. Les administrateurs du dépôt peuvent aussi contourner l'approbation.
 
-Après l'approbation, le workflow vérifie que les images du tag existent, sauvegarde la base sur l'instance (`/var/backups/enervision`, les cinq dernières copies), déploie le tag par SSM puis contrôle que `/health` annonce l'environnement `production` et le commit du tag. Le détail technique est dans le README d'AWS. Un déploiement réussi se termine par « Production à jour : vX.Y.Z (sha) ». Un seul déploiement de production s'exécute à la fois.
+Après l'approbation, le workflow vérifie que les images du tag existent, sauvegarde la base sur l'instance (`/var/backups/enervision`, les cinq dernières copies), déploie le tag par SSM puis contrôle que `/health` annonce l'environnement `production` et le commit du tag. Le détail technique est dans le README d'AWS. Un déploiement réussi se termine par « Production à jour : vX.Y.Z (sha) ». Le même contrôle se fait à la main sur https://dvrgizboitg9p.cloudfront.net/api/health (`environment` = `production`, `version.sha` = le commit de la version). Un seul déploiement de production s'exécute à la fois.
 
 Pour activer la production, la liste ordonnée des opérations (Terraform, `production.env`, variables GitHub) est dans `infra/terraform/aws/README.md`.
 

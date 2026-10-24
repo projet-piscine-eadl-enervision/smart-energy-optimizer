@@ -250,6 +250,10 @@ Le staging est déployé automatiquement sur la VM de l'école : à chaque merge
 
 Le détail (principe, mise en place de la VM, jeton GHCR, dépannage) est dans [`docs/deploiement-staging.md`](docs/deploiement-staging.md). Pour livrer une version (recette, release, production, retour arrière), voir [`docs/mise-en-production.md`](docs/mise-en-production.md).
 
+## Production
+
+La production tourne sur AWS (Paris) et est accessible en HTTPS : https://dvrgizboitg9p.cloudfront.net (page de connexion : `/login`, santé et version déployée : `/api/health`). Seul le frontend est exposé, il transmet `/api/` à l'API. Elle est mise à jour par une release lancée à la main après la recette du staging, avec une approbation dans GitHub : [`docs/mise-en-production.md`](docs/mise-en-production.md). Environnements, URLs et variables : [`docs/environnements-techniques.md`](docs/environnements-techniques.md) ; infrastructure : [`infra/README.md`](infra/README.md).
+
 ## Qualité et sécurité de la CI
 
 Chaque PR passe par `ruff`, `pytest`, le build du frontend, le contrôle des migrations, Trivy (dépendances, secrets, Terraform) et SonarQube Cloud (porte de qualité : 80 % de couverture sur le code neuf). Où lire les résultats et que faire quand un contrôle échoue : [`docs/qualite-et-securite-ci.md`](docs/qualite-et-securite-ci.md). Les tests de la CI se lancent aussi en local : `pytest --cov` dans `api/`, `etl/` ou `ml/`, `npm test -- --coverage` dans `frontend/`.
