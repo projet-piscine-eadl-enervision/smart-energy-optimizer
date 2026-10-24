@@ -246,6 +246,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -308,6 +309,32 @@ jobs:
             ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:${{ steps.reuse.outputs.key }}
           cache-from: type=gha,scope=${{ matrix.module }}
           cache-to: type=gha,mode=max,scope=${{ matrix.module }}
+      # Rapport seul pour l'instant : un échec du scan ou de l'envoi ne bloque pas la publication.
+      # Seule une image construite est scannée ; une image réutilisée l'a été à sa construction, et
+      # la reconstruction hebdomadaire renouvelle le rapport.
+      - name: Trivy sur l'image (rapport, ne bloque pas)
+        if: steps.reuse.outputs.reuse != 'true'
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0, même version que le job security (voir CONTRIBUTING.md)
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:sha-${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-${{ matrix.module }}.sarif
+          limit-severities-for-sarif: true
+          exit-code: "0"
+      - name: Envoyer le rapport vers l'onglet Security
+        if: steps.reuse.outputs.reuse != 'true' && !cancelled()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-${{ matrix.module }}.sarif
+          category: trivy-image-${{ matrix.module }}
       - name: Avancer :main si ce commit est encore la tête de main
         env:
           GH_TOKEN: ${{ github.token }}
