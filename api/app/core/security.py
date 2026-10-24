@@ -22,6 +22,11 @@ def hash_password(password: str) -> str:
     return password_hash.hash(password)
 
 
+# Hash d'un mot de passe jamais utilisé : la connexion le vérifie quand le compte n'existe pas,
+# pour que la durée de la réponse ne révèle pas si l'e-mail est connu
+DUMMY_HASH = password_hash.hash("mot de passe qui ne correspond à aucun compte")
+
+
 def verify_password(plain: str, hashed: str) -> bool:
     if len(plain.encode()) > MAX_PASSWORD_BYTES:
         return False

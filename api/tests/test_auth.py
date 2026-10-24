@@ -1,5 +1,6 @@
 """Inscription, connexion et profil courant (/auth/*)."""
-from app.core.security import create_access_token
+from app.api.routes import auth
+from app.core.security import DUMMY_HASH, create_access_token
 
 
 def test_register(client):
@@ -62,6 +63,21 @@ def test_login_email_inconnu(client):
         "/auth/login", data={"username": "inconnu@example.com", "password": "motdepasse"}
     )
     assert response.status_code == 401
+
+
+def test_login_email_inconnu_verifie_quand_meme_un_hash(client, monkeypatch):
+    # Même coût de calcul que pour un compte connu : le temps de réponse ne révèle pas l'e-mail
+    appels = []
+
+    def espion(plain, hashed):
+        appels.append(hashed)
+        return False
+
+    monkeypatch.setattr(auth, "verify_password", espion)
+    client.post(
+        "/auth/login", data={"username": "inconnu@example.com", "password": "motdepasse"}
+    )
+    assert appels == [DUMMY_HASH]
 
 
 def test_me(client, auth_headers):
