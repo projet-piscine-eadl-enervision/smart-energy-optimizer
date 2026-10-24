@@ -66,4 +66,5 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **S3 en SSE-S3 et non KMS** : coût et gestion de clé injustifiés pour un projet de deux semaines.
 - **Sortie 80/443 vers `0.0.0.0/0`** : les adresses de GHCR et de SSM ne sont pas énumérables.
 - **`vite` (haute) dans `@angular/build`**, outil de développement seulement (serveur local, option propre à Windows) : le correctif demande `npm audit fix --force`, donc une montée de version majeure ; attendu avec la prochaine mise à jour d'Angular.
+- **Image `db` : 2 alertes hautes (Trivy)**, dans le binaire de dbmate (bibliothèque Go `klauspost/compress` 1.18.5, `stdlib` 1.27.2). dbmate 2.37.0 est la dernière version (18/10) : pas de correctif possible chez nous. L'outil ne tourne qu'une fois au déploiement, sans port ouvert. À reprendre à la prochaine version de dbmate ; entrée de `.trivyignore` avec motif et échéance quand Trivy deviendra bloquant.
 - **Pas de `HEALTHCHECK` sur `ml`** : ce n'est pas un service.
