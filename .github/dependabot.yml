@@ -1,8 +1,10 @@
-# Mises à jour des actions GitHub utilisées par les workflows (checkout, docker/*, etc.).
-# Une PR groupée par semaine : titre « ci: bump ... », conforme à Conventional Commits, et branche
-# dependabot/*, exemptée du contrôle de nom de branche (infra/scripts/check-branch-name.sh).
-# Les actions épinglées par SHA (configure-aws-credentials) sont aussi mises à jour, à condition de
-# garder le numéro de version en commentaire à côté du SHA.
+# Mises à jour automatiques, le lundi, en une PR groupée par type de dépendance :
+# - github-actions : titre « ci: bump ... » ;
+# - pip (api, etl, ml : requirements.in et requirements.txt compilés), npm (frontend), docker
+#   (images de base des Dockerfile) : titre « chore: bump ... ».
+# Les branches dependabot/* sont exemptées du contrôle de nom de branche
+# (infra/scripts/check-branch-name.sh). Les actions épinglées par SHA (configure-aws-credentials)
+# sont aussi mises à jour, à condition de garder le numéro de version en commentaire à côté du SHA.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -18,3 +20,42 @@ updates:
     ignore:
       # Épinglée volontairement sur la v0.35.0 (voir CONTRIBUTING.md) : pas de mise à jour automatique.
       - dependency-name: "aquasecurity/trivy-action"
+
+  - package-ecosystem: pip
+    directories: [/api, /etl, /ml]
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: chore
+    groups:
+      python:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: chore
+    groups:
+      frontend:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories: [/api, /etl, /ml, /frontend, /db]
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: chore
+    groups:
+      images:
+        patterns: ["*"]
+    ignore:
+      # Python 3.13 et Node 24 (LTS) sont choisis à la main : pas de montée de version automatique.
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]

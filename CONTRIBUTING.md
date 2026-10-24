@@ -69,7 +69,8 @@ Relire, c'est vérifier que le code répond au ticket, qu'il est testé, lisible
 
 - Les jobs tournent sur `ubuntu-24.04`, pas sur `ubuntu-latest`, dont la version change sans prévenir. Changer de version de runner se fait par une PR, dans tous les workflows à la fois.
 - Les actions sont référencées par version majeure (`actions/checkout@v7`), ou par SHA quand l'action est sensible (`trivy-action`, `configure-aws-credentials`), avec la version en commentaire à côté du SHA.
-- Dependabot ouvre chaque lundi une PR groupée `ci: bump ...` qui met à jour les actions. La relire comme les autres : lire les notes de version pour les ruptures, vérifier que les paramètres `with:` utilisés existent toujours, et surveiller les avertissements Node dans les runs.
+- Dependabot ouvre chaque lundi des PR groupées : `ci: bump ...` (actions), `chore: bump ...` pour les dépendances Python (`api`, `etl`, `ml`), npm (`frontend`) et les images de base des Dockerfile. Python 3.13 et Node 24 ne montent pas de version tout seuls. Les relire comme les autres : lire les notes de version pour les ruptures, vérifier que les paramètres `with:` utilisés existent toujours, et surveiller les avertissements Node dans les runs.
+- Pour Python, Dependabot modifie `requirements.in` et `requirements.txt`. Après le merge, `./infra/scripts/compile-requirements.sh` ne doit produire aucun changement ; sinon, lancer le script et committer le résultat.
 
 **Avertissements connus.**
 
