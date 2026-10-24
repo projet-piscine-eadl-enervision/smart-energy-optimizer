@@ -271,14 +271,43 @@ jobs:
           title=$(printf '%s' "$COMMIT_MESSAGE" | head -n 1 | tr -d '\r')
           echo "title=$title" >> "$GITHUB_OUTPUT"
           echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: Clé de réutilisation de l'image
+        id: reuse
+        env:
+          MODULE: ${{ matrix.module }}
+        run: |
+          # La clé est l'empreinte Git du dossier du module (Dockerfile et fichiers compris) et la
+          # semaine ISO : un module inchangé réutilise son image, mais chaque semaine tout est
+          # reconstruit, pour reprendre les mises à jour de l'image de base (python, node...).
+          # api est toujours reconstruite : /health y affiche le sha du commit, compilé dans l'image.
+          tree=$(git rev-parse "HEAD:$MODULE")
+          key="tree-${tree}-$(date -u +%GW%V)"
+          reuse=false
+          if [ "$MODULE" != api ] && docker buildx imagetools inspect "$IMAGE_PREFIX/$MODULE:$key" >/dev/null 2>&1; then
+            reuse=true
+          fi
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+          echo "reuse=$reuse" >> "$GITHUB_OUTPUT"
+          echo "Module $MODULE : clé $key, image réutilisée : $reuse"
+      - name: Réutiliser l'image existante
+        if: steps.reuse.outputs.reuse == 'true'
+        env:
+          MODULE: ${{ matrix.module }}
+          KEY: ${{ steps.reuse.outputs.key }}
+        run: docker buildx imagetools create -t "$IMAGE_PREFIX/$MODULE:sha-$GITHUB_SHA" "$IMAGE_PREFIX/$MODULE:$KEY"
       - uses: docker/build-push-action@v7
+        if: steps.reuse.outputs.reuse != 'true'
         with:
           context: ${{ matrix.module }}
           push: true
           build-args: |
             GIT_TITLE=${{ steps.version.outputs.title }}
             GIT_SHA=${{ steps.version.outputs.sha }}
-          tags: ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:sha-${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:sha-${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:${{ steps.reuse.outputs.key }}
+          cache-from: type=gha,scope=${{ matrix.module }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.module }}
       - name: Avancer :main si ce commit est encore la tête de main
         env:
           GH_TOKEN: ${{ github.token }}
