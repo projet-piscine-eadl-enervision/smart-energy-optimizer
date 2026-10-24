@@ -26,7 +26,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Énumération de comptes à l'inscription** : `/auth/register` répond 409 sur un e-mail connu, lié à la décision sur l'inscription ouverte.
 - **Ports inutiles** : `8001:8000` (ETL) en staging ; PostgreSQL de développement lié à toutes les interfaces avec le mot de passe `dev` (`docker-compose.yml:10`), le lier à `127.0.0.1`.
 - **Trivy ne scanne pas les images construites.** Les actions sont épinglées par tag, sauf Trivy et `configure-aws-credentials` (sha).
-- **Job `e2e` (Cypress) inutile** : le front teste avec Vitest. Supprimer le job et son entrée dans `needs` de `ci-ok`.
+- **Pas de tests de bout en bout du frontend.** Le job `e2e` (Cypress) a été supprimé : il ne faisait rien (aucune configuration, aucune dépendance). Le front n'a que des tests Vitest (un seul fichier aujourd'hui). À créer : un test de fumée sur le staging (connexion, puis lecture de `/health` par le proxy `/api`), avec Playwright ou Cypress.
 - **`httpx2` : licence vide sur PyPI.** À vérifier avant le rendu.
 - **Pas de seuil de couverture global** dans la CI.
 
@@ -53,7 +53,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Historique Git** : aucun `.env`, `tfvars`, `backend.hcl`, clé ni `tfstate` jamais ajouté ; aucun secret dans les fichiers suivis.
 - **Branche `main` protégée** : revue obligatoire, `ci-ok` requis, ni force push ni suppression, administrateurs inclus.
 - **Nettoyage du dépôt** : manifeste et changelog figés, doublons de `.env.example`, `.gitkeep` et `.prettierrc.json` superflus.
-- **[branche]** `SECURITY.md`, `.dockerignore` de `api` et du frontend, `HEALTHCHECK` d'`api` et du frontend (images reconstruites le 24/10 : les deux `healthy`), port du job `e2e`, `*:Zone.Identifier` ignorés.
+- **[branche]** `SECURITY.md`, `.dockerignore` de `api` et du frontend, `HEALTHCHECK` d'`api` et du frontend (images reconstruites le 24/10 : les deux `healthy`), job `e2e` inactif supprimé, `*:Zone.Identifier` ignorés.
 
 ## Assumé ou écarté
 

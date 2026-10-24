@@ -8,7 +8,7 @@ Le projet suit un GitHub Flow avec des branches courtes. Le dépôt est un monor
 api/        API (données, prédictions, anomalies) et ses tests (api/tests)
 etl/        batch d'ingestion et nettoyage en pandas, tests (etl/tests)
 ml/         entraînement, challengers, MLflow, tests (ml/tests)
-frontend/   dashboard web, tests Cypress (frontend/cypress)
+frontend/   dashboard web, tests Vitest (pas encore de tests de bout en bout)
 db/         migrations SQL de la base (db/migrations), appliquées au démarrage par dbmate
 infra/      Terraform, Docker, scripts de déploiement (infra/scripts)
 docs/       architecture, rapports de décision, comptes rendus
