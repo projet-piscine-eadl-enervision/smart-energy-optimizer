@@ -5,7 +5,7 @@ Les jetons sont signés avec SECRET_KEY : impossible à forger sans la clé.
 """
 from datetime import UTC, datetime, timedelta
 
-from jose import JWTError, jwt
+import jwt
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 
@@ -39,5 +39,5 @@ def decode_access_token(token: str) -> str | None:
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         return payload.get("sub")
-    except JWTError:
+    except jwt.InvalidTokenError:
         return None

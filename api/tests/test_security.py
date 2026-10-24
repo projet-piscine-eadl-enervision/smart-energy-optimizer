@@ -1,7 +1,7 @@
 """Hachage des mots de passe et jetons JWT."""
 from datetime import UTC, datetime, timedelta
 
-from jose import jwt
+import jwt
 
 from app.core import security
 from app.core.config import settings

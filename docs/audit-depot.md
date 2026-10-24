@@ -14,7 +14,6 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 ### P2
 
 - **Les rôles de #134 ne sont pas utilisés.** `api` et `etl` se connectent avec `${POSTGRES_USER}`, le super-utilisateur (`docker-compose.staging.yml:32,42`). Créer trois comptes de connexion héritant de `enervision_api`, `enervision_etl`, `enervision_ml` et les donner aux services.
-- **`python-jose` : 3 alertes `pip-audit`** (`python-jose` 3.5.0 PYSEC-2026-4298, `ecdsa` 0.19.2 PYSEC-2026-1325, sans correctif). Remplacer par `PyJWT` dans `app/core/security.py`.
 - **`body-parser` (haute, déni de service)** dans le frontend, dépendance indirecte vue par `npm audit --omit=dev` : `npm audit fix`.
 - **Dependabot ne couvre que `github-actions`.** Ajouter `pip` (`api`, `etl`, `ml`), `npm` et `docker`, et activer les mises à jour de sécurité (désactivées).
 - **`/docs` et `/openapi.json` ouverts en production** (pas de `docs_url=None`), et `/health` publie le titre du commit et le sha. Couper la documentation hors développement.
@@ -43,6 +42,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Hooks `pre-commit`** : messages de commit, nom de branche, `ruff`, clés privées, commit direct sur `main`.
 - **API authentifiée** (PR #102) : JWT sur `/history`, `/predictions`, `/recommendations`, `/auth/me`.
 - **Tests sur `main`** : API et ETL (79 tests ETL, couverture 99 %).
+- **[branche] `python-jose` remplacé par `PyJWT`** : `pip-audit` ne trouve plus rien sur l'API.
 - **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
 - **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.
 - **Base** (PR #134) : tables, hypertable, rôles, `analytics.refresh_site_baseline()` ; dix migrations rejouées sans erreur. Reste le chargeur de l'ETL.
