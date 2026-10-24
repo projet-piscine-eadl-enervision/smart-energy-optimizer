@@ -55,7 +55,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort.
 - **Historique Git** : aucun `.env`, `tfvars`, `backend.hcl`, clé ni `tfstate` jamais ajouté ; une recherche de motifs de clés (AWS, GitHub, clés privées) dans les fichiers suivis ne trouve rien. Le secret scanning de GitHub prend le relais.
 - **Branche `main` protégée** : revue obligatoire, `ci-ok` requis, ni force push ni suppression, administrateurs inclus. Seule l'App `enervision-release` peut contourner la règle, et seulement par PR.
 - **Nettoyage du dépôt** : manifeste et changelog figés, doublons de `.env.example`, `.gitkeep` et `.prettierrc.json` superflus.
-- **Politique et configuration du dépôt** : `SECURITY.md` ajouté, `.dockerignore` de `api` et du frontend complétés, `HEALTHCHECK` d'`api` et du frontend (images reconstruites le 24/10 : les deux `healthy`), job `e2e` inactif supprimé, `*:Zone.Identifier` ignorés.
+- **Politique et configuration du dépôt** : `SECURITY.md` et licence MIT (`LICENSE`) ajoutés, `.dockerignore` de `api` et du frontend complétés, `HEALTHCHECK` d'`api` et du frontend (images reconstruites le 24/10 : les deux `healthy`), job `e2e` inactif supprimé, `*:Zone.Identifier` ignorés.
 
 ## Assumé ou écarté
 
