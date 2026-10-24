@@ -1,8 +1,8 @@
 # Audit du dépôt, état au 24/10/2026
 
-Base : `main` à `89c7ab7` (v1.14.0, PR #97 et #134 fusionnées) plus la branche `durcissement-securite`. Mesures du 24/10 : réglages GitHub par l'API, `pip-audit`, `npm audit`, relecture du code, de Terraform et des workflows.
+Base : `main` à `89c7ab7` (v1.14.0, PR #97 et #134 fusionnées), avec les corrections de la PR « sécurité ». Mesures du 24/10 : réglages GitHub par l'API, `pip-audit`, `npm audit`, relecture du code, de Terraform et des workflows.
 
-Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : corrigé seulement dans `durcissement-securite`, donc encore ouvert sur `main` tant qu'elle n'est pas fusionnée.
+Légende : **P1** avant tout, **P2** bientôt, **P3** confort.
 
 ## Ouvert
 
@@ -26,6 +26,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Pas de tests de bout en bout du frontend.** Le job `e2e` (Cypress) a été supprimé : il ne faisait rien (aucune configuration, aucune dépendance). Le front n'a que des tests Vitest (un seul fichier aujourd'hui). À créer : un test de fumée sur le staging (connexion, puis lecture de `/health` par le proxy `/api`), avec Playwright ou Cypress.
 - **`httpx2` : licence vide sur PyPI.** À vérifier avant le rendu.
 - **Pas de seuil de couverture global** dans la CI.
+- **Longueur de `SECRET_KEY` non imposée** : `PyJWT` avertit sous 32 octets, mais l'API démarre quand même. 64 caractères en staging (vérifié le 24/10) ; la production est à vérifier.
 
 ## Traité
 
@@ -37,24 +38,24 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Hooks `pre-commit`** : messages de commit, nom de branche, `ruff`, clés privées, commit direct sur `main`.
 - **API authentifiée** (PR #102) : JWT sur `/history`, `/predictions`, `/recommendations`, `/auth/me`.
 - **Tests sur `main`** : API et ETL (79 tests ETL, couverture 99 %).
-- **[branche] `python-jose` remplacé par `PyJWT`** : `pip-audit` ne trouve plus rien sur l'API.
-- **[branche] `/docs`, `/redoc` et `/openapi.json` fermés en production** (`APP_ENV=production`), ouverts en dev et staging.
-- **[branche] Mot de passe de plus de 72 octets** : refusé à l'inscription (422, compté en octets) et à la connexion (401) au lieu d'une erreur 500.
-- **[branche] Connexion à durée égale** : un bcrypt est toujours calculé, compte connu ou non.
-- **[branche] Dépendances du frontend** : `npm audit fix` (`body-parser`, `fast-uri`), 0 alerte sur les dépendances de production ; lint, test et build repassés.
-- **[branche] Ports** : l'ETL du staging ne publie plus le 8001 (batch, sonde Docker) ; PostgreSQL de développement lié à `127.0.0.1`.
-- **[branche] Images `api`, `etl`, `ml`** : `pip` retiré après l'installation (ses copies embarquées de `certifi`, `urllib3`, `msgpack` causaient 1 critique et 4 hautes) ; Trivy ne trouve plus aucune alerte haute ou critique corrigeable ; `api` et `etl` repassent `healthy`.
-- **[branche] Image `frontend` (cible `prod`)** : `npm`, `corepack` et `yarn` retirés (leurs `brace-expansion` et `undici` causaient 4 alertes hautes) ; Trivy ne trouve plus rien, l'image reste `healthy` et sert `/` en 200. La cible `dev` (locale, non publiée) garde 5 alertes hautes, dont `vite`.
+- **`python-jose` remplacé par `PyJWT`** : `pip-audit` ne trouve plus rien sur l'API.
+- **`/docs`, `/redoc` et `/openapi.json` fermés en production** (`APP_ENV=production`), ouverts en dev et staging.
+- **Mot de passe de plus de 72 octets** : refusé à l'inscription (422, compté en octets) et à la connexion (401) au lieu d'une erreur 500.
+- **Connexion à durée égale** : un bcrypt est toujours calculé, compte connu ou non.
+- **Dépendances du frontend** : `npm audit fix` (`body-parser`, `fast-uri`), 0 alerte sur les dépendances de production ; lint, test et build repassés.
+- **Ports** : l'ETL du staging ne publie plus le 8001 (batch, sonde Docker) ; PostgreSQL de développement lié à `127.0.0.1`.
+- **Images `api`, `etl`, `ml`** : `pip` retiré après l'installation (ses copies embarquées de `certifi`, `urllib3`, `msgpack` causaient 1 critique et 4 hautes) ; Trivy ne trouve plus aucune alerte haute ou critique corrigeable ; `api` et `etl` repassent `healthy`.
+- **Image `frontend` (cible `prod`)** : `npm`, `corepack` et `yarn` retirés (leurs `brace-expansion` et `undici` causaient 4 alertes hautes) ; Trivy ne trouve plus rien, l'image reste `healthy` et sert `/` en 200. La cible `dev` (locale, non publiée) garde 5 alertes hautes, dont `vite`.
 - **Réglages GitHub (24/10, vérifiés par l'API)** : signalement privé de vulnérabilités, alertes Dependabot, mises à jour de sécurité, secret scanning et protection au push activés ; approbation des workflows de tous les contributeurs externes ; Actions ne peut plus créer ni approuver de PR ; environnement `staging` créé (branche `main`).
-- **[branche] Dependabot étendu** à `pip` (`api`, `etl`, `ml`), `npm` et `docker`, une PR groupée par type le lundi (actif après le merge sur `main`).
+- **Dependabot étendu** à `pip` (`api`, `etl`, `ml`), `npm` et `docker`, une PR groupée par type le lundi (actif après le merge sur `main`).
 - **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
 - **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.
 - **Base** (PR #134) : tables, hypertable, rôles, `analytics.refresh_site_baseline()` ; dix migrations rejouées sans erreur. Reste le chargeur de l'ETL.
 - **Données** : DVC avec remotes `preprod` et `prod`, vérifiés de bout en bout.
-- **Historique Git** : aucun `.env`, `tfvars`, `backend.hcl`, clé ni `tfstate` jamais ajouté ; aucun secret dans les fichiers suivis.
-- **Branche `main` protégée** : revue obligatoire, `ci-ok` requis, ni force push ni suppression, administrateurs inclus.
+- **Historique Git** : aucun `.env`, `tfvars`, `backend.hcl`, clé ni `tfstate` jamais ajouté ; une recherche de motifs de clés (AWS, GitHub, clés privées) dans les fichiers suivis ne trouve rien. Le secret scanning de GitHub prend le relais.
+- **Branche `main` protégée** : revue obligatoire, `ci-ok` requis, ni force push ni suppression, administrateurs inclus. Seule l'App `enervision-release` peut contourner la règle, et seulement par PR.
 - **Nettoyage du dépôt** : manifeste et changelog figés, doublons de `.env.example`, `.gitkeep` et `.prettierrc.json` superflus.
-- **[branche]** `SECURITY.md`, `.dockerignore` de `api` et du frontend, `HEALTHCHECK` d'`api` et du frontend (images reconstruites le 24/10 : les deux `healthy`), job `e2e` inactif supprimé, `*:Zone.Identifier` ignorés.
+- **Politique et configuration du dépôt** : `SECURITY.md` ajouté, `.dockerignore` de `api` et du frontend complétés, `HEALTHCHECK` d'`api` et du frontend (images reconstruites le 24/10 : les deux `healthy`), job `e2e` inactif supprimé, `*:Zone.Identifier` ignorés.
 
 ## Assumé ou écarté
 
