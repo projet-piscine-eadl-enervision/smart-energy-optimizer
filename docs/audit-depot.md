@@ -24,7 +24,6 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 ### P3
 
 - **Énumération de comptes à l'inscription** : `/auth/register` répond 409 sur un e-mail connu, lié à la décision sur l'inscription ouverte.
-- **Ports inutiles** : `8001:8000` (ETL) en staging ; PostgreSQL de développement lié à toutes les interfaces avec le mot de passe `dev` (`docker-compose.yml:10`), le lier à `127.0.0.1`.
 - **Trivy ne scanne pas les images construites.** Les actions sont épinglées par tag, sauf Trivy et `configure-aws-credentials` (sha).
 - **Pas de tests de bout en bout du frontend.** Le job `e2e` (Cypress) a été supprimé : il ne faisait rien (aucune configuration, aucune dépendance). Le front n'a que des tests Vitest (un seul fichier aujourd'hui). À créer : un test de fumée sur le staging (connexion, puis lecture de `/health` par le proxy `/api`), avec Playwright ou Cypress.
 - **`httpx2` : licence vide sur PyPI.** À vérifier avant le rendu.
@@ -45,6 +44,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **[branche] Mot de passe de plus de 72 octets** : refusé à l'inscription (422, compté en octets) et à la connexion (401) au lieu d'une erreur 500.
 - **[branche] Connexion à durée égale** : un bcrypt est toujours calculé, compte connu ou non.
 - **[branche] Dépendances du frontend** : `npm audit fix` (`body-parser`, `fast-uri`), 0 alerte sur les dépendances de production ; lint, test et build repassés.
+- **[branche] Ports** : l'ETL du staging ne publie plus le 8001 (batch, sonde Docker) ; PostgreSQL de développement lié à `127.0.0.1`.
 - **[branche] Dependabot étendu** à `pip` (`api`, `etl`, `ml`), `npm` et `docker`, une PR groupée par type le lundi (actif après le merge sur `main`).
 - **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
 - **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.

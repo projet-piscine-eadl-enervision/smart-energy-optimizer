@@ -67,7 +67,7 @@ NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
 - `MOCK_API_*` : le mock interne de l'école ne demande pas d'identifiants. Le compose exige pourtant des valeurs non vides pour toutes les variables `MOCK_API_*` (l'ETL en a besoin), d'où le `-`. Avec l'URL publique du mock (`https://api-mock.charlieandre.fr`), mettre les vrais identifiants, qui sont dans les notes Teams.
 - `COMPOSE_PROFILES=apps` active `etl` et `frontend`. Leurs images doivent être publiées sur GHCR (vérifier avec `docker pull ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer/etl:main`), sinon le `pull` échoue.
 - `NG_ALLOWED_HOSTS` : liste des noms ou IP sous lesquels le frontend est joint (`10.43.43.50` en staging). Sans elle, le serveur de rendu refuse les requêtes qui arrivent avec l'IP de la VM.
-- Sur l'hôte, l'API écoute sur le port 8000, l'ETL sur le 8001 et le frontend sur le 4000.
+- Sur l'hôte, l'API écoute sur le port 8000 et le frontend sur le 4000. L'ETL ne publie aucun port : son état se lit avec `docker ps` (`healthy`).
 
 ## Mise en place sur la VM (une seule fois)
 
