@@ -17,7 +17,6 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **`python-jose` : 3 alertes `pip-audit`** (`python-jose` 3.5.0 PYSEC-2026-4298, `ecdsa` 0.19.2 PYSEC-2026-1325, sans correctif). Remplacer par `PyJWT` dans `app/core/security.py`.
 - **`body-parser` (haute, déni de service)** dans le frontend, dépendance indirecte vue par `npm audit --omit=dev` : `npm audit fix`.
 - **Dependabot ne couvre que `github-actions`.** Ajouter `pip` (`api`, `etl`, `ml`), `npm` et `docker`, et activer les mises à jour de sécurité (désactivées).
-- **Bucket S3 de production sans protection des données.** Il porte le remote DVC `prod`, mais `force_destroy = true` et pas de versionnement : un `terraform destroy` ou une écrasure efface la référence. Activer `aws_s3_bucket_versioning`.
 - **`/docs` et `/openapi.json` ouverts en production** (pas de `docs_url=None`), et `/health` publie le titre du commit et le sha. Couper la documentation hors développement.
 - **`/auth/register` ouvert à tous, `/auth/login` sans limite d'essais.** À trancher : inscription fermée ou limitation de débit.
 - **Release déclarative.** La case « staging vérifié » de `release.yml` n'est vérifiée par rien, et la personne qui tague peut déployer seule en production. À présenter comme un choix assumé.
@@ -32,8 +31,6 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Trivy ne scanne pas les images construites.** Les actions sont épinglées par tag, sauf Trivy et `configure-aws-credentials` (sha).
 - **Job `e2e` (Cypress) inutile** : le front teste avec Vitest. Supprimer le job et son entrée dans `needs` de `ci-ok`.
 - **`httpx2` : licence vide sur PyPI.** À vérifier avant le rendu.
-- **Fichiers `*:Zone.Identifier`** créés par les copies depuis Windows : ajouter `*:Zone.Identifier` au `.gitignore`.
-- **Sondes `api` et `frontend`** [branche] jamais observées `healthy` : les conteneurs en cours datent d'avant la branche. À vérifier avec la pile reconstruite.
 - **Pas de seuil de couverture global** dans la CI.
 
 ## Traité
@@ -53,13 +50,14 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Historique Git** : aucun `.env`, `tfvars`, `backend.hcl`, clé ni `tfstate` jamais ajouté ; aucun secret dans les fichiers suivis.
 - **Branche `main` protégée** : revue obligatoire, `ci-ok` requis, ni force push ni suppression, administrateurs inclus.
 - **Nettoyage du dépôt** : manifeste et changelog figés, doublons de `.env.example`, `.gitkeep` et `.prettierrc.json` superflus.
-- **[branche]** `SECURITY.md`, `.dockerignore` de `api` et du frontend, `HEALTHCHECK` d'`api` et du frontend, port du job `e2e`.
+- **[branche]** `SECURITY.md`, `.dockerignore` de `api` et du frontend, `HEALTHCHECK` d'`api` et du frontend (images reconstruites le 24/10 : les deux `healthy`), port du job `e2e`, `*:Zone.Identifier` ignorés.
 
 ## Assumé ou écarté
 
 - **Port 8000 du staging publié** : la recette lit le sha sur `:8000/health`, la VM n'est joignable que depuis le réseau de l'école.
 - **`docker-compose.staging.yml` gardé tel quel** : `deploy-production.yml` le nomme en dur, un retour vers un ancien tag échouerait après un renommage.
 - **Production : auto-approbation et contournement par les administrateurs** : choix d'équipe.
+- **Bucket S3 sans versionnement et avec `force_destroy`** : le projet dure deux semaines, tout est coupé ensuite.
 - **S3 en SSE-S3 et non KMS** : coût et gestion de clé injustifiés pour un projet de deux semaines.
 - **Sortie 80/443 vers `0.0.0.0/0`** : les adresses de GHCR et de SSM ne sont pas énumérables.
 - **Pas de `HEALTHCHECK` sur `ml`** : ce n'est pas un service.
