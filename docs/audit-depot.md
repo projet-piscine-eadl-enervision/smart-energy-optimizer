@@ -16,7 +16,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Les rôles de #134 ne sont pas utilisés.** `api` et `etl` se connectent avec `${POSTGRES_USER}`, le super-utilisateur (`docker-compose.staging.yml:32,42`). Créer trois comptes de connexion héritant de `enervision_api`, `enervision_etl`, `enervision_ml` et les donner aux services.
 - **`body-parser` (haute, déni de service)** dans le frontend, dépendance indirecte vue par `npm audit --omit=dev` : `npm audit fix`.
 - **Dependabot ne couvre que `github-actions`.** Ajouter `pip` (`api`, `etl`, `ml`), `npm` et `docker`, et activer les mises à jour de sécurité (désactivées).
-- **`/docs` et `/openapi.json` ouverts en production** (pas de `docs_url=None`), et `/health` publie le titre du commit et le sha. Couper la documentation hors développement.
+- **`/health` publie le titre du commit et le sha**, y compris en production (le workflow de déploiement s'en sert). À assumer ou à réduire.
 - **`/auth/register` ouvert à tous, `/auth/login` sans limite d'essais.** À trancher : inscription fermée ou limitation de débit.
 - **Release déclarative.** La case « staging vérifié » de `release.yml` n'est vérifiée par rien, et la personne qui tague peut déployer seule en production. À présenter comme un choix assumé.
 - **Retour arrière du staging** : corrigé dans le script, testé seulement sur des dépôts jetables. À essayer sur la VM.
@@ -43,6 +43,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **API authentifiée** (PR #102) : JWT sur `/history`, `/predictions`, `/recommendations`, `/auth/me`.
 - **Tests sur `main`** : API et ETL (79 tests ETL, couverture 99 %).
 - **[branche] `python-jose` remplacé par `PyJWT`** : `pip-audit` ne trouve plus rien sur l'API.
+- **[branche] `/docs`, `/redoc` et `/openapi.json` fermés en production** (`APP_ENV=production`), ouverts en dev et staging.
 - **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
 - **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.
 - **Base** (PR #134) : tables, hypertable, rôles, `analytics.refresh_site_baseline()` ; dix migrations rejouées sans erreur. Reste le chargeur de l'ETL.

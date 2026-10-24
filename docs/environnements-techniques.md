@@ -20,7 +20,7 @@ Documents liés : [déploiement du staging](deploiement-staging.md), [mise en pr
 
 | Service | dev | staging | production |
 |---|---|---|---|
-| API, documentation | http://localhost:8000/docs | http://10.43.43.50:8000/docs | WIP |
+| API, documentation | http://localhost:8000/docs | http://10.43.43.50:8000/docs | fermée (404 sur `/docs`, `/redoc`, `/openapi.json`) |
 | API, santé et version | http://localhost:8000/health | http://10.43.43.50:8000/health | WIP |
 | API, santé du mock | http://localhost:8000/health/mock | http://10.43.43.50:8000/health/mock | WIP |
 | ETL, santé | http://localhost:8001/health | http://10.43.43.50:8001/health | WIP |
@@ -106,7 +106,7 @@ Le flux de données prévu : le mock alimente l'ETL, qui écrit dans la base ; l
 }
 ```
 
-L'en-tête de la page `/docs` rappelle aussi l'environnement.
+L'en-tête de la page `/docs` rappelle aussi l'environnement. En production (`APP_ENV=production`), la documentation interactive est fermée ; `/health` reste ouvert, le workflow de déploiement s'en sert.
 
 ## 7. Secrets
 
