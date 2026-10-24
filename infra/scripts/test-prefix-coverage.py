@@ -8,7 +8,7 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 source = (
-    '<coverage><packages><package name="app"><classes>'
+    '<coverage><sources><source>/home/runner/work/depot/depot/api</source></sources><packages><package name="app"><classes>'
     '<class name="main.py" filename="app/main.py" line-rate="1"><lines/></class>'
     '<class name="x.py" filename="app/api/x.py"><lines/></class>'
     "</classes></package></packages></coverage>"
@@ -17,4 +17,5 @@ result = module.prefix(source, "api")
 assert 'filename="api/app/main.py"' in result, result
 assert 'filename="api/app/api/x.py"' in result, result
 assert 'name="main.py"' in result and 'name="app"' in result, "seuls les chemins changent"
-print("ok   prefix-coverage : chemins préfixés, noms inchangés")
+assert "<source>.</source>" in result and "/home/runner" not in result, result
+print("ok   prefix-coverage : chemins préfixés, noms inchangés, source relative")
