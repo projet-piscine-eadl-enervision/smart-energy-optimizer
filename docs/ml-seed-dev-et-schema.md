@@ -46,9 +46,11 @@ Le README du module ML dit déjà que le CSV sert « à faire tourner le code, p
 
 À trancher avec Carole : une valeur de `source` distincte pour le CSV (nouvelle migration, la contrainte actuelle n'autorise que `current` et `readings`), ou une table séparée, ou un usage limité à une base locale jetable (le script refuse déjà de tourner hors `APP_ENV=dev`).
 
-## Chargement de l'historique nettoyé (côté ETL, pour information)
+## Chargement de l'historique nettoyé (décision d'équipe)
 
-L'ETL produit déjà l'historique nettoyé (parquet suivi par DVC, voir `docs/donnees-dvc.md`). Il sera chargé en base par le chargeur de l'ETL, avec les règles décidées avec Carole : `time` = heure de la grille (UTC) et `mock_time` = la même heure pour les données de rattrapage ; `time` = heure de réception pour le flux courant. Ce chargeur remplacera `seed_dev.py` pour tout ce qui n'est pas un essai local.
+Le parquet nettoyé (suivi par DVC, voir `docs/donnees-dvc.md`) n'est **pas chargé en base** pour l'instant. Les données de la base viennent du mock : collecteur `/current` et rattrapage `/readings` à pas d'une heure depuis 2023-01-01, ce qui évite le mélange du problème 2. Le parquet sert à l'exploration et à la détection d'anomalies (seules données étiquetées) par `dvc pull`.
+
+À rouvrir si le ML d'anomalies ou le dashboard exigent ces données en base : migration pour une valeur `source = 'history'`, règle pour `data_quality` (mesuré = `good`, retrouvé ou interpolé = `partial`, vide = `critical`) écrite dans `pipeline/rows.py`, et accord de Carole sur `ref.site`. Le nettoyage n'a pas à changer. `seed_dev.py` reste un outil de développement local.
 
 ## Reproduire
 
