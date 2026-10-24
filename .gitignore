@@ -241,3 +241,6 @@ tfplan
 /bin
 /etl/pipeline/provided_files/all_sites_combined.csv
 /etl/pipeline/edited_files/energy_consumption_cleaned.parquet
+
+# Fichiers Windows créés par les copies vers WSL
+*:Zone.Identifier
