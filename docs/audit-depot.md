@@ -14,7 +14,6 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 ### P2
 
 - **Les rôles de #134 ne sont pas utilisés.** `api` et `etl` se connectent avec `${POSTGRES_USER}`, le super-utilisateur (`docker-compose.staging.yml:32,42`). Créer trois comptes de connexion héritant de `enervision_api`, `enervision_etl`, `enervision_ml` et les donner aux services.
-- **`body-parser` (haute, déni de service)** dans le frontend, dépendance indirecte vue par `npm audit --omit=dev` : `npm audit fix`.
 - **Dependabot ne couvre que `github-actions`.** Ajouter `pip` (`api`, `etl`, `ml`), `npm` et `docker`, et activer les mises à jour de sécurité (désactivées).
 - **`/health` publie le titre du commit et le sha**, y compris en production (le workflow de déploiement s'en sert). À assumer ou à réduire.
 - **`/auth/register` ouvert à tous, `/auth/login` sans limite d'essais.** À trancher : inscription fermée ou limitation de débit.
@@ -45,6 +44,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **[branche] `/docs`, `/redoc` et `/openapi.json` fermés en production** (`APP_ENV=production`), ouverts en dev et staging.
 - **[branche] Mot de passe de plus de 72 octets** : refusé à l'inscription (422, compté en octets) et à la connexion (401) au lieu d'une erreur 500.
 - **[branche] Connexion à durée égale** : un bcrypt est toujours calculé, compte connu ou non.
+- **[branche] Dépendances du frontend** : `npm audit fix` (`body-parser`, `fast-uri`), 0 alerte sur les dépendances de production ; lint, test et build repassés.
 - **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
 - **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.
 - **Base** (PR #134) : tables, hypertable, rôles, `analytics.refresh_site_baseline()` ; dix migrations rejouées sans erreur. Reste le chargeur de l'ETL.
@@ -62,4 +62,5 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **Bucket S3 sans versionnement et avec `force_destroy`** : le projet dure deux semaines, tout est coupé ensuite.
 - **S3 en SSE-S3 et non KMS** : coût et gestion de clé injustifiés pour un projet de deux semaines.
 - **Sortie 80/443 vers `0.0.0.0/0`** : les adresses de GHCR et de SSM ne sont pas énumérables.
+- **`vite` (haute) dans `@angular/build`**, outil de développement seulement (serveur local, option propre à Windows) : le correctif demande `npm audit fix --force`, donc une montée de version majeure ; attendu avec la prochaine mise à jour d'Angular.
 - **Pas de `HEALTHCHECK` sur `ml`** : ce n'est pas un service.
