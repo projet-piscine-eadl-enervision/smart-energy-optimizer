@@ -1,61 +1,65 @@
-# Audit au 21/10/2026, suivi au 22/10/2026
+# Audit du dépôt, état au 24/10/2026
 
-Légende : **P1** à traiter avant tout, **P2** à traiter bientôt, **P3** confort ou nettoyage. Un point sans mention de statut est resté ouvert ; les autres portent **Traité**, **Écarté** ou **Laissé en l'état**, avec la date.
+Base : `main` à `89c7ab7` (v1.14.0, PR #97 et #134 fusionnées) plus la branche `durcissement-securite`. Mesures du 24/10 : réglages GitHub par l'API, `pip-audit`, `npm audit`, relecture du code, de Terraform et des workflows.
 
-## Sécurité
+Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : corrigé seulement dans `durcissement-securite`, donc encore ouvert sur `main` tant qu'elle n'est pas fusionnée.
 
-- **P1. Publication d'images déclenchable depuis un fork.** `publish-images.yml` se déclenche sur `workflow_run` avec `branches: [main]`, filtre qui porte sur le nom de la branche d'origine. Une PR venant d'un fork dont la branche s'appelle `main` peut le déclencher. Le job vérifie seulement `conclusion == 'success'`, récupère le code de ce `head_sha`, dispose de `packages: write` et pousse l'image `:main`, que la VM de staging tire toutes les 2 minutes puis exécute. Le dépôt est public : un inconnu dont la CI passe pourrait faire tourner un conteneur sur la VM. À corriger : exiger `github.event.workflow_run.event == 'push'` et `github.event.workflow_run.head_repository.full_name == github.repository`. Le réglage « approbation des workflows des contributeurs externes » (Settings > Actions > General) réduit le risque sans le supprimer, car il ne vaut qu'à la première contribution d'une personne. **Traité le 22/10/2026** : les deux conditions sont dans le job `build`, et `:main` ne peut de toute façon plus être déplacé que par la tête de `main` (voir « Course sur l'image `:main` »). Reste à vérifier côté GitHub la politique d'approbation, au niveau `first_time_contributors` au dernier relevé.
-- **P1. Politique de sécurité absente.** Aucun `SECURITY.md` n'existe. Il faut ajouter une politique de sécurité qui dit comment signaler une vulnérabilité (canal privé, délai de réponse, périmètre), et activer le signalement privé de vulnérabilités du dépôt (Settings > Security > Private vulnerability reporting). Documentation : <https://docs.github.com/fr/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/add-security-policy>. Le dépôt étant public, c'est aussi ce que GitHub affiche dans l'onglet Security. **Traité le 23/10/2026 pour le fichier** : `SECURITY.md` ajouté. Reste un réglage à faire dans GitHub (hors du code) : activer le signalement privé de vulnérabilités, ainsi que le secret scanning et sa protection au push, désactivés au dernier relevé.
-- **P2. API sans authentification.** Le sujet demande une API sécurisée. Aujourd'hui `/docs` et `/health` sont ouverts, et `/health` publie le titre du commit et le sha, y compris en production. **Largement traité le 23/10/2026** (PR #102) : l'API a une authentification JWT, et `/history`, `/predictions`, `/recommendations` et `/auth/me` exigent le jeton. Restent ouverts par choix : `/docs`, `/health`, `/auth/login`. À trancher : `/auth/register` est ouvert à tous.
-- **P2. Contrôle de release déclaratif.** La case « staging vérifié » de `release.yml` est une déclaration, rien ne vérifie que le staging affiche bien ce sha. Côté production, l'auto-approbation et le contournement par les administrateurs sont voulus, mais cela signifie que la personne qui tague peut aussi déployer seule. À présenter comme un choix assumé.
-- **P3. Scan des images.** Trivy ne scanne que le système de fichiers, pas les images construites. Les actions tierces sont épinglées par tag, sauf Trivy et `configure-aws-credentials` qui le sont par sha.
-- **P3. `.dockerignore`.** Ceux de `api` et du frontend n'excluent pas `.env`, contrairement à `etl` et `ml`. **Traité le 23/10/2026.**
+## Ouvert
 
-Vérifié et sain : `assign-pr-author.yml` utilise `pull_request` (pas `pull_request_target`) ; les entrées de `release.yml` passent par `env:` ; le tag de `deploy-production.yml` est validé en `vX.Y.Z` avant d'être inséré dans le script exécuté sur l'instance ; la base n'est pas publiée sur le staging.
+### P1
 
-## CI et publication des images
+- **Signalement privé, secret scanning et protection au push désactivés** (Settings > Security). Le `SECURITY.md` [branche] renvoie vers un signalement qui n'existe pas encore. À activer par un propriétaire.
+- **Aucun test ML, et la CI l'accepte.** `ml/tests` est vide et `pytest || [ $? -eq 5 ]` (`ci.yml:101`) tolère « aucun test collecté ». Ajouter un test minimal, retirer la tolérance, poser un seuil `--cov-fail-under`.
 
-- **P2. Course sur l'image `:main`.** `publish-images.yml` n'a pas de groupe de concurrence. Deux merges rapprochés peuvent se terminer dans le désordre et un commit plus ancien écrase `:main`, donc le staging. Ajouter un groupe `concurrency` sur le workflow. **Traité le 22/10/2026, autrement** : un groupe de concurrence remplace les runs en attente et aurait fait perdre leur image `sha-<commit>` à certains commits, ce dont la release et la production ont besoin. L'image `sha-<commit>` est donc toujours publiée, et `:main` n'avance que si ce commit est encore la tête de `main`. Limite connue : si un commit plus récent échoue en CI, `:main` reste en retard jusqu'au prochain commit vert.
-- **P2. Annulation de la CI sur `main`.** `ci.yml` annule le run en cours à chaque nouveau push sur la même référence. Un merge rapide annule la CI du précédent : ce commit n'a jamais d'image et ne peut pas passer le contrôle « CI verte » de `release.yml`. Désactiver `cancel-in-progress` sur `main` (le garder pour les PR). **Traité le 22/10/2026** : chaque commit de `main` a son propre groupe de concurrence, car GitHub remplace aussi un run en attente par le suivant même sans annulation ; seules les PR annulent leur run précédent.
-- **P2. Job Cypress incompatible.** Le job `e2e` lance `npm run preview` et attend le port 4173, ce qui est propre à Vite. Le script `preview` n'existe pas dans `frontend/package.json` : le job échouera le jour où un `cypress.config` apparaîtra. Le job est inactif sans `cypress.config.*` ; à réécrire pour Angular avec le premier test de bout en bout. **Port corrigé le 23/10/2026** (`npm start`, port 4200), mais le besoin du job est remis en cause : voir « Notes du 23/10/2026 ».
-- **P3. Dépendances de test non figées.** Le job Python installe `ruff`, `pytest` et `pytest-cov` sans version dans `ci.yml`, et aucun fichier `requirements-dev` n'existe sur `main`. **Traité le 22/10/2026** : `requirements-dev.in` et `.txt` pour `api`, `etl` et `ml`, compilés par `infra/scripts/compile-requirements.sh` et installés par la CI.
-- **Contrôles locaux avant commit et avant push.** Ajouté le 22/10/2026 : des hooks `pre-commit` (`.pre-commit-config.yaml`) reprennent les contrôles de la CI (messages de commit, nom de branche, `ruff`, clés privées, commit direct sur `main`). Le nom de branche est vérifié par un script commun à la CI et aux hooks. Procédure d'installation dans le README (étape 7). Ils ne remplacent pas la CI.
+### P2
 
-## Déploiement et exploitation
+- **Les rôles de #134 ne sont pas utilisés.** `api` et `etl` se connectent avec `${POSTGRES_USER}`, le super-utilisateur (`docker-compose.staging.yml:32,42`). Créer trois comptes de connexion héritant de `enervision_api`, `enervision_etl`, `enervision_ml` et les donner aux services.
+- **`python-jose` : 3 alertes `pip-audit`** (`python-jose` 3.5.0 PYSEC-2026-4298, `ecdsa` 0.19.2 PYSEC-2026-1325, sans correctif). Remplacer par `PyJWT` dans `app/core/security.py`.
+- **`body-parser` (haute, déni de service)** dans le frontend, dépendance indirecte vue par `npm audit --omit=dev` : `npm audit fix`.
+- **Dependabot ne couvre que `github-actions`.** Ajouter `pip` (`api`, `etl`, `ml`), `npm` et `docker`, et activer les mises à jour de sécurité (désactivées).
+- **Bucket S3 de production sans protection des données.** Il porte le remote DVC `prod`, mais `force_destroy = true` et pas de versionnement : un `terraform destroy` ou une écrasure efface la référence. Activer `aws_s3_bucket_versioning`.
+- **`/docs` et `/openapi.json` ouverts en production** (pas de `docs_url=None`), et `/health` publie le titre du commit et le sha. Couper la documentation hors développement.
+- **`/auth/register` ouvert à tous, `/auth/login` sans limite d'essais.** À trancher : inscription fermée ou limitation de débit.
+- **Release déclarative.** La case « staging vérifié » de `release.yml` n'est vérifiée par rien, et la personne qui tague peut déployer seule en production. À présenter comme un choix assumé.
+- **Retour arrière du staging** : corrigé dans le script, testé seulement sur des dépôts jetables. À essayer sur la VM.
+- **Aucune alerte** si le minuteur de mise à jour du staging échoue.
 
-- **P2. Retour arrière du staging incohérent.** Avec `IMAGE_TAG` figé, `update-staging.sh` fait quand même `reset --hard origin/main` sur le fichier compose : d'anciennes images tournent avec un compose récent. En production le problème n'existe pas, le workflow faisant un checkout du tag. **Traité le 22/10/2026** : le script ramène le fichier compose au commit figé (`sha-<40 caractères>` ou tag `vX.Y.Z`) et laisse le reste du dépôt, scripts compris, sur `main`. Testé sur des dépôts jetables, pas encore sur la VM.
-- **P2. Exposition.** Le staging publie l'API sur le port 8000 alors que le proxy `/api` du frontend la rend inutile en direct. À trancher : conserver l'accès direct pour la recette, ou le fermer. **Laissé en l'état le 22/10/2026** : le workflow `Release` et le guide de recette lisent le sha sur `:8000/health`, et la VM n'est joignable que depuis le réseau de l'école.
-- **P3. Fichier compose.** `docker-compose.staging.yml` sert aussi de fichier de production : le nom induit en erreur (envisager `docker-compose.prod.yml` ou un nom neutre). **Écarté le 22/10/2026** : `deploy-production.yml` nomme le fichier en dur, un retour arrière vers un ancien tag échouerait après un renommage.
-- **P3. Supervision.** Aucune image n'a de `HEALTHCHECK` et le compose n'en définit pas pour `api`. Aucune alerte si le minuteur de mise à jour échoue. **Partiellement traité le 23/10/2026** : `HEALTHCHECK` ajouté aux images `api` et `frontend` (pas `ml`, qui n'est pas un service) ; celui de `etl` est dans la branche `etl`, avec la route `/health`. Aucune alerte sur le minuteur pour l'instant.
+### P3
 
-## Tests
+- **Mot de passe de plus de 72 octets : erreur 500** à l'inscription (bcrypt lève `ValueError`, mesuré). Ajouter `max_length=72` à `UserCreate`.
+- **Énumération de comptes** : `/auth/register` répond 409 sur un e-mail connu, `/auth/login` saute `verify_password` quand le compte n'existe pas.
+- **Ports inutiles** : `8001:8000` (ETL) en staging ; PostgreSQL de développement lié à toutes les interfaces avec le mot de passe `dev` (`docker-compose.yml:10`), le lier à `127.0.0.1`.
+- **Trivy ne scanne pas les images construites.** Les actions sont épinglées par tag, sauf Trivy et `configure-aws-credentials` (sha).
+- **Job `e2e` (Cypress) inutile** : le front teste avec Vitest. Supprimer le job et son entrée dans `needs` de `ci-ok`.
+- **`httpx2` : licence vide sur PyPI.** À vérifier avant le rendu.
+- **Fichiers `*:Zone.Identifier`** créés par les copies depuis Windows : ajouter `*:Zone.Identifier` au `.gitignore`.
+- **Sondes `api` et `frontend`** [branche] jamais observées `healthy` : les conteneurs en cours datent d'avant la branche. À vérifier avec la pile reconstruite.
+- **Pas de seuil de couverture global** dans la CI.
 
-- **P1. Aucun test sur `main`.** Les trois dossiers `tests/` (`api`, `etl`, `ml`) ne contiennent qu'un `.gitkeep`, et le job pytest tolère « aucun test collecté ». Seul `app.spec.ts` existe côté frontend.
-- **P2. Travail non versionné.** Les tests d'architecture du frontend, les tests de l'ETL (écrits, jamais exécutés) et `suivi.md` sont encore dans des stashes locaux. Les remettre sur des branches pour qu'ils existent dans le dépôt.
-- **À prévoir** : une cible de couverture explicite (le dossier de conception en annonçait une) et un seuil dans la CI, sinon le jury verra des chiffres sans engagement.
+## Traité
 
-## API, ETL et ML
+- **Publication d'images depuis un fork** : `event == 'push'` et même dépôt exigés. Reste la politique d'approbation des workflows externes (`first_time_contributors`).
+- **Course sur `:main`** : `:main` n'avance que si le commit est la tête de `main` ; `sha-<commit>` est toujours publiée.
+- **Annulation de la CI sur `main`** : un groupe de concurrence par commit, seules les PR annulent.
+- **Retour arrière du staging** : `update-staging.sh` ramène le compose au commit figé.
+- **Dépendances de test figées** : `requirements-dev.in` et `.txt` pour `api`, `etl`, `ml`.
+- **Hooks `pre-commit`** : messages de commit, nom de branche, `ruff`, clés privées, commit direct sur `main`.
+- **API authentifiée** (PR #102) : JWT sur `/history`, `/predictions`, `/recommendations`, `/auth/me`.
+- **Tests sur `main`** : API et ETL (79 tests ETL, couverture 99 %).
+- **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
+- **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.
+- **Base** (PR #134) : tables, hypertable, rôles, `analytics.refresh_site_baseline()` ; dix migrations rejouées sans erreur. Reste le chargeur de l'ETL.
+- **Données** : DVC avec remotes `preprod` et `prod`, vérifiés de bout en bout.
+- **Historique Git** : aucun `.env`, `tfvars`, `backend.hcl`, clé ni `tfstate` jamais ajouté ; aucun secret dans les fichiers suivis.
+- **Branche `main` protégée** : revue obligatoire, `ci-ok` requis, ni force push ni suppression, administrateurs inclus.
+- **Nettoyage du dépôt** : manifeste et changelog figés, doublons de `.env.example`, `.gitkeep` et `.prettierrc.json` superflus.
+- **[branche]** `SECURITY.md`, `.dockerignore` de `api` et du frontend, `HEALTHCHECK` d'`api` et du frontend, port du job `e2e`.
 
-- **P2. Aucun pilote de base dans l'API.** `DATABASE_URL` est passée à l'API, mais `api/requirements.in` ne contient ni `psycopg` ni `sqlalchemy` : elle ne peut pas se connecter à la base.
-- **P2. Divergence entre l'API et l'ETL.** L'API accepte l'absence d'identifiants du mock (URL interne de l'école) et normalise l'URL. L'ETL lève une `RuntimeError` non gérée (erreur 500), n'a pas d'URL par défaut ni de `rstrip`. C'est la cause du contournement `-` dans `staging.env` : aligner l'ETL sur l'API.
-- **P3. Nom du paquet de l'ETL.** Le dossier `etl/api_mock` suggère qu'il s'agit d'une simulation de l'API Mock alors qu'il contient le client. À renommer en `client` ou `sources`.
-- **Normal à ce stade, à suivre** : l'ETL n'écrit pas encore dans TimescaleDB (ni schéma, ni hypertable, ni migrations, ni modèle `EnergyReading`) ; le ML se limite à un `SELECT 1` et à un run MLflow de vérification ; il n'existe ni détection de pics, ni recommandations, ni tableau de bord.
+## Assumé ou écarté
 
-## Nettoyage du dépôt
-
-Tout ce qui suit est **traité le 22/10/2026**.
-
-- `.release-please-manifest.json` et `CHANGELOG.md` étaient figés à 1.0.2 alors que les tags allaient jusqu'à v1.7.0 : supprimés, les notes de version viennent des GitHub Releases.
-- L'exception `release-please--*` dans le contrôle des noms de branche (`ci.yml`) ne servait plus : retirée.
-- `.env.example` contenait deux fois le bloc `ETL_PORT` : doublon retiré.
-- Des `.gitkeep` subsistaient à côté de vrais fichiers (`docs/`, `infra/scripts/`) : supprimés.
-- `frontend/.prettierrc.json` n'était jamais lu, `frontend/.prettierrc` étant prioritaire : supprimé.
-
-## Notes du 23/10/2026 (à reprendre)
-
-- **ETL** (branche `etl`, PR #97) : `/health` ajouté avec sa sonde Docker, routes métier et Swagger supprimés, dossier renommé `etl/mock_client`. Le plantage `httpx2` de l'image n'a existé qu'entre #121 et #127.
-- **Sondes Docker** : celle de l'ETL est vérifiée `healthy`. Celles de `api` et `frontend` sont construites mais pas observées `healthy` (l'API exige `DATABASE_URL` et `SECRET_KEY`) : à vérifier avec la pile complète.
-- **Job Cypress** : probablement inutile (le front teste avec Vitest, aucune dépendance Cypress). Supprimer le job `e2e` et son entrée dans `needs` de `ci-ok`, ou introduire un outil de bout en bout.
-- **`/auth/register`** est ouvert à tous : à trancher.
-- **Réglages GitHub** à activer par un propriétaire : signalement privé, secret scanning et protection au push, approbation des workflows externes (`first_time_contributors` aujourd'hui).
-- **Trivy sur les images** : non traité, à faire dans une PR séparée.
+- **Port 8000 du staging publié** : la recette lit le sha sur `:8000/health`, la VM n'est joignable que depuis le réseau de l'école.
+- **`docker-compose.staging.yml` gardé tel quel** : `deploy-production.yml` le nomme en dur, un retour vers un ancien tag échouerait après un renommage.
+- **Production : auto-approbation et contournement par les administrateurs** : choix d'équipe.
+- **S3 en SSE-S3 et non KMS** : coût et gestion de clé injustifiés pour un projet de deux semaines.
+- **Sortie 80/443 vers `0.0.0.0/0`** : les adresses de GHCR et de SSM ne sont pas énumérables.
+- **Pas de `HEALTHCHECK` sur `ml`** : ce n'est pas un service.
