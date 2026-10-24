@@ -41,6 +41,11 @@ ENV NODE_ENV=production \
     API_UPSTREAM=http://api:8000 \
     PORT=4000
 
+# npm, npx, corepack et yarn sont inutiles à l'exécution : le serveur est dans dist/. Retirés, ils ne
+# laissent plus leurs dépendances embarquées (brace-expansion, undici) déclencher des alertes Trivy.
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+        /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
+
 WORKDIR /app
 
 COPY --from=build --chown=node:node /app/dist ./dist

@@ -46,6 +46,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort. **[branche]** : c
 - **[branche] Dépendances du frontend** : `npm audit fix` (`body-parser`, `fast-uri`), 0 alerte sur les dépendances de production ; lint, test et build repassés.
 - **[branche] Ports** : l'ETL du staging ne publie plus le 8001 (batch, sonde Docker) ; PostgreSQL de développement lié à `127.0.0.1`.
 - **[branche] Images `api`, `etl`, `ml`** : `pip` retiré après l'installation (ses copies embarquées de `certifi`, `urllib3`, `msgpack` causaient 1 critique et 4 hautes) ; Trivy ne trouve plus aucune alerte haute ou critique corrigeable ; `api` et `etl` repassent `healthy`.
+- **[branche] Image `frontend` (cible `prod`)** : `npm`, `corepack` et `yarn` retirés (leurs `brace-expansion` et `undici` causaient 4 alertes hautes) ; Trivy ne trouve plus rien, l'image reste `healthy` et sert `/` en 200. La cible `dev` (locale, non publiée) garde 5 alertes hautes, dont `vite`.
 - **[branche] Dependabot étendu** à `pip` (`api`, `etl`, `ml`), `npm` et `docker`, une PR groupée par type le lundi (actif après le merge sur `main`).
 - **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
 - **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.
