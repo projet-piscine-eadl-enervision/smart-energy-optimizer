@@ -47,7 +47,7 @@ L'API Mock est fournie par l'école. Elle simule les capteurs IoT de 7 sites (`S
 | Environnement | Mock utilisé | Variables |
 |---|---|---|
 | dev | interne si le poste est sur le réseau de l'école, sinon public | `MOCK_API_URL`, `MOCK_API_USERNAME`, `MOCK_API_PASSWORD` dans `.env` |
-| staging | interne | `MOCK_API_URL` dans `/etc/enervision/staging.env` ; identifiants à `-` (le compose exige des valeurs non vides) |
+| staging | interne | `MOCK_API_URL` dans `/etc/enervision/staging.env` ; identifiants du mock public, ignorés par le mock interne (le compose exige des valeurs non vides) |
 | production | public | `MOCK_API_URL` et les identifiants dans `/etc/enervision/production.env` |
 
 Endpoints principaux :
@@ -89,7 +89,7 @@ Le flux de données prévu : le mock alimente l'ETL, qui écrit dans la base ; l
 | `APP_ENV` | environnement affiché par l'API (`/health`, `/docs`) ; `production` ferme la documentation | `dev` | `staging` (défaut du compose) | `production` |
 | `SECRET_KEY` | clé de signature des jetons de connexion (32 caractères au moins) | à générer | générée sur la VM | générée |
 | `MOCK_API_URL` | URL de l'API Mock | à renseigner | URL interne | URL publique |
-| `MOCK_API_USERNAME`, `MOCK_API_PASSWORD` | identifiants du mock | à renseigner si URL publique | `-` | identifiants du mock public |
+| `MOCK_API_USERNAME`, `MOCK_API_PASSWORD` | identifiants du mock | à renseigner si URL publique | identifiants du mock public (ignorés par le mock interne) | identifiants du mock public |
 | `POSTGRES_USER`, `POSTGRES_DB` | compte et base | `postgres`, `enervision` | `enervision`, `enervision` | `enervision`, `enervision` |
 | `POSTGRES_PASSWORD` | mot de passe de la base | `dev` | généré sur la VM | généré sur l'instance, différent |
 | `DATABASE_URL` | connexion de l'API à la base | calculée par le compose | calculée par le compose | calculée par le compose |
