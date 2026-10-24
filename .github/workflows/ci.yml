@@ -67,13 +67,37 @@ jobs:
         with:
           configFile: .commitlintrc.yml
 
+  # Les modules touchés par la PR (ou par le push sur main) : seuls leurs tests tournent. Un
+  # changement commun (workflows, scripts d'infra, compose, hooks) ou une base introuvable les
+  # active tous. Les contrôles de forme et le scan Trivy tournent toujours.
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      python: ${{ steps.modules.outputs.python }}
+      frontend: ${{ steps.modules.outputs.frontend }}
+      migrations: ${{ steps.modules.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Contrôler le script de tri
+        run: bash infra/scripts/test-changed-modules.sh
+      - name: Modules touchés
+        id: modules
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: bash infra/scripts/changed-modules.sh "$BASE" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
+
   python:
     name: python (${{ matrix.component }})
+    needs: changes
+    if: needs.changes.outputs.python != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        component: [api, etl, ml]
+        component: ${{ fromJSON(needs.changes.outputs.python) }}
     defaults:
       run:
         working-directory: ${{ matrix.component }}
@@ -101,6 +125,8 @@ jobs:
         run: pytest --cov=. --cov-report=term-missing || [ $? -eq 5 ]
 
   frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -144,6 +170,8 @@ jobs:
           exit-code: "1"
 
   migrations:
+    needs: changes
+    if: needs.changes.outputs.migrations == 'true'
     # Les migrations de db/migrations s'appliquent sur une base vide, deux fois de suite (la seconde
     # ne doit rien changer), avec l'image db telle qu'elle sera publiée. Sur une PR, aucune migration
     # déjà fusionnée ne doit être modifiée, renommée ni supprimée : dbmate ne contrôle pas
@@ -196,7 +224,7 @@ jobs:
   # seul ce job est à exiger, quels que soient les composants présents.
   ci-ok:
     if: always()
-    needs: [pr-title, branch-name, commit-messages, python, frontend, security, migrations]
+    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, security, migrations]
     runs-on: ubuntu-24.04
     steps:
       - name: Vérifier les résultats
