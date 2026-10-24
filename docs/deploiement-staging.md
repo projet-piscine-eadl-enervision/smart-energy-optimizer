@@ -95,6 +95,7 @@ Ce clone est réservé au déploiement : le script le réinitialise sur `origin/
 ```
 
 - Le script affiche leur `uid:gid`, à passer à `user:` dans le compose quand MLflow et Prometheus seront déployés ; il n'installe aucun de ces services.
+- Sur la VM de staging (`ml-stagiaire-01`, créés le 24/10/2026) : `mlflow` vaut `999:991` et `monitoring` vaut `997:988`, soit `user: "999:991"` pour MLflow et `user: "997:988"` pour la supervision. L'`uid` et le `gid` diffèrent. Ces numéros sont attribués par le système : sur une autre machine, les relire avec `getent passwd mlflow monitoring` (uid et gid du compte) avant de les écrire dans le compose.
 - Il ne touche à aucun compte de personne : l'administration de la VM reste faite en `root`. Des comptes individuels et leurs droits viendront dans une étape ultérieure, si besoin, ainsi que l'interdiction de la connexion SSH de `root` et par mot de passe.
 - La production sur AWS n'a pas de SSH (déploiement par SSM) et n'est pas concernée.
 
