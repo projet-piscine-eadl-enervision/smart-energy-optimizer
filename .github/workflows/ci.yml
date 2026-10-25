@@ -314,7 +314,6 @@ jobs:
   # fork), une fois ci-ok vert. Chaque commit a son image :sha-<commit> ; :main n'avance que si ce
   # commit est encore la tête de main (c'est :main que la VM de staging récupère).
   publish:
-    name: publish (${{ matrix.module }})
     needs: ci-ok
     if: >-
       github.event_name == 'push'
