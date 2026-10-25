@@ -17,9 +17,9 @@ git add -A && git commit -q -m base
 base="$(git rev-parse HEAD)"
 
 fail=0
-# attendu <description> <fichiers modifiés> <python> <frontend> <migrations>
+# attendu <description> <fichiers modifiés> <python> <frontend> <migrations> <terraform>
 attendu() {
-  local description="$1" files="$2" python="$3" frontend="$4" migrations="$5" file
+  local description="$1" files="$2" python="$3" frontend="$4" migrations="$5" terraform="$6" file
   git reset -q --hard "$base"
   for file in $files; do echo "$RANDOM" >> "$file"; done
   git add -A && git commit -q --allow-empty -m change
@@ -27,7 +27,8 @@ attendu() {
   got="$("$script" "$base" HEAD)"
   want="python=$python
 frontend=$frontend
-migrations=$migrations"
+migrations=$migrations
+terraform=$terraform"
   if [ "$got" = "$want" ]; then
     echo "ok   $description"
   else
@@ -36,22 +37,23 @@ migrations=$migrations"
   fi
 }
 
-attendu "api seul" "api/a" '["api"]' false false
-attendu "etl et ml" "etl/a ml/a" '["etl","ml"]' false false
-attendu "frontend seul" "frontend/a" '[]' true false
-attendu "base de données seule" "db/a" '[]' false true
-attendu "documentation seule" "docs/a" '[]' false false
-attendu "terraform seul" "infra/terraform/a" '[]' false false
-attendu "workflow : tout" ".github/workflows/a" '["api","etl","ml"]' true true
-attendu "scripts d'infra : tout" "infra/scripts/a" '["api","etl","ml"]' true true
-attendu "compose : tout" "docker-compose.yml" '["api","etl","ml"]' true true
+attendu "api seul" "api/a" '["api"]' false false false
+attendu "etl et ml" "etl/a ml/a" '["etl","ml"]' false false false
+attendu "frontend seul" "frontend/a" '[]' true false false
+attendu "base de données seule" "db/a" '[]' false true false
+attendu "documentation seule" "docs/a" '[]' false false false
+attendu "terraform seul" "infra/terraform/a" '[]' false false true
+attendu "workflow : tout" ".github/workflows/a" '["api","etl","ml"]' true true true
+attendu "scripts d'infra : tout" "infra/scripts/a" '["api","etl","ml"]' true true true
+attendu "compose : tout" "docker-compose.yml" '["api","etl","ml"]' true true true
 
 # Bases inutilisables : tout est testé
 for bad in "" 0000000000000000000000000000000000000000 deadbeefdeadbeefdeadbeefdeadbeefdeadbeef; do
   got="$("$script" "$bad" HEAD)"
   want='python=["api","etl","ml"]
 frontend=true
-migrations=true'
+migrations=true
+terraform=true'
   if [ "$got" = "$want" ]; then echo "ok   base « ${bad:-vide} »"; else echo "ÉCHEC base « ${bad:-vide} »"; fail=1; fi
 done
 

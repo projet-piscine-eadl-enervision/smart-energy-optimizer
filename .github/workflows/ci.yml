@@ -76,6 +76,7 @@ jobs:
       python: ${{ steps.modules.outputs.python }}
       frontend: ${{ steps.modules.outputs.frontend }}
       migrations: ${{ steps.modules.outputs.migrations }}
+      terraform: ${{ steps.modules.outputs.terraform }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -193,6 +194,27 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
 
+  # Terraform : format et validité du code, sans identifiants ni state (init sans backend). Le plan et
+  # l'apply restent à la main depuis un poste (voir infra/terraform/aws/README.md).
+  terraform:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+          terraform_wrapper: false
+      - name: Format (terraform fmt)
+        working-directory: infra/terraform
+        run: terraform fmt -check -recursive -diff
+      - name: Validité de la production AWS (terraform validate)
+        working-directory: infra/terraform/aws
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
   migrations:
     needs: changes
     if: needs.changes.outputs.migrations == 'true'
@@ -280,7 +302,7 @@ jobs:
   # seul ce job est à exiger, quels que soient les composants présents.
   ci-ok:
     if: always()
-    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, security, migrations, sonar]
+    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, security, terraform, migrations, sonar]
     runs-on: ubuntu-24.04
     steps:
       - name: Vérifier les résultats

@@ -4,7 +4,7 @@
 # Usage : infra/scripts/changed-modules.sh <commit-de-base> <commit-de-tête>
 # Sortie (une ligne clé=valeur, format de $GITHUB_OUTPUT) :
 #   python=["api","etl"]   modules Python à tester (liste JSON, vide : [])
-#   frontend=true|false    migrations=true|false
+#   frontend=true|false    migrations=true|false    terraform=true|false
 #
 # Tout est actif quand la base est absente ou inconnue (première publication d'une branche, commit
 # introuvable) et quand un fichier commun change : workflows, scripts d'infra, compose, hooks.
@@ -14,7 +14,7 @@ set -euo pipefail
 base="${1:-}"
 head="${2:-HEAD}"
 
-api=false etl=false ml=false frontend=false db=false
+api=false etl=false ml=false frontend=false db=false terraform=false
 everything=false
 
 if [ -z "$base" ] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
@@ -29,13 +29,14 @@ else
       ml/*) ml=true ;;
       frontend/*) frontend=true ;;
       db/*) db=true ;;
+      infra/terraform/*) terraform=true ;;
       .github/*|infra/scripts/*|docker-compose*.yml|.pre-commit-config.yaml|.commitlintrc.yml) everything=true ;;
     esac
   done <<<"$files"
 fi
 
 if [ "$everything" = true ]; then
-  api=true etl=true ml=true frontend=true db=true
+  api=true etl=true ml=true frontend=true db=true terraform=true
 fi
 
 python=()
@@ -46,3 +47,4 @@ python=()
 echo "python=[$(IFS=,; echo "${python[*]:-}")]"
 echo "frontend=$frontend"
 echo "migrations=$db"
+echo "terraform=$terraform"

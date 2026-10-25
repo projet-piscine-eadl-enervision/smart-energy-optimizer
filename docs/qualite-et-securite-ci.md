@@ -11,11 +11,12 @@ Ce que la CI contrôle sur chaque PR, où lire les résultats et que faire quand
 | `python (api\|etl\|ml)` | `ruff` et `pytest` du module | oui |
 | `frontend` | tests et build Angular | oui |
 | `migrations` | migrations SQL appliquées deux fois sur une base vide | oui |
+| `terraform` | `terraform fmt -check` et `terraform validate` sur `infra/terraform/`, sans identifiants ni state | oui |
 | `security` | Trivy sur le code : dépendances, secrets, Terraform, Dockerfiles | oui |
 | `sonar` | analyse SonarQube Cloud et porte de qualité | oui |
 | `ci-ok` | résume tous les précédents : c'est le seul contrôle exigé sur `main` | oui |
 
-La CI ne teste que les modules dont le dossier change (`api/`, `etl/`, `ml/`, `frontend/`, `db/`) ; un changement dans `.github/`, `infra/scripts/`, les fichiers compose ou les hooks lance tout. Sur un push de `main`, tout est testé.
+La CI ne teste que les modules dont le dossier change (`api/`, `etl/`, `ml/`, `frontend/`, `db/`, `infra/terraform/`) ; un changement dans `.github/`, `infra/scripts/`, les fichiers compose ou les hooks lance tout. Sur un push de `main`, tout est testé.
 
 ## Trivy
 
@@ -23,6 +24,14 @@ La CI ne teste que les modules dont le dossier change (`api/`, `etl/`, `ml/`, `f
 - **Images** : chaque image construite sur `main` est scannée par le job `publish`. Le rapport va dans l'onglet *Security > Code scanning* du dépôt (une catégorie `trivy-image-<module>` par module). Il ne bloque pas pour l'instant.
 - **SBOM** : à chaque release, le SBOM (CycloneDX) de chaque image versionnée est joint à la GitHub Release.
 - Scan en local : `docker run --rm -v "$PWD":/src aquasec/trivy:0.69.3 fs --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed /src`.
+
+## Terraform
+
+Le job `terraform` vérifie que le code de `infra/terraform/` est formaté (`terraform fmt -check -recursive`) et valide (`terraform init -backend=false` puis `terraform validate` sur `aws/`). Il n'utilise aucun identifiant AWS et ne lit pas le state. Trivy analyse en plus les fichiers Terraform (mauvaises configurations).
+
+En local, avant de commiter : `terraform fmt -recursive` (dans `infra/terraform`), puis dans `aws/` : `terraform init -backend=false && terraform validate`.
+
+Ce que la CI ne fait pas : `terraform plan` (il lit la production et demande un rôle AWS en lecture seule, distinct du rôle de déploiement) et `terraform apply` (toujours à la main, après relecture du plan : `infra/terraform/aws/README.md`).
 
 ## SonarQube Cloud
 
@@ -43,6 +52,7 @@ La CI ne teste que les modules dont le dossier change (`api/`, `etl/`, `ml/`, `f
 | Symptôme | Que faire |
 |---|---|
 | `security` rouge sans changement de code | nouvelle CVE : mettre à jour la dépendance indiquée (voir plus haut) |
+| `terraform` : format | lancer `terraform fmt -recursive` dans `infra/terraform` et commiter le résultat |
 | `sonar` : « Coverage on New Code » sous 80 % | ajouter des tests pour les lignes nouvelles ; les fichiers à compléter sont listés dans l'onglet *Code* de la PR |
 | `sonar` : une anomalie de sécurité ou un point sensible | la corriger ; sinon, dans SonarQube Cloud, ouvrir l'anomalie, statut **Accept** avec un commentaire qui explique pourquoi (réservé aux administrateurs) ; relancer les jobs en échec |
 | `sonar` : « Cannot resolve the file path … coverage » | la couverture n'est pas rattachée aux fichiers : vérifier que `prefix-coverage.py` a tourné (étape « Préparer la couverture pour Sonar ») |

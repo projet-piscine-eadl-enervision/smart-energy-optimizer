@@ -51,6 +51,10 @@ il n'y a pas de nom de domaine. Pour passer plus tard sur un domaine : certifica
 | `terraform.tfvars.example` | modèle de `terraform.tfvars` (non versionné) |
 | `.terraform.lock.hcl` | versions exactes des providers : **à commiter** |
 
+## Contrôles en CI
+
+Une PR qui touche `infra/terraform/` lance le job `terraform` : `terraform fmt -check -recursive` et `terraform validate` (sans identifiants ni state). Avant de commiter : `terraform fmt -recursive`. Le `plan` et l'`apply` ne tournent pas en CI : ils se font depuis un poste, comme décrit ci-dessous.
+
 ## Utilisation
 
 Prérequis : poste préparé et `aws sts get-caller-identity` qui fonctionne
