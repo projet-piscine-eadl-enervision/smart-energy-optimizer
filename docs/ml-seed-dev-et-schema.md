@@ -28,15 +28,19 @@ Correctif, deux lignes dans le `COPY` (le CSV n'a qu'une heure, celle de la gril
 
 Avec ce seul correctif : 7 sites, 122 647 mesures de 2023-01-01 à 2024-12-31, `analytics.energy_hourly` rafraîchi (122 647 heures), et la requête `HOURLY_QUERY` du ML renvoie les 122 647 lignes.
 
-## Problème 2 : le CSV et le mock partagent les mêmes `site_id` (réglé par la décision d'équipe)
+## Problème 2 : le CSV et le mock partagent les mêmes `site_id` (réglé : table séparée)
 
-Le CSV et le mock utilisent `SITE001` à `SITE007`, mais pas les mêmes données (`docs/analyse-api-mock.md`, constat 14) : noms par type ou par ville, niveaux plus élevés dans le CSV (SITE001 : 112,7 kW contre 94), anomalies étiquetées que le mock n'a pas.
+Le CSV et le mock utilisent `SITE001` à `SITE007`, mais pas les mêmes données (`docs/analyse-api-mock.md`, constat 14) : noms par type ou par ville, anomalies étiquetées que le mock n'a pas, niveaux différents. Sur la même semaine (4 au 10 mars 2024), le CSV est de 0 % à 30 % au-dessus du mock selon le site (SITE002 : 1,0 ; SITE001 et SITE003 : 1,2 ; SITE005 et SITE006 : 1,3).
 
-Chargé dans `core.energy_reading` à côté du rattrapage du mock, le CSV prendrait les mêmes clés `(site_id, time)` : `ON CONFLICT DO NOTHING` garderait l'une des deux sources selon l'ordre de chargement, et `analytics.site_baseline` comme l'entraînement mélangeraient deux niveaux. **Décision d'équipe : le parquet nettoyé n'est pas chargé en base.** La base de l'environnement partagé ne vient que du mock : collecteur `/current` et rattrapage `/readings` à pas d'une heure depuis 2023-01-01. Le parquet (suivi par DVC, voir `docs/donnees-dvc.md`) sert à l'exploration et à la détection d'anomalies (seules données étiquetées) par `dvc pull`.
+Chargé dans `core.energy_reading` à côté du rattrapage du mock, le CSV prendrait les mêmes clés `(site_id, time)` : une des deux sources serait écartée sans erreur, et `analytics.site_baseline` comme l'entraînement mélangeraient deux niveaux.
 
-Donc `seed_dev.py` reste un outil de développement **local** : le script refuse déjà de tourner hors `APP_ENV=dev`, et il ne doit jamais servir sur une base où le rattrapage du mock a tourné. Le README du module ML le dit : le CSV sert « à faire tourner le code, pas à évaluer le modèle ».
+**Décision d'équipe (25/10) : le parquet nettoyé est chargé en base, dans une table séparée `ml.history_labeled`**, pour la détection d'anomalies (seules données étiquetées) : consommation nettoyée, source du nettoyage, température, humidité, rayonnement, type et gravité de l'anomalie. Rien dans `core` ni `analytics` : la base de l'environnement partagé pour les mesures reste celle du mock (collecteur `/current`, rattrapage `/readings` à pas d'une heure depuis 2023-01-01).
 
-À rouvrir si le ML d'anomalies ou le dashboard exigent ces données en base : migration pour une valeur `source = 'history'`, règle pour `data_quality` (mesuré = `good`, retrouvé ou interpolé = `partial`, vide = `critical`) écrite dans `pipeline/rows.py`, et accord sur `ref.site`. Le nettoyage n'a pas à changer.
+- Le détecteur doit raisonner en écart au profil du site (mois, type de jour, heure, calculé sur ce CSV) ou en taux de charge (`kW / capacity_kw`), jamais sur les kW bruts, puis s'appliquer au flux du mock avec `analytics.site_baseline`.
+- Chargement (lot ETL à venir) : `python -m pipeline load-history <fichier.parquet>`, rejouable. Les noms de sites restent ceux de `ref.site`, chargés depuis le mock.
+- Les valeurs `anomaly_type` (`plateau`, `outage`, `drop`, `spike`) et `anomaly_severity` (`medium`, `high`, `critical`) existent dans `ref.alert_type` et `ref.severity` : clés étrangères sans conversion.
+
+`seed_dev.py` reste un outil de développement **local** : le script refuse déjà de tourner hors `APP_ENV=dev`, et il ne doit jamais servir sur une base où le rattrapage du mock a tourné. Le README du module ML le dit : le CSV sert « à faire tourner le code, pas à évaluer le modèle ».
 
 ## Reproduire
 
