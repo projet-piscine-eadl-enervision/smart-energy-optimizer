@@ -131,6 +131,7 @@ Le schéma de la base suit le mock. Le dataset ne sert que de référence de pro
 6. `etl.run` avec un type de tâche (`poll_current`, `backfill`, `ref_load`) ; pour le collecteur, un résumé périodique et chaque échec.
 7. `ref.tariff` pour le prix du kWh : 0,15 € constant (rapport euros/kWh du dataset 2023-2024 sur 118 015 lignes, écart maximal 0,0003 dû à l'arrondi, aucune variation par site, heure, jour ou mois), repris pour les mesures du mock, qui n'a pas de prix.
 8. `core.alert.last_seen_at` et `resolved_at` (migration `20261025100100`) : l'état d'une alerte est déduit de sa présence dans `/alerts`, qui ne liste que les alertes actives. Colonnes vides tant que l'ETL ne les remplit pas : **toutes les alertes paraissent alors actives** (suivi à venir côté ETL).
+9. `ml.history_labeled` (migration `20261025100300`) : l'historique 2023-2024 du jeu fourni, avec ses anomalies étiquetées (plateau, panne, chute, pic), pour la détection d'anomalies. Table à part, jamais mélangée à `core.energy_reading` : mêmes `site_id` et mêmes heures que le rattrapage du mock, mais des niveaux de 0 % à 30 % plus élevés selon le site (comparaison du 4 au 10 mars 2024). Le détecteur raisonne en écart au profil de chaque source, pas en kW bruts.
 
 ## Recoupement avec l'analyse exploratoire ML
 
