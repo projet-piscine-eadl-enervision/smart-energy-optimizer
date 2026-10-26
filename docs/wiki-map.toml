@@ -113,3 +113,8 @@ section = "Qualité et sécurité"
 source = "docs/audit-depot.md"
 title = "Audit du dépôt"
 section = "Qualité et sécurité"
+
+[[page]]
+source = "docs/rapport-collectif.md"
+title = "Rapport collectif"
+section = "Rapport collectif"
