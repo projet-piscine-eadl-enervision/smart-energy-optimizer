@@ -115,6 +115,76 @@ title = "Audit du dépôt"
 section = "Qualité et sécurité"
 
 [[page]]
-source = "docs/rapport-collectif.md"
+source = "docs/rapport-collectif/README.md"
 title = "Rapport collectif"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/contexte-et-objectifs.md"
+title = "Contexte et objectifs"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/organisation.md"
+title = "Organisation et coordination"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/methode.md"
+title = "Méthode de travail"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/planning-et-risques.md"
+title = "Planning et risques"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/indicateurs.md"
+title = "Indicateurs de suivi"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/devops/README.md"
+title = "Contribution DevOps"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/cloud/README.md"
+title = "Contribution Cloud"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/produit-et-interface/README.md"
+title = "Contribution Produit et interface"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/donnees/README.md"
+title = "Contribution Données"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/tests/README.md"
+title = "Contribution Tests"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/backend-et-ml/README.md"
+title = "Contribution Backend et ML"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/compte-rendu.md"
+title = "Compte rendu honnête"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/incidents-et-competences.md"
+title = "Incidents et compétences"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/annexes.md"
+title = "Annexes du rapport"
 section = "Rapport collectif"
