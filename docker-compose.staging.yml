@@ -68,6 +68,34 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Collecteur des mesures courantes du mock. Profil à part, à activer par environnement :
+  # COMPOSE_PROFILES=apps,collector dans /etc/enervision/staging.env (et dans production.env le jour où
+  # la production doit collecter).
+  collector:
+    profiles: [collector]
+    image: ${IMAGE_PREFIX:-ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer}/etl:${IMAGE_TAG:-main}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-enervision}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-enervision}
+      MOCK_API_URL: ${MOCK_API_URL:?MOCK_API_URL manquant dans staging.env}
+      MOCK_API_USERNAME: ${MOCK_API_USERNAME:?MOCK_API_USERNAME manquant dans staging.env}
+      MOCK_API_PASSWORD: ${MOCK_API_PASSWORD:?MOCK_API_PASSWORD manquant dans staging.env}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-60}
+    command: python -m pipeline poll-current
+    # La sonde du Dockerfile interroge le port 8000, que ce service n'ouvre pas : on contrôle le dernier
+    # tour réussi (trois intervalles au plus). start_period couvre le premier tour.
+    healthcheck:
+      test: ["CMD", "python", "-m", "pipeline.heartbeat"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
   frontend:
     profiles: [apps]
     image: ${IMAGE_PREFIX:-ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer}/frontend:${IMAGE_TAG:-main}

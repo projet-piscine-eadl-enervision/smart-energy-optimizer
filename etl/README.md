@@ -66,6 +66,18 @@ Sur le fichier actuel, pour la consommation : 119 807 mesurées, 353 retrouvées
 
 Un tour réussi écrit l'heure dans `/tmp/collector.heartbeat` ; `python -m pipeline.heartbeat` répond 0 si elle date de moins de trois intervalles (sonde du conteneur).
 
+## Collecteur en service
+
+Service `collector` des deux compose, dans un profil à part pour ne pas solliciter le mock depuis chaque poste ni sans décision sur un serveur :
+
+```bash
+docker compose --profile collector up -d collector       # local
+docker ps                                                 # collector : healthy après environ 90 s
+docker compose logs -f collector                          # une ligne par tour
+```
+
+Sur le staging, ajouter `collector` à `COMPOSE_PROFILES` dans `/etc/enervision/staging.env` (`COMPOSE_PROFILES=apps,collector`) ; la mise à jour automatique le démarre. Le conteneur passe `unhealthy` si aucun tour n'a réussi depuis trois intervalles (mock injoignable, base arrêtée). La production ne collecte pas tant que `collector` n'est pas dans le `COMPOSE_PROFILES` de `production.env`.
+
 ## Ajouter un traitement
 
 1. Créer `pipeline/jobs/<nom>.py` avec `main(argv)` ; garder les règles dans un module sans fichier ni réseau pour les tester.
