@@ -82,6 +82,8 @@ Après l'approbation, le workflow vérifie que les images du tag existent, sauve
 
 Pour activer la production, la liste ordonnée des opérations (Terraform, `production.env`, variables GitHub) est dans `infra/terraform/aws/README.md`.
 
+Le collecteur de l'ETL (profil `collector`) ne tourne pas en production tant que `collector` n'est pas dans le `COMPOSE_PROFILES` de `/etc/enervision/production.env` ; c'est une décision d'équipe, il interroge le mock public toutes les minutes.
+
 ## Retour arrière
 
 **Staging.** Le staging suit `main` : la voie normale est une PR `revert` du commit fautif, qui se déploie comme n'importe quel merge. En urgence, avec accès à la VM, ajouter `IMAGE_TAG=sha-<commit complet>` (les 40 caractères, ou un tag `vX.Y.Z`) dans `/etc/enervision/staging.env` : au passage suivant du minuteur, le staging redéploie les images de ce commit avec le fichier compose du même commit, et reste figé dessus. `update-staging.sh` écrit un avertissement à chaque passage tant que la ligne existe, visible avec `journalctl -u update-staging.service`. Pendant ce temps, les recettes des autres portent sur une version qui ne bouge plus : retirer la ligne dès que le correctif est fusionné.

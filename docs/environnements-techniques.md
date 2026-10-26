@@ -74,6 +74,7 @@ La page `/docs` du mock reste la référence pour les paramètres et les formats
 | `migrate` | applique les migrations SQL de `db/migrations` (dbmate) puis s'arrête, avant `api` et `etl` ; [détail](migrations-base-de-donnees.md) | `.../db` | construit localement, dossier `db/migrations` monté (`docker compose run --rm migrate`) | image du même tag que les autres |
 | `api` | API FastAPI (Python 3.13) : `/health`, `/auth/*`, `/history`, `/predictions`, `/recommendations` (jeton JWT) | `.../api` | rechargement à chaud, port 8000 | port 8000 (fermé à l'extérieur en production) |
 | `etl` | traitement des données : nettoyage de l'historique, chargement des sites en base (`load-ref`), collecte des mesures courantes (`poll-current`), `/health` seule (pas de route métier) | `.../etl` | port 8001 (santé) | profil `apps`, sans port publié |
+| `collector` | collecteur : interroge le mock toutes les minutes, écrit mesures, pannes de capteur et alertes en base ; santé = dernier tour réussi | `.../etl` (même image) | profil `collector`, à la demande : `docker compose --profile collector up -d collector` | profil `collector` : à activer par `COMPOSE_PROFILES=apps,collector` ; absent de la production tant que `production.env` ne l'ajoute pas |
 | `frontend` | Angular 22 (Node 24) | `.../frontend` | serveur de développement (cible `dev`), port 4000 | profil `apps` : build de production servi par le serveur SSR Node, port 4000 |
 | `ml` | entraînement des modèles (tâche ponctuelle) | `.../ml` | profil `ml`, à la demande : `docker compose run --rm ml` | image publiée, aucun service |
 | `mlflow` | suivi des expériences et registre des modèles (`ghcr.io/mlflow/mlflow:v3.17.2`, image officielle) | non | port 5000 | non déployé (les comptes de service `mlflow` et `monitoring` existent sur la VM de staging) |
@@ -95,7 +96,7 @@ Le flux de données prévu : le mock alimente l'ETL, qui écrit dans la base ; l
 | `DATABASE_URL` | connexion de l'API et de l'ETL à la base (compte `POSTGRES_USER`) | calculée par le compose | calculée par le compose | calculée par le compose |
 | `POLL_INTERVAL_SECONDS` | secondes entre deux tours du collecteur de l'ETL | `60` (défaut) | `60` (défaut) | `60` (défaut) |
 | `API_PORT`, `ETL_PORT`, `FRONTEND_PORT` | ports publiés sur l'hôte | 8000, 8001, 4000 | fixes dans le compose (l'ETL n'a aucun port publié) | idem ; le groupe de sécurité n'ouvre que 4000, à CloudFront |
-| `COMPOSE_PROFILES` | active `etl` et `frontend` (profil `apps`) | sans objet | `apps` | `apps` |
+| `COMPOSE_PROFILES` | active `etl` et `frontend` (profil `apps`) et le collecteur (profil `collector`) | sans objet (`--profile collector` à la demande) | `apps`, puis `apps,collector` pour collecter | `apps` (pas de collecte) |
 | `IMAGE_TAG` | tag des images à déployer | sans objet | `main` par défaut ; une ligne `IMAGE_TAG=` fige le staging (retour arrière) | tag de version `vX.Y.Z`, passé par le workflow de déploiement |
 | `NG_ALLOWED_HOSTS` | hôtes acceptés par le frontend | `localhost,127.0.0.1` | IP de la VM | nom CloudFront du site |
 | `API_UPSTREAM` | adresse de l'API à laquelle le frontend transmet `/api/` | `http://api:8000` | `http://api:8000` | `http://api:8000` |

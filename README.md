@@ -167,6 +167,7 @@ Puis ouvre http://localhost:4100 (l'API est jointe par http://localhost:4100/api
 - Santé : http://localhost:8001/health (l'ETL n'expose aucune autre route ni documentation interactive)
 - Charger les sites du mock dans la base (une fois, après `docker compose up -d`) : `docker compose run --rm etl python -m pipeline load-ref`
 - Un tour de collecte d'essai (une ligne par site dans `core.energy_reading`) : `docker compose run --rm etl python -m pipeline poll-current --once`
+- Collecte en continu (un tour par minute, à lancer le temps d'un essai pour ne pas solliciter le mock partagé) : `docker compose --profile collector up -d collector`, logs avec `docker compose logs -f collector`
 
 Après une modification de `etl/requirements.in`, reconstruis l'image :
 
