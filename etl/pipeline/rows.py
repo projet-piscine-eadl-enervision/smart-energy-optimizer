@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
+from mock_client.schemas.alert import Alert
 from mock_client.schemas.reading import Reading
 from mock_client.schemas.site import Site
 
@@ -23,6 +24,21 @@ def site_row(site: Site) -> dict:
         "location": site.location,
         "capacity_kw": to_decimal(site.capacity_kw),
         "status": site.status,
+    }
+
+
+def alert_row(alert: Alert) -> dict:
+    """Ligne de core.alert pour une alerte de l'API Mock (origin = 'api')."""
+    return {
+        "alert_id": alert.alert_id,
+        "time": alert.timestamp,
+        "site_id": alert.site_id,
+        "severity": alert.severity,
+        "alert_type": alert.type,
+        "message": alert.message,
+        "value": to_decimal(alert.value),
+        "threshold": to_decimal(alert.threshold),
+        "origin": "api",
     }
 
 

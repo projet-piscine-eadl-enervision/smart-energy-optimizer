@@ -11,11 +11,11 @@ import asyncio
 import logging
 
 import psycopg
-from psycopg.types.json import Jsonb
 
 from mock_client.client import RawResponse, fetch_raw
 from mock_client.schemas.site import Site
 from pipeline import db, runs
+from pipeline import raw as raw_store
 from pipeline.rows import site_row
 
 logger = logging.getLogger(__name__)
@@ -23,11 +23,6 @@ logger = logging.getLogger(__name__)
 RUN_TYPE = "ref_load"
 ENDPOINT = "/sites"
 
-INSERT_RAW = (
-    "INSERT INTO raw.api_response (endpoint, params, http_status, fetched_at, payload)"
-    " VALUES (%s, %s, %s, %s, %s) RETURNING id"
-)
-MARK_PROCESSED = "UPDATE raw.api_response SET processed_at = now() WHERE id = %s"
 KNOWN_TYPES = "SELECT site_type FROM ref.site_type"
 UPSERT_SITE = """
 INSERT INTO ref.site (site_id, site_name, site_type, location, capacity_kw, status)
@@ -39,15 +34,6 @@ ON CONFLICT (site_id) DO UPDATE SET
     capacity_kw = EXCLUDED.capacity_kw,
     status = EXCLUDED.status
 """
-
-
-def save_raw(conn: psycopg.Connection, raw: RawResponse) -> int:
-    with conn.transaction():
-        row = conn.execute(
-            INSERT_RAW,
-            (raw.endpoint, Jsonb(raw.params), raw.http_status, raw.fetched_at, Jsonb(raw.payload)),
-        ).fetchone()
-    return row[0]
 
 
 def parse_sites(raw: RawResponse) -> list[Site]:
@@ -73,10 +59,9 @@ async def run(conn: psycopg.Connection) -> int:
     run_id = runs.start_run(conn, RUN_TYPE)
     try:
         raw = await fetch_raw(ENDPOINT)
-        raw_id = save_raw(conn, raw)
+        raw_id = raw_store.save_raw(conn, raw)
         count = load_sites(conn, parse_sites(raw))
-        with conn.transaction():
-            conn.execute(MARK_PROCESSED, (raw_id,))
+        raw_store.mark_processed(conn, [raw_id])
     except Exception as exc:
         runs.finish_run(conn, run_id, error=str(exc))
         raise

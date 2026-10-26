@@ -44,9 +44,10 @@ Pile complète : `docker compose up -d` à la racine, puis `docker ps` doit mont
 - `pipeline/cleaning.py` : règles de remplissage des manquants, fonctions pures testées sans fichier.
 - `pipeline/metadata.py` : anomalies étiquetées et contrôle des totaux, de la période et de la fréquence.
 - `pipeline/timestamps.py` : horodatages ramenés en UTC.
-- `pipeline/db.py`, `pipeline/runs.py` : connexion à la base (`DATABASE_URL`, autocommit) et suivi de chaque traitement dans `etl.run`.
+- `pipeline/db.py`, `pipeline/runs.py`, `pipeline/raw.py` : connexion à la base (`DATABASE_URL`, autocommit), suivi de chaque traitement dans `etl.run`, réponses brutes dans `raw.api_response`.
+- `pipeline/sensors.py`, `pipeline/heartbeat.py` : épisodes de panne de capteur (`core.sensor_status`) et signal de vivacité du collecteur.
 - `pipeline/rows.py` : lignes prêtes à insérer en base (`core.energy_reading` : axe `time`, heure du mock, décimaux).
-- `pipeline/jobs/` : un module par traitement, avec `main(argv)`. Lancement : `python -m pipeline <traitement>` (`clean-history`, `load-ref`).
+- `pipeline/jobs/` : un module par traitement, avec `main(argv)`. Lancement : `python -m pipeline <traitement>` (`clean-history`, `load-ref`, `poll-current`).
 - `pipeline/provided_files/`, `pipeline/edited_files/` : données suivies par DVC, voir [`docs/donnees-dvc.md`](../docs/donnees-dvc.md).
 
 ## Nettoyage de l'historique
@@ -58,6 +59,12 @@ Sur le fichier actuel, pour la consommation : 119 807 mesurées, 353 retrouvées
 ## Charger les sites
 
 `python -m pipeline load-ref` copie `GET /sites` dans `ref.site` (les sites existants sont mis à jour) et garde la réponse dans `raw.api_response`, avec une ligne `etl.run`. À lancer une fois après les migrations, car `core.energy_reading` référence `ref.site` : `docker compose run --rm etl python -m pipeline load-ref` (sur le staging, avec `-f docker-compose.staging.yml`).
+
+## Collecter les mesures courantes
+
+`python -m pipeline poll-current` interroge le mock toutes les 60 s (`--interval` ou `POLL_INTERVAL_SECONDS`) : `/current` de chaque site, `/sensors/status` et `/alerts`. Chaque réponse est enregistrée telle quelle dans `raw.api_response`, puis transformée en `core.energy_reading` (`time` = heure de réception, `mock_time` = heure du mock), `core.sensor_status` (une ligne par panne, relue en base à chaque tour) et `core.alert` (`origin = 'api'`). Si `ref.site` est vide, le collecteur la charge d'abord. Un appel en échec n'arrête pas la boucle ; `SIGTERM` l'arrête proprement. `--once` fait un seul tour, pour un essai.
+
+Un tour réussi écrit l'heure dans `/tmp/collector.heartbeat` ; `python -m pipeline.heartbeat` répond 0 si elle date de moins de trois intervalles (sonde du conteneur).
 
 ## Ajouter un traitement
 
