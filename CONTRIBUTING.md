@@ -8,7 +8,7 @@ Le projet suit un GitHub Flow avec des branches courtes. Le dépôt est un monor
 api/        API (données, prédictions, anomalies) et ses tests (api/tests)
 etl/        batch d'ingestion et nettoyage en pandas, tests (etl/tests)
 ml/         entraînement, challengers, MLflow, tests (ml/tests)
-frontend/   dashboard web, tests Cypress (frontend/cypress)
+frontend/   dashboard web, tests Vitest (pas encore de tests de bout en bout)
 db/         migrations SQL de la base (db/migrations), appliquées au démarrage par dbmate
 infra/      Terraform, Docker, scripts de déploiement (infra/scripts)
 docs/       architecture, rapports de décision, comptes rendus
@@ -26,7 +26,8 @@ Chaque composant garde ses tests. Les workflows de CI/CD vivent dans `.github/wo
 5. Merge en **squash**, seule méthode autorisée sur le dépôt (réglages du dépôt : merge commit et rebase désactivés, message du squash = titre de la PR). Le titre de la PR devient donc l'unique commit sur `main` : c'est lui qui décide de la version (`feat:`, `fix:`, `!` pour une rupture), et la CI le vérifie. La branche source est supprimée automatiquement au merge (réglage « Automatically delete head branches ») ; supprimer aussi la copie locale avec `git branch -d`.
 6. Commits en [Conventional Commits](https://www.conventionalcommits.org/fr) avec un type parmi `feat`, `fix`, `docs`, `chore`, `infra`, `test`, `refactor`, `ci`. Le nom de branche, chaque commit et le titre de la PR sont vérifiés par la CI ; un hook local (`pre-commit`, voir le README) applique les mêmes contrôles avant le commit. Chacun commite avec son propre compte et son vrai nom, sur son poste.
 7. Aucun secret dans Git : variables dans un `.env` ignoré, avec un `.env.example` versionné. Les accès (API, VM, AWS) restent hors dépôt.
-8. Un conflit se résout dans la branche de la tâche (`git rebase main` ou `git merge main`), jamais en réécrivant `main`.
+8. Un conflit se résout dans la branche de la tâche (`git rebase main`), jamais en réécrivant `main`. La règle de `main` exige une branche à jour avant le merge : on la met à jour de la même façon, puis on pousse avec `git push --force-with-lease` (jamais `--force`).
+9. Le bouton « Update branch » de GitHub ne sert que sur **sa propre** branche, et en choisissant « Update with rebase » (menu à côté du bouton) : le merge ajoute un commit « Merge branch 'main' » et fait diverger la branche distante de la copie locale. Après l'avoir utilisé, resynchroniser sa copie avec `git pull --rebase`. Ne jamais cliquer dessus sur la branche d'une autre personne.
 
 ## Cycle d'une tâche
 
@@ -69,7 +70,8 @@ Relire, c'est vérifier que le code répond au ticket, qu'il est testé, lisible
 
 - Les jobs tournent sur `ubuntu-24.04`, pas sur `ubuntu-latest`, dont la version change sans prévenir. Changer de version de runner se fait par une PR, dans tous les workflows à la fois.
 - Les actions sont référencées par version majeure (`actions/checkout@v7`), ou par SHA quand l'action est sensible (`trivy-action`, `configure-aws-credentials`), avec la version en commentaire à côté du SHA.
-- Dependabot ouvre chaque lundi une PR groupée `ci: bump ...` qui met à jour les actions. La relire comme les autres : lire les notes de version pour les ruptures, vérifier que les paramètres `with:` utilisés existent toujours, et surveiller les avertissements Node dans les runs.
+- Dependabot ouvre chaque lundi des PR groupées : `ci: bump ...` (actions), `chore: bump ...` pour les dépendances Python (`api`, `etl`, `ml`), npm (`frontend`) et les images de base des Dockerfile. Python 3.13 et Node 24 ne montent pas de version tout seuls. Les relire comme les autres : lire les notes de version pour les ruptures, vérifier que les paramètres `with:` utilisés existent toujours, et surveiller les avertissements Node dans les runs.
+- Pour Python, Dependabot modifie `requirements.in` et `requirements.txt`. Après le merge, `./infra/scripts/compile-requirements.sh` ne doit produire aucun changement ; sinon, lancer le script et committer le résultat.
 
 **Avertissements connus.**
 

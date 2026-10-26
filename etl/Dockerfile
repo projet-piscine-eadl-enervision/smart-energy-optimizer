@@ -10,7 +10,10 @@ RUN groupadd --system --gid 1000 app \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# pip est retiré après l'installation : inutile à l'exécution, et ses copies embarquées
+# (certifi, urllib3, msgpack...) déclenchent des alertes Trivy sans rapport avec nos dépendances
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip uninstall -y pip
 
 COPY --chown=app:app . .
 

@@ -5,7 +5,7 @@ Les jetons sont signés avec SECRET_KEY : impossible à forger sans la clé.
 """
 from datetime import UTC, datetime, timedelta
 
-from jose import JWTError, jwt
+import jwt
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 
@@ -14,12 +14,22 @@ from app.core.config import settings
 # bcrypt (et non argon2) pour rester compatible avec les hashes déjà en base.
 password_hash = PasswordHash((BcryptHasher(),))
 
+# bcrypt ne lit que 72 octets et refuse davantage : on rejette plus tôt au lieu de tronquer
+MAX_PASSWORD_BYTES = 72
+
 
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
 
 
+# Hash d'un mot de passe jamais utilisé : la connexion le vérifie quand le compte n'existe pas,
+# pour que la durée de la réponse ne révèle pas si l'e-mail est connu
+DUMMY_HASH = password_hash.hash("mot de passe qui ne correspond à aucun compte")
+
+
 def verify_password(plain: str, hashed: str) -> bool:
+    if len(plain.encode()) > MAX_PASSWORD_BYTES:
+        return False
     return password_hash.verify(plain, hashed)
 
 
@@ -39,5 +49,5 @@ def decode_access_token(token: str) -> str | None:
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         return payload.get("sub")
-    except JWTError:
+    except jwt.InvalidTokenError:
         return None

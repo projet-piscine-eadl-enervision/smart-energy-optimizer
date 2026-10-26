@@ -6,7 +6,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, DbSession
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    DUMMY_HASH,
+    create_access_token,
+    hash_password,
+    verify_password,
+)
 from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead
@@ -37,7 +42,9 @@ async def login(
 ):
     # OAuth2PasswordRequestForm fournit .username (= email ici) et .password
     user = await db.scalar(select(User).where(User.email == form.username))
-    if not user or not verify_password(form.password, user.hashed_password):
+    # Toujours un calcul bcrypt, compte connu ou non
+    hashed = user.hashed_password if user else DUMMY_HASH
+    if not verify_password(form.password, hashed) or not user:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "Email ou mot de passe incorrect",

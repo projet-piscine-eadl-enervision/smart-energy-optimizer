@@ -1,7 +1,7 @@
 """Hachage des mots de passe et jetons JWT."""
 from datetime import UTC, datetime, timedelta
 
-from jose import jwt
+import jwt
 
 from app.core import security
 from app.core.config import settings
@@ -50,3 +50,8 @@ def test_jeton_modifie():
     entete, contenu, signature = token.split(".")
     falsifie = f"{entete}.{contenu}.{signature[::-1]}"
     assert security.decode_access_token(falsifie) is None
+
+
+def test_verify_password_too_long_rejected_without_error():
+    hashed = security.hash_password("password")
+    assert not security.verify_password("a" * 100, hashed)

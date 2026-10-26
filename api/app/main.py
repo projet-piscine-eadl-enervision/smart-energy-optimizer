@@ -10,22 +10,32 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import auth, health, history, predictions, recommendations
 from app.core.config import settings
 
-app = FastAPI(
-    title="enervision-api",
-    description=f"Environnement : {settings.APP_ENV}",
-)
+# En production, ni la documentation interactive ni le schéma OpenAPI ne sont exposés
+NO_DOCS = {"docs_url": None, "redoc_url": None, "openapi_url": None}
 
-# CORS verrouillé sur l'origine du front — pas de "*" en présence de cookies/JWT
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[settings.FRONTEND_ORIGIN],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-app.include_router(health.router)
-app.include_router(auth.router)
-app.include_router(predictions.router)
-app.include_router(history.router)
-app.include_router(recommendations.router)
+def create_app() -> FastAPI:
+    application = FastAPI(
+        title="enervision-api",
+        description=f"Environnement : {settings.APP_ENV}",
+        **(NO_DOCS if settings.APP_ENV == "production" else {}),
+    )
+
+    # CORS verrouillé sur l'origine du front — pas de "*" en présence de cookies/JWT
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.FRONTEND_ORIGIN],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    application.include_router(health.router)
+    application.include_router(auth.router)
+    application.include_router(predictions.router)
+    application.include_router(history.router)
+    application.include_router(recommendations.router)
+    return application
+
+
+app = create_app()

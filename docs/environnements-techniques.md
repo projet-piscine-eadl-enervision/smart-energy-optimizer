@@ -20,10 +20,10 @@ Documents liés : [déploiement du staging](deploiement-staging.md), [mise en pr
 
 | Service | dev | staging | production |
 |---|---|---|---|
-| API, documentation | http://localhost:8000/docs | http://10.43.43.50:8000/docs | WIP |
+| API, documentation | http://localhost:8000/docs | http://10.43.43.50:8000/docs | fermée (404 sur `/docs`, `/redoc`, `/openapi.json`) |
 | API, santé et version | http://localhost:8000/health | http://10.43.43.50:8000/health | WIP |
 | API, santé du mock | http://localhost:8000/health/mock | http://10.43.43.50:8000/health/mock | WIP |
-| ETL, santé | http://localhost:8001/health | http://10.43.43.50:8001/health | WIP |
+| ETL, santé | http://localhost:8001/health | non exposé (`docker ps` : `healthy`) | WIP |
 | Frontend | http://localhost:4000 | http://10.43.43.50:4000 (l'API y est jointe par `/api/health`) | WIP |
 | Base de données | `localhost:5432`, base `enervision` | non exposée (réseau interne Docker de la VM) | WIP |
 
@@ -67,7 +67,7 @@ La page `/docs` du mock reste la référence pour les paramètres et les formats
 | `db` | PostgreSQL 16 + TimescaleDB (`timescale/timescaledb`) | image officielle | non | `2.30.2-pg16` | `2.30.2-pg16` | WIP |
 | `migrate` | applique les migrations SQL de `db/migrations` (dbmate) puis s'arrête, avant `api` et `etl` ; [détail](migrations-base-de-donnees.md) | oui (`db/`) | `.../enervision/db` | oui, construit localement, dossier `db/migrations` monté (`docker compose run --rm migrate`) | oui, image `db` du même tag que les autres | WIP |
 | `api` | API FastAPI (Python 3.13) | oui | `.../enervision/api` | oui, rechargement à chaud | oui, port 8000 | WIP |
-| `etl` | collecte du mock, transformation, stockage | oui | `.../enervision/etl` | oui, port 8001 | profil `apps`, port 8001, non activé | WIP |
+| `etl` | collecte du mock, transformation, stockage | oui | `.../enervision/etl` | oui, sans port publié | profil `apps`, sans port publié, non activé | WIP |
 | `frontend` | Angular 22 (Node 24) | oui, serveur de développement (cible `dev`) | `.../enervision/frontend` | oui, port 4000 | profil `apps`, build de production servi par le serveur SSR Node (port 4000), non activé | WIP |
 | `ml` | entraînement des modèles (tâche ponctuelle) | oui | `.../enervision/ml` | profil `ml`, à la demande : `docker compose run --rm ml` (pas lancé par `up -d`) | WIP | WIP |
 | `mlflow` | suivi des expériences et registre des modèles (`ghcr.io/mlflow/mlflow`) | image officielle | non | `v3.17.2`, port 5000 | WIP | WIP |
@@ -86,7 +86,7 @@ Le flux de données prévu : le mock alimente l'ETL, qui écrit dans la base ; l
 | `POSTGRES_USER`, `POSTGRES_DB` | compte et base | `postgres`, `enervision` | `enervision`, `enervision` | WIP |
 | `POSTGRES_PASSWORD` | mot de passe de la base | `dev` | généré sur la VM | WIP |
 | `DATABASE_URL` | connexion de l'API à la base | calculée par le compose | calculée par le compose | WIP |
-| `API_PORT`, `ETL_PORT`, `FRONTEND_PORT` | ports publiés sur l'hôte | 8000, 8001, 4000 | fixes dans le compose | WIP |
+| `API_PORT`, `ETL_PORT`, `FRONTEND_PORT` | ports publiés sur l'hôte | 8000, 8001, 4000 | fixes dans le compose (l'ETL n'a aucun port publié) | WIP |
 | `COMPOSE_PROFILES` | active `etl` et `frontend` (profil `apps`) | sans objet | `apps`, dans `staging.env` | WIP |
 | `IMAGE_TAG` | tag des images à déployer (retour arrière) | sans objet | `main` par défaut | WIP |
 | `NG_ALLOWED_HOSTS` | hôtes acceptés par le frontend | `localhost,127.0.0.1` | IP de la VM, dans `staging.env` | adresse AWS (WIP) |
@@ -106,7 +106,7 @@ Le flux de données prévu : le mock alimente l'ETL, qui écrit dans la base ; l
 }
 ```
 
-L'en-tête de la page `/docs` rappelle aussi l'environnement.
+L'en-tête de la page `/docs` rappelle aussi l'environnement. En production (`APP_ENV=production`), la documentation interactive est fermée ; `/health` reste ouvert, le workflow de déploiement s'en sert.
 
 ## 7. Secrets
 

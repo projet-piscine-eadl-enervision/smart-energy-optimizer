@@ -63,8 +63,6 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    ports:
-      - "8001:8000"
 
   frontend:
     profiles: [apps]

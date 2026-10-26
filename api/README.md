@@ -42,7 +42,7 @@ Lues par `app/core/config.py` (pydantic-settings). L'API refuse de démarrer si 
 |---|---|---|
 | `DATABASE_URL` | oui | Fournie par le compose. Un `postgresql://` est converti automatiquement en `postgresql+asyncpg://` (driver asynchrone) |
 | `SECRET_KEY` | oui | Clé de signature des JWT. Générer avec `python3 -c "import secrets; print(secrets.token_hex(32))"`. En staging, à définir dans `staging.env` |
-| `APP_ENV` | non | Environnement affiché par `/health` et `/docs` (défaut : `dev`) |
+| `APP_ENV` | non | Environnement affiché par `/health` et `/docs` (défaut : `dev`) ; `production` ferme `/docs`, `/redoc` et `/openapi.json` |
 | `GIT_TITLE`, `GIT_SHA` | non | Version affichée par `/health`, fixée par la CI à la construction de l'image |
 | `MOCK_API_URL`, `MOCK_API_USERNAME`, `MOCK_API_PASSWORD` | non | Utilisées seulement par `/health/mock` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | non | Durée de validité du jeton (défaut : `60`) |
@@ -80,7 +80,7 @@ Les routes n'ont pas de préfixe `/api` : c'est le préfixe du proxy du front (`
 
 | Méthode | Route | Accès | Description |
 |---|---|---|---|
-| `POST` | `/auth/register` | public | Inscription (email + mot de passe ≥ 8 caractères) |
+| `POST` | `/auth/register` | public | Inscription (email + mot de passe de 8 caractères et de 72 octets au plus) |
 | `POST` | `/auth/login` | public | Connexion, renvoie un jeton JWT |
 | `GET` | `/auth/me` | connecté | Profil de l'utilisateur courant |
 | `GET` | `/predictions` | connecté | Prédictions de pics de consommation |

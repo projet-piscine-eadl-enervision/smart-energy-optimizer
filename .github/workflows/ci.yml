@@ -126,26 +126,6 @@ jobs:
         if: hashFiles('frontend/package-lock.json') != ''
         run: npm run build --if-present
 
-  e2e:
-    # Tests Cypress : activés dès que frontend/cypress.config.* existe.
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        if: hashFiles('frontend/cypress.config.*') != ''
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Cypress
-        if: hashFiles('frontend/cypress.config.*') != ''
-        uses: cypress-io/github-action@v7
-        with:
-          working-directory: frontend
-          build: npm run build
-          start: npm run preview
-          wait-on: "http://localhost:4173"
-
   security:
     runs-on: ubuntu-24.04
     permissions:
@@ -216,7 +196,7 @@ jobs:
   # seul ce job est à exiger, quels que soient les composants présents.
   ci-ok:
     if: always()
-    needs: [pr-title, branch-name, commit-messages, python, frontend, e2e, security, migrations]
+    needs: [pr-title, branch-name, commit-messages, python, frontend, security, migrations]
     runs-on: ubuntu-24.04
     steps:
       - name: Vérifier les résultats

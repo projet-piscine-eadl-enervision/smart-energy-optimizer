@@ -1,5 +1,6 @@
 """Inscription, connexion et profil courant (/auth/*)."""
-from app.core.security import create_access_token
+from app.api.routes import auth
+from app.core.security import DUMMY_HASH, create_access_token
 
 
 def test_register(client):
@@ -64,6 +65,21 @@ def test_login_email_inconnu(client):
     assert response.status_code == 401
 
 
+def test_login_unknown_email_still_checks_a_hash(client, monkeypatch):
+    # Same computation cost as for a known account: response time does not reveal the email
+    calls = []
+
+    def spy(plain, hashed):
+        calls.append(hashed)
+        return False
+
+    monkeypatch.setattr(auth, "verify_password", spy)
+    client.post(
+        "/auth/login", data={"username": "inconnu@example.com", "password": "password"}
+    )
+    assert calls == [DUMMY_HASH]
+
+
 def test_me(client, auth_headers):
     response = client.get("/auth/me", headers=auth_headers)
     assert response.status_code == 200
@@ -89,4 +105,34 @@ def test_me_utilisateur_desactive(client, make_user):
     user = make_user(is_active=False)
     token = create_access_token(subject=str(user.id))
     response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 401
+
+
+def test_register_password_of_72_bytes(client):
+    response = client.post(
+        "/auth/register", json={"email": "bob@example.com", "password": "a" * 72}
+    )
+    assert response.status_code == 201
+
+
+def test_register_password_too_long(client):
+    response = client.post(
+        "/auth/register", json={"email": "bob@example.com", "password": "a" * 73}
+    )
+    assert response.status_code == 422
+
+
+def test_register_password_too_long_in_bytes(client):
+    # 37 two-byte characters: 74 bytes
+    response = client.post(
+        "/auth/register", json={"email": "bob@example.com", "password": "é" * 37}
+    )
+    assert response.status_code == 422
+
+
+def test_login_password_too_long(client, make_user):
+    make_user(email="bob@example.com")
+    response = client.post(
+        "/auth/login", data={"username": "bob@example.com", "password": "a" * 100}
+    )
     assert response.status_code == 401

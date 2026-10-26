@@ -44,15 +44,9 @@ To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use th
 ng test
 ```
 
-## Running end-to-end tests
+## Tests de bout en bout
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Aucun pour l'instant : `ng e2e` n'existe pas sans outil installé (Cypress ou Playwright). Voir `docs/audit-depot.md`.
 
 ## Additional Resources
 

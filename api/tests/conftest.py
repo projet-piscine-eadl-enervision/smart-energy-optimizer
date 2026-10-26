@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 # À faire avant d'importer app.* : Settings() est instancié à l'import de app.core.config
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
-os.environ.setdefault("SECRET_KEY", "cle-de-test-uniquement")
+os.environ.setdefault("SECRET_KEY", "cle-de-test-uniquement-de-32-octets-au-moins")
 
 import pytest
 from fastapi.testclient import TestClient

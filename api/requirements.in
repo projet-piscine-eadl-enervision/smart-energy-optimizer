@@ -6,6 +6,6 @@ sqlalchemy[asyncio]
 asyncpg
 pydantic-settings
 email-validator
-python-jose[cryptography]
+PyJWT
 pwdlib[bcrypt]
 python-multipart
