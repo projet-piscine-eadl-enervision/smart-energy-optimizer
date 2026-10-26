@@ -1,6 +1,9 @@
 """Bout en bout sans base ni serveur : MLflow dans un fichier SQLite temporaire, et des
 données factices à la place de analytics.energy_hourly."""
 
+from datetime import UTC, datetime
+
+import pandas as pd
 import pytest
 from mlflow import MlflowClient
 
@@ -22,12 +25,12 @@ def pipeline(tmp_path, monkeypatch):
 
     # Un an d'entraînement, plus 60 jours de validation et 60 de test
     data = make_mock_like(days=500)
-    monkeypatch.setattr(training, "load_hourly", lambda url, start=None: data)
+    monkeypatch.setattr(training, "load_hourly", lambda url, start=None, end=None: data)
     monkeypatch.setattr(training, "save_model_run", lambda url, run, metrics, thresholds: None)
     return data
 
 
-def test_le_naif_ne_detrone_pas_le_profil(pipeline):
+def test_naive_does_not_dethrone_profile(pipeline):
     training.main(["--model", "site_profile"])
     training.main(["--model", "seasonal_naive"])
 
@@ -38,7 +41,7 @@ def test_le_naif_ne_detrone_pas_le_profil(pipeline):
     assert "reste challenger" in decision(client, "2")
 
 
-def test_un_meilleur_modele_est_promu(pipeline):
+def test_better_model_is_promoted(pipeline):
     training.main(["--model", "seasonal_naive"])
     training.main(["--model", "site_profile"])
 
@@ -47,14 +50,14 @@ def test_un_meilleur_modele_est_promu(pipeline):
     assert "promu champion : nMAE" in decision(client, "2")
 
 
-def test_historique_insuffisant(pipeline, monkeypatch):
+def test_insufficient_history(pipeline, monkeypatch):
     short = make_mock_like(days=200)
-    monkeypatch.setattr(training, "load_hourly", lambda url, start=None: short)
+    monkeypatch.setattr(training, "load_hourly", lambda url, start=None, end=None: short)
     with pytest.raises(SystemExit, match="Historique insuffisant"):
         training.main([])
 
 
-def test_prediction_avec_le_champion(pipeline, monkeypatch):
+def test_prediction_with_champion(pipeline, monkeypatch):
     training.main([])
 
     saved = {}
@@ -65,11 +68,11 @@ def test_prediction_avec_le_champion(pipeline, monkeypatch):
 
     monkeypatch.setattr(predict, "latest_hour", lambda url: pipeline["hour"].max())
     monkeypatch.setattr(
-        predict, "load_hourly", lambda url, start=None: pipeline[pipeline["hour"] >= start]
+        predict, "load_hourly", lambda url, start=None, end=None: pipeline[pipeline["hour"] >= start]
     )
     monkeypatch.setattr(predict, "save_predictions", fake_save)
 
-    count = predict.run()
+    count = predict.run(now=pipeline["hour"].max() + pd.Timedelta(hours=1))
 
     sites = pipeline["site_id"].nunique()
     assert count == HORIZON_HOURS * sites
@@ -82,12 +85,12 @@ def test_prediction_avec_le_champion(pipeline, monkeypatch):
     assert peak_hours.between(8, 18).all()
 
 
-def test_prediction_sans_champion(pipeline):
+def test_prediction_without_champion(pipeline):
     with pytest.raises(SystemExit, match="Aucun modèle champion"):
         predict.run()
 
 
-def test_impact_et_donnees_enregistres_dans_mlflow(pipeline):
+def test_impact_and_data_recorded_in_mlflow(pipeline):
     training.main(["--model", "site_profile"])
 
     client = MlflowClient()
@@ -109,7 +112,7 @@ def test_impact_et_donnees_enregistres_dans_mlflow(pipeline):
     assert contexts == {"training", "validation", "test"}
 
 
-def test_entrainement_copie_en_base_pour_le_suivi(pipeline, monkeypatch):
+def test_training_copies_run_to_database(pipeline, monkeypatch):
     saved = []
     monkeypatch.setattr(
         training,
@@ -120,7 +123,36 @@ def test_entrainement_copie_en_base_pour_le_suivi(pipeline, monkeypatch):
     training.main(["--model", "seasonal_naive"])
 
     (first, metrics, thresholds), (second, _, _) = saved
-    assert (first["model_version"], first["promoted"]) == ("1", True)
-    assert (second["model_version"], second["promoted"]) == ("2", False)
+    assert (first["model_version"], first["promoted"], first["champion_version"]) == ("1", True, "1")
+    # Le naïf ne détrône pas le profil : la version 1 reste en service
+    assert (second["model_version"], second["promoted"], second["champion_version"]) == (
+        "2",
+        False,
+        "1",
+    )
     assert {"val_nmae", "test_kpi_penalty_saved_eur", "test_nmae_gain_vs_naive"} <= metrics.keys()
     assert set(thresholds) == set(pipeline["site_id"])
+
+
+def test_prediction_refused_when_data_is_stale(pipeline, monkeypatch):
+    training.main([])
+    monkeypatch.setattr(predict, "latest_hour", lambda url: pipeline["hour"].max())
+    monkeypatch.setattr(
+        predict, "save_predictions", lambda *args: pytest.fail("rien ne doit être écrit")
+    )
+
+    with pytest.raises(SystemExit, match="Données trop anciennes"):
+        predict.run(now=pipeline["hour"].max() + pd.Timedelta(hours=10))
+
+
+def test_data_end_is_passed_to_the_query(pipeline, monkeypatch):
+    seen = {}
+
+    def fake_load(url, start=None, end=None):
+        seen["end"] = end
+        return pipeline
+
+    monkeypatch.setattr(training, "load_hourly", fake_load)
+    monkeypatch.setenv("ML_DATA_END", "2025-05-15")
+    training.main([])
+    assert seen["end"] == datetime(2025, 5, 15, tzinfo=UTC)

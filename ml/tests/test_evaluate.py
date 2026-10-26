@@ -39,7 +39,7 @@ def test_coverage_when_model_cannot_predict():
     assert metrics["coverage"] == pytest.approx(0.5)
 
 
-def test_kpi_metier_sur_un_cas_simple():
+def test_business_kpis_on_simple_case():
     # Seuil 100 kW. Heure 1 : pic de 150 kW annoncé ; heure 2 : pic de 105 kW manqué ;
     # heure 3 : fausse alerte ; heure 4 : rien
     actual = pd.Series([150.0, 105.0, 90.0, 80.0])
@@ -56,7 +56,7 @@ def test_kpi_metier_sur_un_cas_simple():
     assert kpis["kpi_false_alarm_hours"] == 1
 
 
-def test_sans_pic_annonce_rien_n_est_evite():
+def test_no_announced_peak_avoids_nothing():
     actual = pd.Series([150.0, 120.0])
     kpis = business_kpis(actual, pd.Series([False, False]), pd.Series([100.0, 100.0]))
     assert kpis["kpi_peak_kwh_avoided"] == 0.0

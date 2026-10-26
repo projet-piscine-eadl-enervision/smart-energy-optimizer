@@ -117,7 +117,7 @@ La nMAE est utilisée plutôt que la MAE pour qu'une usine à 600 kW ne pèse pa
 | `kpi_missed_peak_hours`, `kpi_false_alarm_hours` | pics non annoncés, alertes inutiles |
 | `test_nmae_gain_vs_naive`, `test_kpi_penalty_gain_vs_naive_eur` | ce que le modèle apporte en plus du naïf, sur le même test |
 
-Sur des données construites comme le mock (test `test_impact_et_donnees_enregistres_dans_mlflow`), le profil réduit l'erreur d'environ 30 % par rapport au naïf, mais les deux annoncent tous les pics : les pics de bureau dépassent le seuil de loin. Le gain en euros sur le naïf est alors nul ; il viendra des sites où le pic est proche du seuil, à vérifier sur les données du mock.
+Sur des données construites comme le mock (test `test_impact_and_data_recorded_in_mlflow`), le profil réduit l'erreur d'environ 30 % par rapport au naïf, mais les deux annoncent tous les pics : les pics de bureau dépassent le seuil de loin. Le gain en euros sur le naïf est alors nul ; il viendra des sites où le pic est proche du seuil, à vérifier sur les données du mock.
 
 **Versions** (MLflow). Chaque entraînement crée une version du modèle `enervision-consumption`, rattachée à son run : paramètres, métriques, version du code (`code_version`, le commit) et empreinte des données de chaque période (onglet *Datasets* du run, contextes `training`, `validation`, `test`). Deux runs sur les mêmes données ont la même empreinte. Les alias `champion` et `challenger` désignent les versions en service.
 
@@ -129,7 +129,7 @@ Chaque entraînement copie en base ce que MLflow garde pour lui, et des vues com
 
 | Objet | Contenu | Usage dans Grafana |
 |---|---|---|
-| `ml.model_run` | une ligne par version : modèle, période d'entraînement, promue ou non, décision, hypothèses du KPI | historique des versions, champion actuel |
+| `ml.model_run` | une ligne par version : modèle, période d'entraînement, promue à son entraînement (`promoted`), champion actuel (`is_champion`, une seule ligne), décision, hypothèses du KPI | historique des versions, champion actuel (`WHERE is_champion`) |
 | `ml.model_metric` | métriques de l'entraînement (`val_nmae`, `test_nmae`, `test_kpi_penalty_saved_eur`, `test_nmae_gain_vs_naive`…) | notes de chaque version, gain sur le naïf |
 | `ml.peak_threshold` | seuil de pic par version et par site | référence des vues |
 | `ml.prediction_vs_actual` | chaque prévision passée face à la mesure : erreur, pic annoncé, pic réel, kWh évités | courbe prévu / réel |
