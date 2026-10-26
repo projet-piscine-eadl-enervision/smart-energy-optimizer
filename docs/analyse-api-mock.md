@@ -124,12 +124,14 @@ Le schéma de la base suit le mock. Le dataset ne sert que de référence de pro
 ## Conséquences pour le modèle de données (à valider par l'équipe)
 
 1. `core.energy_reading` : pas de `consumption_kwh` ; clé (`time`, `site_id`) ; colonnes `source` (`current` ou `readings`) et `received_at` ; `timestamptz`.
-2. `raw.api_response` : conservation courte, `raw_id` nullable en `ON DELETE SET NULL` (60 000 lignes par jour à 10 s).
+2. `raw.api_response` : conservation courte, `raw_id` nullable en `ON DELETE SET NULL` (60 000 lignes par jour à 10 s, environ 13 000 à 60 s). La clé étrangère et le droit `DELETE` de l'ETL sur `raw` sont posés par la migration `20261025100000` ; **la purge elle-même n'est pas écrite** (tâche à ajouter au collecteur).
 3. `analytics` : agrégats continus à la minute et à l'heure en temps réel, plus `latest_reading` (constat 10). `core.sensor_status` pour les pannes de capteur (constat 10).
 4. `analytics.site_baseline` (site, mois, type de jour, heure, moyenne, écart-type, nombre de mesures), recalculée par l'ETL : sert à `is_peak`, aux alertes `rule` et de référence pour le ML.
 5. Rattrapage : le profil étant déterministe, une grille d'une heure (environ 120 000 lignes pour deux ans et 7 sites) suffit à bâtir les profils ; 5 minutes (environ 1,5 million de lignes) seulement si le dashboard remonte l'historique à cette finesse.
 6. `etl.run` avec un type de tâche (`poll_current`, `backfill`, `ref_load`) ; pour le collecteur, un résumé périodique et chaque échec.
-7. `ref.tariff` pour le prix du kWh (hypothèse libre à documenter).
+7. `ref.tariff` pour le prix du kWh : 0,15 € constant (rapport euros/kWh du dataset 2023-2024 sur 118 015 lignes, écart maximal 0,0003 dû à l'arrondi, aucune variation par site, heure, jour ou mois), repris pour les mesures du mock, qui n'a pas de prix.
+8. `core.alert.last_seen_at` et `resolved_at` (migration `20261025100100`) : l'état d'une alerte est déduit de sa présence dans `/alerts`, qui ne liste que les alertes actives. Colonnes vides tant que l'ETL ne les remplit pas : **toutes les alertes paraissent alors actives** (suivi à venir côté ETL).
+9. `ml.history_labeled` (migration `20261025100300`) : l'historique 2023-2024 du jeu fourni, avec ses anomalies étiquetées (plateau, panne, chute, pic), pour la détection d'anomalies. Table à part, jamais mélangée à `core.energy_reading` : mêmes `site_id` et mêmes heures que le rattrapage du mock, mais des niveaux de 0 % à 30 % plus élevés selon le site (comparaison du 4 au 10 mars 2024). Le détecteur raisonne en écart au profil de chaque source, pas en kW bruts.
 
 ## Recoupement avec l'analyse exploratoire ML
 
