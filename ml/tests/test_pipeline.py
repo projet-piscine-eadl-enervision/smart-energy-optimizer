@@ -23,6 +23,7 @@ def pipeline(tmp_path, monkeypatch):
     # Un an d'entraînement, plus 60 jours de validation et 60 de test
     data = make_mock_like(days=500)
     monkeypatch.setattr(training, "load_hourly", lambda url, start=None: data)
+    monkeypatch.setattr(training, "save_model_run", lambda url, run, metrics, thresholds: None)
     return data
 
 
@@ -106,3 +107,20 @@ def test_impact_et_donnees_enregistres_dans_mlflow(pipeline):
         if tag.key == "mlflow.data.context"
     }
     assert contexts == {"training", "validation", "test"}
+
+
+def test_entrainement_copie_en_base_pour_le_suivi(pipeline, monkeypatch):
+    saved = []
+    monkeypatch.setattr(
+        training,
+        "save_model_run",
+        lambda url, run, metrics, thresholds: saved.append((run, metrics, thresholds)),
+    )
+    training.main(["--model", "site_profile"])
+    training.main(["--model", "seasonal_naive"])
+
+    (first, metrics, thresholds), (second, _, _) = saved
+    assert (first["model_version"], first["promoted"]) == ("1", True)
+    assert (second["model_version"], second["promoted"]) == ("2", False)
+    assert {"val_nmae", "test_kpi_penalty_saved_eur", "test_nmae_gain_vs_naive"} <= metrics.keys()
+    assert set(thresholds) == set(pipeline["site_id"])

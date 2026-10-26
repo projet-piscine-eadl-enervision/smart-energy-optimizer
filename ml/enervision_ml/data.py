@@ -31,8 +31,7 @@ SELECT h.hour,
        h.nb_missing
 FROM analytics.energy_hourly h
 JOIN ref.site s USING (site_id)
-WHERE (%(start)s::timestamptz IS NULL OR h.hour >= %(start)s)
-  AND (%(end)s::timestamptz IS NULL OR h.hour < %(end)s)
+WHERE %(start)s::timestamptz IS NULL OR h.hour >= %(start)s
 ORDER BY h.site_id, h.hour
 """
 
@@ -46,12 +45,10 @@ DO UPDATE SET predicted_kw = EXCLUDED.predicted_kw,
 """
 
 
-def load_hourly(
-    database_url: str, start: datetime | None = None, end: datetime | None = None
-) -> pd.DataFrame:
-    """Consommation horaire de chaque site, de start à end exclu (tout l'historique par défaut)."""
+def load_hourly(database_url: str, start: datetime | None = None) -> pd.DataFrame:
+    """Consommation horaire de chaque site, depuis start (tout l'historique par défaut)."""
     with psycopg.connect(database_url) as conn:
-        rows = conn.execute(HOURLY_QUERY, {"start": start, "end": end}).fetchall()
+        rows = conn.execute(HOURLY_QUERY, {"start": start}).fetchall()
     df = pd.DataFrame(rows, columns=HOURLY_COLUMNS)
     df["hour"] = pd.to_datetime(df["hour"], utc=True)
     return df
