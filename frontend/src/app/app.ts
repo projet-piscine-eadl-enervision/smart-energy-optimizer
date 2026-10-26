@@ -8,5 +8,5 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
 })
 export class App {
-  protected readonly title = signal('enervision');
+  protected readonly title = signal('Smart Energy Optimizer');
 }

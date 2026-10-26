@@ -1,6 +1,6 @@
 <div class="min-h-screen bg-slate-100">
   <header class="flex items-center justify-between bg-white px-6 py-4 shadow">
-    <h1 class="text-xl font-semibold text-emerald-700">EnerVision</h1>
+    <h1 class="text-xl font-semibold text-emerald-700">Smart Energy Optimizer</h1>
     <div class="flex items-center gap-4 text-sm text-slate-600">
       @if (user(); as u) {
         <span>{{ u.email }} <span class="rounded bg-slate-200 px-2 py-0.5">{{ u.role }}</span></span>
@@ -9,61 +9,49 @@
     </div>
   </header>
 
-  <main class="mx-auto max-w-5xl space-y-6 p-6">
+  <main class="mx-auto max-w-7xl p-6">
     @if (loading()) {
       <p class="text-slate-500">Chargement…</p>
     } @else if (error()) {
       <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
     } @else {
-      <section class="rounded-xl bg-white p-6 shadow">
-        <h2 class="mb-3 text-lg font-semibold text-slate-800">Prédictions de pics</h2>
-        <table class="w-full text-left text-sm">
-          <thead class="text-slate-500">
-            <tr><th class="py-1">Heure</th><th>Puissance prévue</th><th>Confiance</th></tr>
-          </thead>
-          <tbody>
-            @for (p of predictions(); track p.timestamp) {
-              <tr class="border-t border-slate-100">
-                <td class="py-1">{{ p.timestamp | date: 'dd/MM HH:mm' }}</td>
-                <td>{{ p.predicted_kw | number: '1.1-1' }} kW</td>
-                <td>{{ p.confidence | percent }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </section>
+      <!-- Grille principale à 2 colonnes sur écran moyen/large -->
+      <div class="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
 
-      <section class="rounded-xl bg-white p-6 shadow">
-        <h2 class="mb-3 text-lg font-semibold text-slate-800">Recommandations</h2>
-        <ul class="space-y-3">
-          @for (r of recommendations(); track r.id) {
-            <li class="rounded border border-slate-200 p-3">
-              <p class="font-medium text-slate-800">{{ r.title }}</p>
-              <p class="text-sm text-slate-600">{{ r.message }}</p>
-              <p class="mt-1 text-xs text-emerald-700">
-                Économie estimée : {{ r.estimated_saving_kw | number: '1.1-1' }} kW
-              </p>
-            </li>
-          }
-        </ul>
-      </section>
+        <!-- COLONNE GAUCHE : Flexbox pour empiler les 2 graphiques -->
+        <div class="flex flex-col gap-6">
+          <section class="rounded-xl bg-white p-6 shadow">
+            <h2 class="mb-3 text-lg font-semibold text-slate-800">Prédictions de la consommation</h2>
+            <div class="relative h-64 w-full">
+              <canvas #predictionsLineChart></canvas>
+            </div>
+          </section>
 
-      <section class="rounded-xl bg-white p-6 shadow">
-        <h2 class="mb-3 text-lg font-semibold text-slate-800">Historique (24 h)</h2>
-        <table class="w-full text-left text-sm">
-          <thead class="text-slate-500">
-            <tr><th class="py-1">Heure</th><th>Consommation</th></tr>
-          </thead>
-          <tbody>
-            @for (h of history(); track h.timestamp) {
-              <tr class="border-t border-slate-100">
-                <td class="py-1">{{ h.timestamp | date: 'dd/MM HH:mm' }}</td>
-                <td>{{ h.consumption_kw | number: '1.1-1' }} kW</td>
-              </tr>
+          <section class="rounded-xl bg-white p-6 shadow">
+            <h2 class="mb-3 text-lg font-semibold text-slate-800">Historique (24 h)</h2>
+            <div class="relative h-64 w-full">
+              <canvas #historyChart></canvas>
+            </div>
+          </section>
+        </div>
+
+        <!-- COLONNE DROITE : Recommandations -->
+        <section class="rounded-xl bg-white p-6 shadow">
+          <h2 class="mb-3 text-lg font-semibold text-slate-800">Recommandations</h2>
+          <ul class="space-y-3">
+            @for (r of recommendations(); track r.id) {
+              <li class="rounded border border-slate-200 p-3">
+                <p class="font-medium text-slate-800">{{ r.title }}</p>
+                <p class="text-sm text-slate-600">{{ r.message }}</p>
+                <p class="mt-1 text-xs text-emerald-700">
+                  Économie estimée : {{ r.estimated_saving_kw | number: '1.1-1' }} kW
+                </p>
+              </li>
             }
-          </tbody>
-        </table>
-      </section>
+          </ul>
+        </section>
+
+      </div>
     }
   </main>
 </div>

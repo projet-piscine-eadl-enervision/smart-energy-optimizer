@@ -11,10 +11,10 @@ from fastapi import APIRouter
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.energy import PeakPrediction
 
-router = APIRouter(prefix="/predictions", tags=["predictions"])
+router = APIRouter(prefix="/predictions", tags=["Predictions"])
 
 
-@router.get("", response_model=list[PeakPrediction])
+@router.get("", response_model=list[PeakPrediction], summary="Consumption predictions")
 async def get_peak_predictions(current_user: CurrentUser, db: DbSession):
     now = datetime.now(UTC)
     # TODO: remplacer par la sortie du modèle IA + lecture TimescaleDB
