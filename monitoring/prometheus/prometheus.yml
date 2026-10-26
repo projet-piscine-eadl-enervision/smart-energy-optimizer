@@ -1,0 +1,49 @@
+# Cibles interrogées par Prometheus (docker-compose.monitoring.yml). Les noms sont ceux des services
+# Docker : la même configuration sert en dev, en staging et en production.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Règles d'alerte : à décommenter quand alerts.yml existera (promtool refuse un fichier absent)
+# rule_files:
+#   - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # Prometheus lui-même
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Hôte (EC2 ou VM) : CPU, mémoire, disque, réseau
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Conteneurs
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # Base PostgreSQL
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  # Sondes HTTP : le blackbox vérifie que chaque URL répond en 2xx et mesure le temps de réponse.
+  # L'URL sondée devient le paramètre ?target= et le label instance.
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://api:8000/health
+          - http://etl:8000/health
+          - http://frontend:4000/
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

@@ -1,0 +1,10 @@
+# Façons de sonder les cibles du job blackbox-http (monitoring/prometheus/prometheus.yml).
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: ip4
+      # Vide : n'importe quel code 2xx
+      valid_status_codes: []
+      follow_redirects: true
