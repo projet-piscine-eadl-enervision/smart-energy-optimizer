@@ -26,6 +26,7 @@ def pipeline(tmp_path, monkeypatch):
     # Un an d'entraînement, plus 60 jours de validation et 60 de test
     data = make_mock_like(days=500)
     monkeypatch.setattr(training, "load_hourly", lambda url, start=None, end=None: data)
+    monkeypatch.setattr(training, "save_model_run", lambda url, run, metrics, thresholds: None)
     return data
 
 
@@ -87,6 +88,50 @@ def test_prediction_with_champion(pipeline, monkeypatch):
 def test_prediction_without_champion(pipeline):
     with pytest.raises(SystemExit, match="Aucun modèle champion"):
         predict.run()
+
+
+def test_impact_and_data_recorded_in_mlflow(pipeline):
+    training.main(["--model", "site_profile"])
+
+    client = MlflowClient()
+    run = client.get_run(client.get_model_version(MODEL_NAME, "1").run_id)
+    metrics = run.data.metrics
+    # Le profil se trompe moins que le naïf. Sur un mock, les pics de bureau dépassent le seuil
+    # de loin : les deux les annoncent tous, et évitent le même dépassement
+    assert metrics["test_nmae_gain_vs_naive"] > 0.2
+    assert metrics["test_kpi_penalty_gain_vs_naive_eur"] == 0
+    assert metrics["test_kpi_peak_avoided_ratio"] == 1
+    assert metrics["test_kpi_penalty_saved_eur"] > 0
+    # Chaque période est rattachée au run par l'empreinte de ses données
+    contexts = {
+        tag.value
+        for dataset_input in run.inputs.dataset_inputs
+        for tag in dataset_input.tags
+        if tag.key == "mlflow.data.context"
+    }
+    assert contexts == {"training", "validation", "test"}
+
+
+def test_training_copies_run_to_database(pipeline, monkeypatch):
+    saved = []
+    monkeypatch.setattr(
+        training,
+        "save_model_run",
+        lambda url, run, metrics, thresholds: saved.append((run, metrics, thresholds)),
+    )
+    training.main(["--model", "site_profile"])
+    training.main(["--model", "seasonal_naive"])
+
+    (first, metrics, thresholds), (second, _, _) = saved
+    assert (first["model_version"], first["promoted"], first["champion_version"]) == ("1", True, "1")
+    # Le naïf ne détrône pas le profil : la version 1 reste en service
+    assert (second["model_version"], second["promoted"], second["champion_version"]) == (
+        "2",
+        False,
+        "1",
+    )
+    assert {"val_nmae", "test_kpi_penalty_saved_eur", "test_nmae_gain_vs_naive"} <= metrics.keys()
+    assert set(thresholds) == set(pipeline["site_id"])
 
 
 def test_prediction_refused_when_data_is_stale(pipeline, monkeypatch):
