@@ -73,7 +73,7 @@ La page `/docs` du mock reste la référence pour les paramètres et les formats
 | `db` | PostgreSQL 16 + TimescaleDB (`timescale/timescaledb:2.30.2-pg16`, image officielle) | non | oui | oui |
 | `migrate` | applique les migrations SQL de `db/migrations` (dbmate) puis s'arrête, avant `api` et `etl` ; [détail](migrations-base-de-donnees.md) | `.../db` | construit localement, dossier `db/migrations` monté (`docker compose run --rm migrate`) | image du même tag que les autres |
 | `api` | API FastAPI (Python 3.13) : `/health`, `/auth/*`, `/history`, `/predictions`, `/recommendations` (jeton JWT) | `.../api` | rechargement à chaud, port 8000 | port 8000 (fermé à l'extérieur en production) |
-| `etl` | traitement des données : nettoyage de l'historique, chargement des sites en base (`load-ref`), collecte des mesures courantes (`poll-current`), `/health` seule (pas de route métier) | `.../etl` | port 8001 (santé) | profil `apps`, sans port publié |
+| `etl` | traitement des données : nettoyage de l'historique, chargement des sites en base (`load-ref`), collecte des mesures courantes (`poll-current`), rattrapage de l'historique (`backfill`), `/health` seule (pas de route métier) | `.../etl` | port 8001 (santé) | profil `apps`, sans port publié |
 | `collector` | collecteur : interroge le mock toutes les minutes, écrit mesures, pannes de capteur et alertes en base ; santé = dernier tour réussi | `.../etl` (même image) | profil `collector`, à la demande : `docker compose --profile collector up -d collector` | profil `collector` : à activer par `COMPOSE_PROFILES=apps,collector` ; absent de la production tant que `production.env` ne l'ajoute pas |
 | `frontend` | Angular 22 (Node 24) | `.../frontend` | serveur de développement (cible `dev`), port 4000 | profil `apps` : build de production servi par le serveur SSR Node, port 4000 |
 | `ml` | entraînement des modèles (tâche ponctuelle) | `.../ml` | profil `ml`, à la demande : `docker compose run --rm ml` | image publiée, aucun service |
@@ -81,7 +81,7 @@ La page `/docs` du mock reste la référence pour les paramètres et les formats
 
 Préfixe des images : `ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer`, soit `ghcr.io/<organisation>/<nom du dépôt>` : les workflows le calculent depuis le nom du dépôt. Si le dépôt est renommé, les images changent de préfixe et le compose de staging doit suivre (ou `IMAGE_PREFIX` dans `staging.env`).
 
-Le flux de données prévu : le mock alimente l'ETL, qui écrit dans la base ; l'API lit la base et sert le frontend ; le module ML s'entraîne sur la base. L'historique nettoyé est aujourd'hui un fichier suivi par DVC ([`donnees-dvc.md`](donnees-dvc.md)), le chargement en base par l'ETL reste à écrire.
+Le flux de données : le mock alimente l'ETL (collecte en continu, rattrapage de l'historique par pas d'une heure depuis 2023-01-01), qui écrit dans la base ; l'API lit la base et sert le frontend ; le module ML s'entraîne sur la base. L'historique nettoyé 2023-2024 reste un fichier suivi par DVC ([`donnees-dvc.md`](donnees-dvc.md)).
 
 ## 5. Variables d'environnement
 
@@ -134,5 +134,5 @@ Aucun secret n'est versionné. Les procédures de renouvellement des jetons sont
 
 - Entre CloudFront et l'instance de production, le trafic est en HTTP, et l'adresse du site est celle de CloudFront : pas de nom de domaine ni de certificat à nous.
 - Le module `ml` n'a pas de service déployé, et MLflow n'existe que sur les postes.
-- Le chargement de l'historique en base par l'ETL reste à écrire : la base ne contient pas encore de mesures.
+- Le rafraîchissement de `analytics.energy_hourly` par le rattrapage exige d'être propriétaire de l'agrégat : l'ETL se connecte donc avec le compte propriétaire de la base, pas avec le rôle `enervision_etl`.
 - L'accès SSH de `root` et par mot de passe sur la VM de staging n'est pas encore restreint ; la production n'a pas de SSH.
