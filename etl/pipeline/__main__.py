@@ -11,7 +11,10 @@ import importlib
 import sys
 
 # Un traitement = un module de pipeline.jobs qui expose main(argv)
-JOBS = {"clean-history": "pipeline.jobs.clean_history"}
+JOBS = {
+    "clean-history": "pipeline.jobs.clean_history",
+    "load-ref": "pipeline.jobs.load_ref",
+}
 
 
 def main(argv: list[str] | None = None) -> int:

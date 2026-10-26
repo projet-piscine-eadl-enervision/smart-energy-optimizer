@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Literal
 
 from mock_client.schemas.reading import Reading
+from mock_client.schemas.site import Site
 
 Source = Literal["current", "readings"]
 
@@ -11,6 +12,18 @@ Source = Literal["current", "readings"]
 def to_decimal(value: float | None) -> Decimal | None:
     """Les colonnes NUMERIC de la base attendent des Decimal, pas des float."""
     return None if value is None else Decimal(str(value))
+
+
+def site_row(site: Site) -> dict:
+    """Ligne de ref.site, depuis un site de GET /sites."""
+    return {
+        "site_id": site.site_id,
+        "site_name": site.site_name,
+        "site_type": site.site_type,
+        "location": site.location,
+        "capacity_kw": to_decimal(site.capacity_kw),
+        "status": site.status,
+    }
 
 
 def energy_reading_row(

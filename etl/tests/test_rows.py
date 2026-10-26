@@ -1,12 +1,13 @@
-"""Lignes de core.energy_reading : choix de l'axe `time`, heure du mock, décimaux."""
+"""Lignes de la base : axe `time` de core.energy_reading, heure du mock, décimaux, ref.site."""
 from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 
 from mock_client.schemas.reading import Reading
-from pipeline.rows import energy_reading_row, to_decimal
-from tests.conftest import READING_PAYLOAD
+from mock_client.schemas.site import Site
+from pipeline.rows import energy_reading_row, site_row, to_decimal
+from tests.conftest import READING_PAYLOAD, SITE_EXAMPLE
 
 FETCHED_AT = datetime(2026, 10, 23, 14, 12, 41, tzinfo=UTC)
 
@@ -53,3 +54,9 @@ def test_columns_match_core_energy_reading():
         "time", "mock_time", "site_id", "consumption_kw", "voltage_v", "current_a", "power_factor",
         "temperature_celsius", "humidity_percent", "null_reasons", "data_quality", "source", "raw_id",
     }  # fmt: skip
+
+
+def test_site_row_matches_ref_site_columns():
+    row = site_row(Site.model_validate(SITE_EXAMPLE))
+
+    assert row == {**SITE_EXAMPLE, "capacity_kw": Decimal("250.0")}
