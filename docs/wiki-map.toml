@@ -100,6 +100,11 @@ title = "Sécurité"
 section = "Qualité et sécurité"
 
 [[page]]
+source = "docs/rapport-securisation.md"
+title = "Rapport de sécurisation"
+section = "Qualité et sécurité"
+
+[[page]]
 source = "docs/qualite-et-securite-ci.md"
 title = "Qualité et sécurité de la CI"
 section = "Qualité et sécurité"
