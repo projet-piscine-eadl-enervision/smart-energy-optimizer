@@ -65,19 +65,19 @@ def test_login_email_inconnu(client):
     assert response.status_code == 401
 
 
-def test_login_email_inconnu_verifie_quand_meme_un_hash(client, monkeypatch):
-    # Même coût de calcul que pour un compte connu : le temps de réponse ne révèle pas l'e-mail
-    appels = []
+def test_login_unknown_email_still_checks_a_hash(client, monkeypatch):
+    # Same computation cost as for a known account: response time does not reveal the email
+    calls = []
 
-    def espion(plain, hashed):
-        appels.append(hashed)
+    def spy(plain, hashed):
+        calls.append(hashed)
         return False
 
-    monkeypatch.setattr(auth, "verify_password", espion)
+    monkeypatch.setattr(auth, "verify_password", spy)
     client.post(
-        "/auth/login", data={"username": "inconnu@example.com", "password": "motdepasse"}
+        "/auth/login", data={"username": "inconnu@example.com", "password": "password"}
     )
-    assert appels == [DUMMY_HASH]
+    assert calls == [DUMMY_HASH]
 
 
 def test_me(client, auth_headers):
@@ -108,29 +108,29 @@ def test_me_utilisateur_desactive(client, make_user):
     assert response.status_code == 401
 
 
-def test_register_mot_de_passe_de_72_octets(client):
+def test_register_password_of_72_bytes(client):
     response = client.post(
         "/auth/register", json={"email": "bob@example.com", "password": "a" * 72}
     )
     assert response.status_code == 201
 
 
-def test_register_mot_de_passe_trop_long(client):
+def test_register_password_too_long(client):
     response = client.post(
         "/auth/register", json={"email": "bob@example.com", "password": "a" * 73}
     )
     assert response.status_code == 422
 
 
-def test_register_mot_de_passe_trop_long_en_octets(client):
-    # 37 caractères de 2 octets : 74 octets
+def test_register_password_too_long_in_bytes(client):
+    # 37 two-byte characters: 74 bytes
     response = client.post(
         "/auth/register", json={"email": "bob@example.com", "password": "é" * 37}
     )
     assert response.status_code == 422
 
 
-def test_login_mot_de_passe_trop_long(client, make_user):
+def test_login_password_too_long(client, make_user):
     make_user(email="bob@example.com")
     response = client.post(
         "/auth/login", data={"username": "bob@example.com", "password": "a" * 100}

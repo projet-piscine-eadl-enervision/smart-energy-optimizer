@@ -52,6 +52,6 @@ def test_jeton_modifie():
     assert security.decode_access_token(falsifie) is None
 
 
-def test_verify_password_trop_long_refuse_sans_erreur():
-    hashed = security.hash_password("motdepasse")
+def test_verify_password_too_long_rejected_without_error():
+    hashed = security.hash_password("password")
     assert not security.verify_password("a" * 100, hashed)
