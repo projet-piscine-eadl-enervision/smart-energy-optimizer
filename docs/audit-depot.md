@@ -1,6 +1,6 @@
 # Audit du dépôt, état au 26/10/2026
 
-Base : `main` à `fe0793b` (PR #191, #192 et #194 incluses). Tests et couverture lus dans le journal de la CI de ce commit ; `pip-audit`, `npm audit` et Trivy relancés sur ce commit le 26/10 ; réglages GitHub lus par l'API le 26/10. Sauf mesure du 26/10, les lignes de *Traité* et *Assumé* sont reprises de l'audit du 24/10. Non vérifié : le contenu de `production.env` (seule la longueur de `SECRET_KEY` a été relevée).
+Base : `main` à `fe0793b` (PR #191, #192 et #194 incluses). Tests et couverture lus dans le journal de la CI de ce commit ; `pip-audit`, `npm audit` et Trivy relancés sur ce commit le 26/10 ; réglages GitHub lus par l'API le 26/10. Sauf mesure du 26/10, les lignes de *Traité* et *Assumé* sont reprises de l'audit du 24/10. Non vérifié : le contenu de `production.env`, dont seules la longueur de `SECRET_KEY` et la valeur de `APP_ENV` ont été relevées.
 
 Légende : **P1** avant tout, **P2** bientôt, **P3** confort.
 
