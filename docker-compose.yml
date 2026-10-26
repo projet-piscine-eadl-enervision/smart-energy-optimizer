@@ -101,9 +101,10 @@ services:
     # Utilisateur node (uid 1000) : les captures d'écran appartiennent à l'utilisateur WSL, pas à root
     user: node
     working_dir: /e2e
+    # Chrome plutôt qu'Electron, déclaré obsolète par Cypress. Arguments ajoutés à « cypress run »
+    command: ["--browser", "chrome"]
     volumes:
-      - ./frontend/cypress.config.js:/e2e/cypress.config.js:ro
-      - ./frontend/cypress:/e2e/cypress
+      - ./frontend/cypress:/e2e
     depends_on:
       - frontend
 

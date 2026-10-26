@@ -58,7 +58,7 @@ docker compose --profile e2e run --rm e2e
 
 Chaque test crée son propre compte (email unique), la base n'a pas besoin d'être vidée. En cas
 d'échec, une capture d'écran est écrite dans `cypress/screenshots/` (ignoré par Git). Pour un
-seul fichier : `docker compose --profile e2e run --rm e2e --spec cypress/e2e/login.cy.js`.
+seul fichier : `docker compose --profile e2e run --rm e2e --browser chrome --spec e2e/login.cy.js`.
 
 ## Additional Resources
 
