@@ -108,6 +108,52 @@ actions = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
 
 L'instance impose IMDSv2 (`http_tokens = "required"`), son disque est chiffré, et le bucket S3 est privé, chiffré (SSE-S3) et bloque tout accès public (`block_public_acls`, `ignore_public_acls`, `block_public_policy`, `restrict_public_buckets`). Les commandes passent par Systems Manager.
 
+### État réel de l'infrastructure
+
+Relevé du 26/10 avec le compte AWS du projet, par des commandes en lecture seule (`<compte>` et `<id>` masquent le numéro du compte et des identifiants numériques). Il correspond au code ci-dessus.
+
+```console
+$ aws ec2 describe-instances --instance-ids <instance> --query '...MetadataOptions'
+"HttpTokens": "required"          # IMDSv2 imposé
+$ aws ec2 describe-security-groups --group-ids <groupe> --query '...{entree,sortie}'
+entrée : tcp 4000, liste d'adresses de CloudFront ("Frontend (port 4000), depuis CloudFront uniquement"), aucune plage IP
+sortie : tcp 80 et tcp 443 vers 0.0.0.0/0
+$ aws ec2 describe-volumes --volume-ids <volume> --query '[].{chiffre,type,taille}'
+{"chiffre": true, "type": "gp3", "taille": 64}
+$ aws cloudfront list-distributions --query '...{viewer,origine}'
+{"viewer": "redirect-to-https", "origine": "http-only"}
+```
+
+Rôle de déploiement GitHub (`enervision-production-deploy`) : aucune politique gérée, une seule politique en ligne.
+
+```console
+$ aws iam get-role --role-name enervision-production-deploy --query 'Role.AssumeRolePolicyDocument'
+Federated : arn:aws:iam::<compte>:oidc-provider/token.actions.githubusercontent.com
+Action    : sts:AssumeRoleWithWebIdentity
+aud       : sts.amazonaws.com
+sub       : repo:<organisation>@<id>/<dépôt>@<id>:environment:production
+$ aws iam get-role-policy --role-name enervision-production-deploy --policy-name enervision-production-deploy
+ssm:SendCommand       sur  document/AWS-RunShellScript et instance/<instance>
+ssm:ListCommandInvocations, ssm:GetCommandInvocation   sur *
+```
+
+Le `sub` contient les identifiants numériques de l'organisation et du dépôt, ce qui empêche un dépôt qui reprendrait leur nom d'assumer le rôle.
+
+Rôle de l'instance (`enervision-production-instance`), c'est-à-dire ce que reçoit un conteneur de la machine : la politique gérée `AmazonSSMManagedInstanceCore` (agent Session Manager) et une politique en ligne limitée au bucket de données.
+
+```console
+$ aws iam get-role-policy --role-name enervision-production-instance --policy-name enervision-production-instance-s3
+s3:ListBucket                 sur  enervision-production-data-<compte>
+s3:GetObject, s3:PutObject    sur  .../etl/*  et  .../backups/*
+s3:GetObject                  sur  .../dvc/*
+```
+
+Aucun droit de suppression, et en dehors de Session Manager aucun accès à un autre service ni à un autre bucket.
+
+Buckets S3 : le bucket de données et celui du state Terraform sont chiffrés (`SSEAlgorithm: AES256`) et bloquent tout accès public (`BlockPublicAcls`, `IgnorePublicAcls`, `BlockPublicPolicy`, `RestrictPublicBuckets` à `true`).
+
+Limites : le trafic entre CloudFront et l'instance est en HTTP (pas de nom de domaine ni de certificat à nous) ; le bucket n'est ni versionné ni chiffré par une clé KMS (choix de coût pour un projet de deux semaines).
+
 ## VM de staging
 
 La VM de l'école héberge le staging. Elle n'est joignable que depuis le réseau de l'école. Relevé du 26/10, en tant que `root` :
