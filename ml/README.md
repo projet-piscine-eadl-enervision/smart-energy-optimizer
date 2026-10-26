@@ -27,7 +27,7 @@ docker compose run --rm ml python train.py --model seasonal_naive     # modèle 
 docker compose run --rm ml python -m enervision_ml.predict
 ```
 
-Résultats dans MLflow : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
+Résultats dans le MLflow de développement : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
 
 La prédiction toutes les heures viendra avec le service ML (planificateur intégré et `POST /predictions/run`). Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
 
@@ -53,7 +53,14 @@ $C run --rm ml                                      # entraîne un challenger
 $C run --rm ml python -m enervision_ml.predict      # prévoit les 24 prochaines heures
 ```
 
-MLflow n'a pas d'authentification : il écoute sur `127.0.0.1:5000` de la VM (`ssh -L 5000:127.0.0.1:5000 <VM>`). Le module utilise le compte propriétaire de la base, comme l'ETL, en attendant les comptes par module (ticket #145). Sans historique chargé, `run --rm ml` s'arrête sur « Historique insuffisant » et `predict` sur « Aucun modèle champion » : les connexions à la base et à MLflow fonctionnent.
+MLflow n'a pas d'authentification : sur la VM, il écoute sur `127.0.0.1:5000` et n'est atteignable que par un tunnel SSH. Deux MLflow existent donc, et il ne faut pas les confondre sur le poste :
+
+- **`http://localhost:5000`** : le MLflow de développement, celui du `docker compose up` local. Il a ses propres expériences et ses propres modèles.
+- **`http://localhost:5001`** : le MLflow du staging, atteint par le tunnel, qui renvoie le port 5001 du poste vers le port 5000 de la VM.
+
+Pour ouvrir celui du staging, lancer **depuis le poste** (pas depuis la VM) `ssh -L 5001:127.0.0.1:5000 root@<VM>`, laisser la fenêtre ouverte, puis aller sur http://localhost:5001. Ne pas prendre le port 5000 pour le tunnel : si le compose de développement tourne, c'est lui qui répond, et on voit une autre base, sans l'expérience `enervision` du staging. Les liens `http://mlflow:5000/...` affichés par `run --rm ml` sont ceux du réseau Docker et ne s'ouvrent pas depuis le poste : remplacer `mlflow:5000` par `localhost:5001` pour le staging.
+
+Le module utilise le compte propriétaire de la base, comme l'ETL, en attendant les comptes par module (ticket #145). Sans historique chargé, `run --rm ml` s'arrête sur « Historique insuffisant » et `predict` sur « Aucun modèle champion » : les connexions à la base et à MLflow fonctionnent.
 
 ### Données en local (développement)
 
