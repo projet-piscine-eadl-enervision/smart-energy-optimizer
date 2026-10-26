@@ -70,11 +70,6 @@ title = "Migrations de la base"
 section = "Données"
 
 [[page]]
-source = "docs/ml-seed-dev-et-schema.md"
-title = "Schéma et données de développement du ML"
-section = "Données"
-
-[[page]]
 source = "docs/deploiement-staging.md"
 title = "Déploiement du staging"
 section = "Exploitation"
