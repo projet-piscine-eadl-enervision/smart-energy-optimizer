@@ -73,7 +73,7 @@ La page `/docs` du mock reste la référence pour les paramètres et les formats
 | `db` | PostgreSQL 16 + TimescaleDB (`timescale/timescaledb:2.30.2-pg16`, image officielle) | non | oui | oui |
 | `migrate` | applique les migrations SQL de `db/migrations` (dbmate) puis s'arrête, avant `api` et `etl` ; [détail](migrations-base-de-donnees.md) | `.../db` | construit localement, dossier `db/migrations` monté (`docker compose run --rm migrate`) | image du même tag que les autres |
 | `api` | API FastAPI (Python 3.13) : `/health`, `/auth/*`, `/history`, `/predictions`, `/recommendations` (jeton JWT) | `.../api` | rechargement à chaud, port 8000 | port 8000 (fermé à l'extérieur en production) |
-| `etl` | traitement des données : nettoyage de l'historique, chargement des sites en base (`load-ref`), `/health` seule (pas de route métier) | `.../etl` | port 8001 (santé) | profil `apps`, sans port publié |
+| `etl` | traitement des données : nettoyage de l'historique, chargement des sites en base (`load-ref`), collecte des mesures courantes (`poll-current`), `/health` seule (pas de route métier) | `.../etl` | port 8001 (santé) | profil `apps`, sans port publié |
 | `frontend` | Angular 22 (Node 24) | `.../frontend` | serveur de développement (cible `dev`), port 4000 | profil `apps` : build de production servi par le serveur SSR Node, port 4000 |
 | `ml` | entraînement des modèles (tâche ponctuelle) | `.../ml` | profil `ml`, à la demande : `docker compose run --rm ml` | image publiée, aucun service |
 | `mlflow` | suivi des expériences et registre des modèles (`ghcr.io/mlflow/mlflow:v3.17.2`, image officielle) | non | port 5000 | non déployé (les comptes de service `mlflow` et `monitoring` existent sur la VM de staging) |
@@ -93,6 +93,7 @@ Le flux de données prévu : le mock alimente l'ETL, qui écrit dans la base ; l
 | `POSTGRES_USER`, `POSTGRES_DB` | compte et base | `postgres`, `enervision` | `enervision`, `enervision` | `enervision`, `enervision` |
 | `POSTGRES_PASSWORD` | mot de passe de la base | `dev` | généré sur la VM | généré sur l'instance, différent |
 | `DATABASE_URL` | connexion de l'API et de l'ETL à la base (compte `POSTGRES_USER`) | calculée par le compose | calculée par le compose | calculée par le compose |
+| `POLL_INTERVAL_SECONDS` | secondes entre deux tours du collecteur de l'ETL | `60` (défaut) | `60` (défaut) | `60` (défaut) |
 | `API_PORT`, `ETL_PORT`, `FRONTEND_PORT` | ports publiés sur l'hôte | 8000, 8001, 4000 | fixes dans le compose (l'ETL n'a aucun port publié) | idem ; le groupe de sécurité n'ouvre que 4000, à CloudFront |
 | `COMPOSE_PROFILES` | active `etl` et `frontend` (profil `apps`) | sans objet | `apps` | `apps` |
 | `IMAGE_TAG` | tag des images à déployer | sans objet | `main` par défaut ; une ligne `IMAGE_TAG=` fige le staging (retour arrière) | tag de version `vX.Y.Z`, passé par le workflow de déploiement |

@@ -4,9 +4,10 @@ from decimal import Decimal
 
 import pytest
 
+from mock_client.schemas.alert import Alert
 from mock_client.schemas.reading import Reading
 from mock_client.schemas.site import Site
-from pipeline.rows import energy_reading_row, site_row, to_decimal
+from pipeline.rows import alert_row, energy_reading_row, site_row, to_decimal
 from tests.conftest import READING_PAYLOAD, SITE_EXAMPLE
 
 FETCHED_AT = datetime(2026, 10, 23, 14, 12, 41, tzinfo=UTC)
@@ -60,3 +61,18 @@ def test_site_row_matches_ref_site_columns():
     row = site_row(Site.model_validate(SITE_EXAMPLE))
 
     assert row == {**SITE_EXAMPLE, "capacity_kw": Decimal("250.0")}
+
+
+def test_alert_row_is_an_api_alert_with_decimals():
+    row = alert_row(
+        Alert.model_validate(
+            {
+                "alert_id": "ALR-SITE003-1", "timestamp": "2026-10-24T12:15:55.273602", "site_id": "SITE003",
+                "severity": "critical", "type": "outage", "message": "Risque", "value": 741.1, "threshold": 630.0,
+            }
+        )
+    )
+
+    assert row["alert_type"] == "outage" and row["origin"] == "api"
+    assert row["time"] == datetime(2026, 10, 24, 12, 15, 55, 273602, tzinfo=UTC)
+    assert row["value"] == Decimal("741.1") and row["threshold"] == Decimal("630.0")
