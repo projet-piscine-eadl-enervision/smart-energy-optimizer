@@ -26,6 +26,7 @@ from mock_client.services.alert_service import parse_alerts
 from mock_client.services.sensor_service import parse_sensors_status
 from pipeline import db, heartbeat, raw, runs
 from pipeline.jobs import load_ref
+from pipeline.readings import insert_readings
 from pipeline.rows import alert_row, energy_reading_row
 from pipeline.sensors import Episode, plan_changes
 
@@ -37,21 +38,12 @@ ALERTS_PATH = "/alerts"
 SUMMARY_EVERY_TOURS = 10  # une ligne etl.run toutes les 10 tours, et une à chaque série d'échecs
 SKEW_WARNING = timedelta(minutes=5)  # écart toléré entre l'heure du mock et notre heure de réception
 
-SITES = "SELECT site_id FROM ref.site ORDER BY site_id"
 ALERT_TYPES = "SELECT alert_type FROM ref.alert_type"
 SEVERITIES = "SELECT severity FROM ref.severity"
 LATEST_EPISODES = (
     "SELECT DISTINCT ON (site_id, sensor) site_id, sensor, started_at, failing_until"
     " FROM core.sensor_status ORDER BY site_id, sensor, started_at DESC"
 )
-INSERT_READING = """
-INSERT INTO core.energy_reading (time, mock_time, site_id, consumption_kw, voltage_v, current_a,
-    power_factor, temperature_celsius, humidity_percent, null_reasons, data_quality, source, raw_id)
-VALUES (%(time)s, %(mock_time)s, %(site_id)s, %(consumption_kw)s, %(voltage_v)s, %(current_a)s,
-    %(power_factor)s, %(temperature_celsius)s, %(humidity_percent)s, %(null_reasons)s,
-    %(data_quality)s, %(source)s, %(raw_id)s)
-ON CONFLICT (site_id, time) DO NOTHING
-"""
 INSERT_EPISODE = (
     "INSERT INTO core.sensor_status (site_id, sensor, started_at, failing_until)"
     " VALUES (%(site_id)s, %(sensor)s, %(started_at)s, %(failing_until)s)"
@@ -108,13 +100,8 @@ class Summary:
 
 async def ensure_sites(conn: psycopg.Connection) -> Known:
     """Lit les sites en base ; si ref.site est vide, la charge d'abord depuis le mock."""
-    sites = [row[0] for row in conn.execute(SITES).fetchall()]
-    if not sites:
-        logger.info("ref.site is empty: loading the sites from the mock first")
-        await load_ref.run(conn)
-        sites = [row[0] for row in conn.execute(SITES).fetchall()]
     return Known(
-        sites,
+        await load_ref.ensure_site_ids(conn),
         {row[0] for row in conn.execute(ALERT_TYPES).fetchall()},
         {row[0] for row in conn.execute(SEVERITIES).fetchall()},
     )
@@ -195,10 +182,7 @@ async def tour(conn: psycopg.Connection, known: Known) -> Tour:
 
     rows = reading_rows(readings, result)
     with conn.transaction():
-        if rows:
-            with conn.cursor() as cursor:
-                cursor.executemany(INSERT_READING, rows)
-            result.loaded = len(rows)
+        result.loaded = insert_readings(conn, rows)
         if statuses is not None:
             write_sensors(conn, statuses, sensors_seen_at, known, result)
         if alerts is not None:
@@ -283,8 +267,8 @@ async def serve(interval: float, once: bool) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--interval", type=float, default=heartbeat.interval_seconds(), help="secondes entre deux tours")
-    parser.add_argument("--once", action="store_true", help="un seul tour, pour un essai")
+    parser.add_argument("--interval", type=float, default=heartbeat.interval_seconds(), help="seconds between two tours")
+    parser.add_argument("--once", action="store_true", help="run a single tour, for a trial")
     args = parser.parse_args(argv)
     if args.interval <= 0:
         parser.error("--interval must be positive")

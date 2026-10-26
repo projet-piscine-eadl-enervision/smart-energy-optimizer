@@ -47,7 +47,7 @@ Pile complète : `docker compose up -d` à la racine, puis `docker ps` doit mont
 - `pipeline/db.py`, `pipeline/runs.py`, `pipeline/raw.py` : connexion à la base (`DATABASE_URL`, autocommit), suivi de chaque traitement dans `etl.run`, réponses brutes dans `raw.api_response`.
 - `pipeline/sensors.py`, `pipeline/heartbeat.py` : épisodes de panne de capteur (`core.sensor_status`) et signal de vivacité du collecteur.
 - `pipeline/rows.py` : lignes prêtes à insérer en base (`core.energy_reading` : axe `time`, heure du mock, décimaux).
-- `pipeline/jobs/` : un module par traitement, avec `main(argv)`. Lancement : `python -m pipeline <traitement>` (`clean-history`, `load-ref`, `poll-current`).
+- `pipeline/jobs/` : un module par traitement, avec `main(argv)`. Lancement : `python -m pipeline <traitement>` (`clean-history`, `load-ref`, `poll-current`, `backfill`).
 - `pipeline/provided_files/`, `pipeline/edited_files/` : données suivies par DVC, voir [`docs/donnees-dvc.md`](../docs/donnees-dvc.md).
 
 ## Nettoyage de l'historique
@@ -65,6 +65,15 @@ Sur le fichier actuel, pour la consommation : 119 807 mesurées, 353 retrouvées
 `python -m pipeline poll-current` interroge le mock toutes les 60 s (`--interval` ou `POLL_INTERVAL_SECONDS`) : `/current` de chaque site, `/sensors/status` et `/alerts`. Chaque réponse est enregistrée telle quelle dans `raw.api_response`, puis transformée en `core.energy_reading` (`time` = heure de réception, `mock_time` = heure du mock), `core.sensor_status` (une ligne par panne, relue en base à chaque tour) et `core.alert` (`origin = 'api'`). Si `ref.site` est vide, le collecteur la charge d'abord. Un appel en échec n'arrête pas la boucle ; `SIGTERM` l'arrête proprement. `--once` fait un seul tour, pour un essai.
 
 Un tour réussi écrit l'heure dans `/tmp/collector.heartbeat` ; `python -m pipeline.heartbeat` répond 0 si elle date de moins de trois intervalles (sonde du conteneur).
+
+## Rattraper l'historique
+
+`python -m pipeline backfill [--start 2023-01-01] [--end AAAA-MM-JJ[THH]] [--site SITE001]` charge l'historique du mock par pas d'une heure, un site à la fois, par fenêtres de 1000 heures (`limit` = nombre d'heures : le pas est exactement une heure, début inclus, fin exclue). Par défaut de 2023-01-01 à maintenant : environ 33 000 lignes par site, 234 000 au total, en une minute environ. Chaque appel est gardé dans `raw.api_response`, une ligne `etl.run` (`backfill`) est écrite par site, et les lignes déjà présentes sont conservées (le mock redessine un bruit à chaque appel, le premier passage fait foi) : relancer est sans danger. À la fin, `analytics.energy_hourly` est rafraîchi sur la période (sa politique automatique ne couvre que trois jours) et `analytics.site_baseline` est recalculée ; ces deux opérations exigent d'être propriétaire des vues, d'où la connexion avec le compte propriétaire.
+
+```bash
+docker compose run --rm etl python -m pipeline backfill --start 2026-10-01     # essai sur une période courte
+docker compose run --rm etl python -m pipeline backfill                         # tout l'historique
+```
 
 ## Collecteur en service
 

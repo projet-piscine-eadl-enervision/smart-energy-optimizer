@@ -24,6 +24,7 @@ RUN_TYPE = "ref_load"
 ENDPOINT = "/sites"
 
 KNOWN_TYPES = "SELECT site_type FROM ref.site_type"
+SITE_IDS = "SELECT site_id FROM ref.site ORDER BY site_id"
 UPSERT_SITE = """
 INSERT INTO ref.site (site_id, site_name, site_type, location, capacity_kw, status)
 VALUES (%(site_id)s, %(site_name)s, %(site_type)s, %(location)s, %(capacity_kw)s, %(status)s)
@@ -67,6 +68,16 @@ async def run(conn: psycopg.Connection) -> int:
         raise
     runs.finish_run(conn, run_id, rows_loaded=count)
     return count
+
+
+async def ensure_site_ids(conn: psycopg.Connection) -> list[str]:
+    """Identifiants des sites en base ; si ref.site est vide, elle est d'abord chargée depuis le mock."""
+    site_ids = [row[0] for row in conn.execute(SITE_IDS).fetchall()]
+    if not site_ids:
+        logger.info("ref.site is empty: loading the sites from the mock first")
+        await run(conn)
+        site_ids = [row[0] for row in conn.execute(SITE_IDS).fetchall()]
+    return site_ids
 
 
 def main(argv: list[str] | None = None) -> None:
