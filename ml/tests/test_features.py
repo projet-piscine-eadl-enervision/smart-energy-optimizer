@@ -11,14 +11,14 @@ from enervision_ml.features import (
 )
 
 
-def test_lags_reculent_en_heures(hourly):
+def test_lags_shift_by_hours(hourly):
     df = add_features(to_hourly_grid(hourly))
     row = df[(df["site_id"] == "SITE001") & (df["consumption_kw"] == 300)].iloc[0]
     assert row["lag_24"] == 276
     assert row["lag_168"] == 132
 
 
-def test_heure_manquante_ne_decale_pas_les_lags(hourly):
+def test_missing_hour_does_not_shift_lags(hourly):
     # Sans grille complète, shift(24) reculerait de 24 lignes, soit 25 heures ici
     trou = hourly[~((hourly["site_id"] == "SITE001") & (hourly["consumption_kw"] == 290))]
     df = add_features(to_hourly_grid(trou))
@@ -26,13 +26,13 @@ def test_heure_manquante_ne_decale_pas_les_lags(hourly):
     assert row["lag_24"] == 276
 
 
-def test_lags_ne_melangent_pas_les_sites(hourly):
+def test_lags_do_not_mix_sites(hourly):
     df = add_features(to_hourly_grid(hourly))
     first_site2 = df[df["site_id"] == "SITE002"].iloc[0]
     assert pd.isna(first_site2["lag_24"])
 
 
-def test_aucune_fuite_du_futur(hourly):
+def test_no_future_leakage(hourly):
     """Modifier les mesures des 24 dernières heures ne doit changer aucune variable de t.
 
     C'est la garantie qu'en production, à 24 h de l'heure prévue, toutes les variables
@@ -53,7 +53,7 @@ def test_aucune_fuite_du_futur(hourly):
     )
 
 
-def test_calendrier_en_utc_sans_changement_d_heure():
+def test_calendar_in_utc_without_dst():
     """Le profil du mock suit l'heure UTC toute l'année (constat 11)."""
     df = pd.DataFrame(
         {
@@ -71,7 +71,7 @@ def test_calendrier_en_utc_sans_changement_d_heure():
     assert features["is_weekend"].tolist() == [0, 0]  # deux lundis
 
 
-def test_heure_trop_incomplete_ecartee():
+def test_incomplete_hour_discarded():
     df = pd.DataFrame(
         {
             "consumption_kw": [100.0, 140.0, 90.0],
@@ -85,7 +85,7 @@ def test_heure_trop_incomplete_ecartee():
     assert not np.isnan(df["consumption_kw"]).any()  # la donnée d'origine n'est pas modifiée
 
 
-def test_extend_future_ajoute_l_horizon_par_site(hourly):
+def test_extend_future_adds_horizon_per_site(hourly):
     grid = to_hourly_grid(hourly)
     frame = add_features(extend_future(grid))
     future = frame[frame["is_future"]]

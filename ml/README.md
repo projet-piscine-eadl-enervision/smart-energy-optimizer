@@ -29,7 +29,31 @@ docker compose run --rm ml python -m enervision_ml.predict
 
 Résultats dans MLflow : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
 
-La prédiction toutes les heures viendra avec le service ML (planificateur intégré et `POST /predictions/run`).
+La prédiction toutes les heures viendra avec le service ML (planificateur intégré et `POST /predictions/run`). Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
+
+### Données attendues de l'ETL
+
+Le ML lit `analytics.energy_hourly`. L'historique du rattrapage horaire (`python -m pipeline backfill`) n'y apparaît qu'après le rafraîchissement de l'agrégat, que le rattrapage lance : sans lui, l'entraînement s'arrête (moins de 365 jours). Le collecteur complète ensuite heure par heure.
+
+Pour que deux entraînements donnent les mêmes chiffres, fixer la fin du jeu avec `ML_DATA_END` (date ISO, UTC) : sans elle, les fenêtres de validation et de test glissent à chaque heure ajoutée.
+
+```bash
+ML_DATA_END=2026-10-25 docker compose run --rm ml
+```
+
+### Sur le staging
+
+Compose : `docker-compose.staging.yml`. Le suivi des modèles (`mlflow`) s'ajoute à `COMPOSE_PROFILES` ; l'entraînement et la prévision se lancent à la demande, jamais en service (une mise à jour toutes les 2 minutes les relancerait).
+
+```bash
+# staging.env : COMPOSE_PROFILES=apps,collector,mlflow
+C="docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env"
+$C pull ml && $C up -d
+$C run --rm ml                                      # entraîne un challenger
+$C run --rm ml python -m enervision_ml.predict      # prévoit les 24 prochaines heures
+```
+
+MLflow n'a pas d'authentification : il écoute sur `127.0.0.1:5000` de la VM (`ssh -L 5000:127.0.0.1:5000 <VM>`). Le module utilise le compte propriétaire de la base, comme l'ETL, en attendant les comptes par module (ticket #145). Sans historique chargé, `run --rm ml` s'arrête sur « Historique insuffisant » et `predict` sur « Aucun modèle champion » : les connexions à la base et à MLflow fonctionnent.
 
 ### Données en local (développement)
 
@@ -40,7 +64,7 @@ cp "<dossier du sujet>/data/all_sites_combined.csv" ml/data/   # ignoré par Git
 docker compose run --rm ml python scripts/seed_dev.py
 ```
 
-Le script refuse de tourner si `APP_ENV` n'est pas `dev`. Le CSV n'est pas le mock (niveaux, noms des sites, anomalies) : il sert à faire tourner le code, pas à évaluer le modèle, qui s'entraîne sur l'historique du mock chargé par l'ETL. Ce jeu d'entraînement doit être **figé et commun** à l'équipe : le mock redessine son bruit à chaque appel, deux chargements ne donnent pas les mêmes données.
+Le script refuse de tourner si `APP_ENV` n'est pas `dev` (le service `ml` du staging fixe `APP_ENV=staging`). Le CSV n'est pas le mock (niveaux, noms des sites, anomalies) : il sert à faire tourner le code, pas à évaluer le modèle, qui s'entraîne sur l'historique du mock chargé par l'ETL. Ce jeu d'entraînement doit être **figé et commun** à l'équipe : le mock redessine son bruit à chaque appel, deux chargements ne donnent pas les mêmes données.
 
 ## Stratégie
 
@@ -65,11 +89,11 @@ Un seuil en quantile ou en part de la capacité ne convient pas : il marquerait 
 | `hour_of_day`, `day_of_week`, `is_weekend`, `month` | le profil ; en **UTC**, que suit le mock sans changement d'heure (constat 11) |
 | `lag_24`, `lag_168` | même heure la veille, la semaine dernière ; utilisés seulement par le modèle de comparaison |
 
-Écartées : la température, qui n'explique pas la consommation (constat 7) ; `current_a`, copie de la cible (constat 13) ; l'ensoleillement et le coût, absents du mock (constat 14) ; les jours fériés, ignorés par le mock (constat 6). Une heure dont plus de la moitié des mesures n'ont pas de consommation est traitée comme absente (`nb_missing`, constat 10). Aucune variable tirée des mesures n'a un décalage inférieur à 24 h : un test le vérifie (`test_aucune_fuite_du_futur`).
+Écartées : la température, qui n'explique pas la consommation (constat 7) ; `current_a`, copie de la cible (constat 13) ; l'ensoleillement et le coût, absents du mock (constat 14) ; les jours fériés, ignorés par le mock (constat 6). Une heure dont plus de la moitié des mesures n'ont pas de consommation est traitée comme absente (`nb_missing`, constat 10). Aucune variable tirée des mesures n'a un décalage inférieur à 24 h : un test le vérifie (`test_no_future_leakage`).
 
 **Modèles** (`models.py`).
 1. `site_profile` : moyenne de l'entraînement par site, mois, type de jour et heure. C'est la meilleure prévision possible sur ces données, et la référence que tout modèle doit battre.
-2. `seasonal_naive` : même heure la semaine dernière. Il recopie le bruit de la semaine passée et fait environ 1,4 fois moins bien que le profil (vérifié par `test_profil_bat_le_naif_sur_des_donnees_comme_le_mock`) : la preuve que les mesures récentes n'apportent rien.
+2. `seasonal_naive` : même heure la semaine dernière. Il recopie le bruit de la semaine passée et fait environ 1,4 fois moins bien que le profil (vérifié par `test_profile_beats_naive_on_mock_like_data`) : la preuve que les mesures récentes n'apportent rien.
 3. Un modèle plus complexe (LightGBM) peut être proposé comme challenger ; il n'est pas attendu qu'il batte le profil, puisque le reste est du bruit.
 
 **Évaluation** (`evaluate.py`). Découpage dans l'ordre du temps, jamais aléatoire : entraînement, puis validation (60 derniers jours avant le test), puis test (60 derniers jours). L'entraînement doit couvrir **au moins un an**, sinon le facteur du mois n'est pas appris (constat 5) : l'entraînement s'arrête avec un message clair. Le profil est calculé sur l'entraînement seulement : `analytics.site_baseline`, calculée par l'ETL sur toutes les données, ne doit pas servir de modèle (fuite de la validation et du test).
@@ -113,4 +137,4 @@ ruff check .
 pytest --cov=enervision_ml
 ```
 
-`test_pipeline.py` enchaîne entraînement, promotion et prédiction avec un MLflow en fichier SQLite temporaire et des données factices : ni base ni serveur nécessaires. Seules les requêtes SQL de `data.py` ne sont pas couvertes, elles demandent TimescaleDB et les schémas de l'équipe.
+`test_pipeline.py` enchaîne entraînement, promotion et prédiction avec un MLflow en fichier SQLite temporaire et des données factices : ni base ni serveur nécessaires. `test_data_db.py` teste les requêtes SQL de `data.py` avec le rôle `enervision_ml` ; il est ignoré sans `DATABASE_URL` (base migrée par `db/migrations`, par exemple `DATABASE_URL=postgresql://postgres:…@localhost:5432/postgres`).

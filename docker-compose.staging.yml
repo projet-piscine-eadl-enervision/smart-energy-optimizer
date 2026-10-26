@@ -6,6 +6,10 @@
 # elles sont activées avec COMPOSE_PROFILES=apps dans le fichier d'environnement, quand leur image
 # existe sur GHCR (un module n'est publié que s'il a un Dockerfile).
 # Les variables POSTGRES_PASSWORD et MOCK_API_* doivent toujours être présentes dans ce fichier.
+#
+# Module ML : le suivi des modèles (profil `mlflow`) s'ajoute à COMPOSE_PROFILES ; l'entraînement et la
+# prévision se lancent à la demande avec `run --rm ml` (profil `ml-job`, jamais dans COMPOSE_PROFILES :
+# sinon chaque mise à jour relancerait l'entraînement).
 name: enervision
 
 services:
@@ -96,6 +100,50 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Suivi et registre des modèles du module ML (alias champion et challenger). Sans authentification :
+  # lié à 127.0.0.1 de la VM, accès par tunnel SSH. À activer avec COMPOSE_PROFILES=...,mlflow.
+  mlflow:
+    profiles: [mlflow]
+    image: ghcr.io/mlflow/mlflow:v3.17.2
+    restart: unless-stopped
+    # --allowed-hosts : en-têtes Host acceptés (le service ml appelle http://mlflow:5000)
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+      --allowed-hosts "mlflow:5000,localhost:*,127.0.0.1:*"
+    ports:
+      - "127.0.0.1:${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # Entraînement du modèle (commande par défaut) ou prévision, à la demande :
+  #   docker compose ... run --rm ml
+  #   docker compose ... run --rm ml python -m enervision_ml.predict
+  # Demande mlflow démarré. APP_ENV : scripts/seed_dev.py refuse de tourner hors développement.
+  ml:
+    profiles: [ml-job]
+    image: ${IMAGE_PREFIX:-ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer}/ml:${IMAGE_TAG:-main}
+    restart: "no"
+    environment:
+      APP_ENV: ${APP_ENV:-staging}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-enervision}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-enervision}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      # Fin figée du jeu d'entraînement (ISO, UTC) ; vide : tout l'historique
+      ML_DATA_END: ${ML_DATA_END:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
   frontend:
     profiles: [apps]
     image: ${IMAGE_PREFIX:-ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer}/frontend:${IMAGE_TAG:-main}
@@ -112,3 +160,4 @@ services:
 
 volumes:
   db_data:
+  mlflow_data:

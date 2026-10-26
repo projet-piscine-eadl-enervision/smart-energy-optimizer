@@ -48,7 +48,9 @@ def main(argv: list[str] | None = None) -> None:
     mlflow.set_experiment(EXPERIMENT)
     client = MlflowClient()
 
-    raw = load_hourly(settings.database_url)
+    # ML_DATA_END fige la fin du jeu : les fenêtres de découpage ne glissent plus
+    # quand le collecteur ajoute des heures
+    raw = load_hourly(settings.database_url, end=settings.data_end)
     if raw.empty:
         raise SystemExit(
             "analytics.energy_hourly est vide : l'ETL (ou scripts/seed_dev.py en local) "

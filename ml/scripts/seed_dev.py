@@ -74,13 +74,14 @@ def main() -> None:
                 "ON COMMIT DROP"
             )
             with cur.copy(
-                "COPY seed (time, site_id, consumption_kw, temperature_celsius, "
+                "COPY seed (time, mock_time, site_id, consumption_kw, temperature_celsius, "
                 "humidity_percent, null_reasons, data_quality, source) FROM STDIN"
             ) as copy:
                 for r in df.itertuples(index=False):
                     copy.write_row(
                         (
                             r.time,
+                            r.time,  # le CSV n'a qu'une heure : elle sert aux deux colonnes
                             r.site_id,
                             None if pd.isna(r.consumption_kwh) else r.consumption_kwh,
                             None if pd.isna(r.temperature_celsius) else r.temperature_celsius,
