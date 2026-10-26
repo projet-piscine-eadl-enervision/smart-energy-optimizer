@@ -1,0 +1,92 @@
+name: Wiki
+
+# Publie la documentation du dépôt dans le wiki GitHub (infra/scripts/sync-wiki.py, table dans
+# docs/wiki-map.toml). Sens unique : les pages générées se modifient dans le dépôt. Les dailys et
+# Home.md, écrits dans le wiki, ne sont pas touchés.
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+      - "infra/scripts/sync-wiki.py"
+      - "infra/scripts/test-sync-wiki.py"
+      - ".github/workflows/wiki-sync.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "**/README.md"
+      - "CONTRIBUTING.md"
+      - "SECURITY.md"
+      - "infra/scripts/sync-wiki.py"
+      - "infra/scripts/test-sync-wiki.py"
+      - ".github/workflows/wiki-sync.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Sur une PR : teste le script, vérifie la table et montre ce qui changerait dans le wiki, sans rien publier.
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tests et cohérence de la table
+        run: |
+          python3 infra/scripts/test-sync-wiki.py
+          python3 infra/scripts/sync-wiki.py --check
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+      - name: Pages qui changeraient
+        run: |
+          python3 infra/scripts/sync-wiki.py --wiki-dir wiki
+          git -C wiki add -A
+          {
+            echo '### Changements dans le wiki'
+            echo '```'
+            git -C wiki diff --cached --stat
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    needs: check
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    # Deux fusions rapprochées s'exécutent l'une après l'autre : pas d'annulation, le wiki doit refléter le dernier main.
+    concurrency:
+      group: wiki-sync
+      cancel-in-progress: false
+    permissions:
+      contents: write # pousse dans le dépôt du wiki ; épingler checkout sur un SHA durcirait ce job
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          fetch-depth: 0
+      - name: Générer les pages
+        run: python3 infra/scripts/sync-wiki.py --wiki-dir wiki
+      - name: Publier dans le wiki
+        working-directory: wiki
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki already up to date"
+            exit 0
+          fi
+          git commit -m "docs: synchroniser avec ${GITHUB_SHA::7}"
+          # Le wiki s'édite aussi à la main : en cas de push concurrent, on rebase et on réessaie.
+          for attempt in 1 2 3; do
+            git push && exit 0
+            git pull --rebase
+          done
+          echo "::error::Wiki push failed after 3 attempts"
+          exit 1

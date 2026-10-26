@@ -77,3 +77,11 @@ Relire, c'est vérifier que le code répond au ticket, qu'il est testé, lisible
 **Avertissements connus.**
 
 - `trivy-action` reste volontairement en **v0.35.0** (SHA `57a97c7e7821a5776cebc9bb87c984fa69cba8f1`), la version sûre retenue après l'avis CVE-2026-33634. Son `actions/cache` interne tourne encore sur Node 20 : le job `security` de la CI affiche donc un avertissement de dépréciation de Node 20. Il est connu et accepté. La v0.36.0 (SHA `ed142fd0673e97e23eac54620cfb913e5ce36c25`) embarque un `actions/cache` en Node 24 et le fait disparaître : on y passera quand l'équipe aura décidé de s'écarter de la version épinglée. Dependabot ignore cette action pour cette raison. Elle sert aussi au rapport Trivy des images (job `publish`) et au SBOM de la release, à la même version.
+
+## Wiki
+
+Le wiki copie la documentation du dépôt : le dépôt est la source, on ne modifie pas ces pages dans le wiki. À chaque fusion sur `main` qui touche un `README.md`, `CONTRIBUTING.md`, `SECURITY.md` ou `docs/`, le workflow `Wiki` régénère les pages, la barre latérale et l'index des dailys (`infra/scripts/sync-wiki.py`).
+
+- **Nouveau document** : l'ajouter à `docs/wiki-map.toml` (titre, rubrique), ou à `ignore` pour ne pas le publier. Sinon `sync-wiki.py --check` échoue sur la PR.
+- **Dailys et page d'accueil** : écrits à la main dans le wiki, jamais écrasés. Un daily s'appelle `Daily-AAAA-MM-JJ` pour apparaître dans l'index.
+- **Essai local** : `python3 infra/scripts/sync-wiki.py --wiki-dir <clone du wiki>` écrit les pages sans rien commiter. Sur une PR, le résumé du job `check` liste les pages qui changeraient.
