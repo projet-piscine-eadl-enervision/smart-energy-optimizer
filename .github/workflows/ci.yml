@@ -53,8 +53,11 @@ jobs:
         run: bash infra/scripts/check-branch-name.sh "$BRANCH"
 
   commit-messages:
-    # Vérifie chaque commit de la PR, pas seulement le titre.
-    if: github.event_name == 'pull_request'
+    # Vérifie chaque commit de la PR, pas seulement le titre. Dependabot est exclu : ses messages
+    # contiennent des liens de plus de 100 caractères, que la règle de longueur refuse.
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
