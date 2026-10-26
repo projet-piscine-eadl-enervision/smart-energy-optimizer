@@ -162,9 +162,10 @@ Puis ouvre http://localhost:4100 (l'API est jointe par http://localhost:4100/api
 
 ### 4 quater. Démarrer l'ETL
 
-`docker compose up -d` démarre aussi l'ETL (service `etl`). Le code de `etl/` est monté dans le conteneur, et Uvicorn recharge l'ETL à chaque modification. Il lit `MOCK_API_URL`, `MOCK_API_USERNAME` et `MOCK_API_PASSWORD` dans le `.env` à la racine du projet.
+`docker compose up -d` démarre aussi l'ETL (service `etl`). Le code de `etl/` est monté dans le conteneur, et Uvicorn recharge l'ETL à chaque modification. Il lit `MOCK_API_URL`, `MOCK_API_USERNAME` et `MOCK_API_PASSWORD` dans le `.env` à la racine du projet ; `DATABASE_URL` est fournie par le compose.
 
 - Santé : http://localhost:8001/health (l'ETL n'expose aucune autre route ni documentation interactive)
+- Charger les sites du mock dans la base (une fois, après `docker compose up -d`) : `docker compose run --rm etl python -m pipeline load-ref`
 
 Après une modification de `etl/requirements.in`, reconstruis l'image :
 
