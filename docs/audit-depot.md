@@ -25,6 +25,7 @@ Aucun.
 
 - **Une approbation survit aux pushs suivants.** La règle `main` a `dismiss_stale_reviews_on_push` et `require_last_push_approval` désactivés, et ne couvre pas les PR qui visent une autre branche que `main` : le code fusionné n'est donc pas forcément celui qui a été relu.
 - **VM de staging : SSH de `root` et par mot de passe acceptés** (`sshd -T` le 26/10). Machine de l'école, joignable depuis son seul réseau ; restreindre à la clé seule si elle sert au-delà de la démonstration.
+- **Tous les membres de l'équipe ont `AdministratorAccess` sur le compte AWS** (groupe `developpeurs` d'IAM Identity Center, MFA obligatoire ; décrit dans `infra/README.md`, non remesuré le 26/10). Pas de moindre privilège entre les personnes : choix de commodité pour un projet de deux semaines.
 - **Énumération de comptes à l'inscription** : `/auth/register` répond 409 sur un e-mail connu, lié à la décision sur l'inscription ouverte.
 - **`/health/mock` est public** et déclenche un appel sortant vers le mock à chaque requête.
 - **Pas de linter pour le frontend** (#148) : `npm run lint --if-present` réussit faute de script `lint`.
