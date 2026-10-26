@@ -152,6 +152,22 @@ Aucun droit de suppression, et en dehors de Session Manager aucun accès à un a
 
 Buckets S3 : le bucket de données et celui du state Terraform sont chiffrés (`SSEAlgorithm: AES256`) et bloquent tout accès public (`BlockPublicAcls`, `IgnorePublicAcls`, `BlockPublicPolicy`, `RestrictPublicBuckets` à `true`).
 
+Reproductibilité : `terraform plan` sur le code de `main`, avec le state partagé, ne propose aucune création, modification ni suppression.
+
+```console
+$ cd infra/terraform/aws && terraform init -backend-config=backend.hcl && terraform plan
+aws_instance.main: Refreshing state... [id=<instance>]
+aws_cloudfront_distribution.site: Refreshing state... [id=<distribution>]
+(...)
+Note: Objects have changed outside of Terraform
+  # aws_instance.main has changed
+  ~ public_ip = "<ancienne adresse>" -> "<nouvelle adresse>"
+Changes to Outputs:
+  ~ instance_public_ip = "<ancienne adresse>" -> "<nouvelle adresse>"
+```
+
+Les 16 ressources du code existent telles qu'il les décrit. Le seul écart est l'adresse IP publique que Terraform lit sur l'instance, une valeur de sortie et non un réglage : aucun `apply` n'est nécessaire. Le `plan` est en lecture seule ; l'`apply` reste une décision d'équipe.
+
 Limites : le trafic entre CloudFront et l'instance est en HTTP (pas de nom de domaine ni de certificat à nous) ; le bucket n'est ni versionné ni chiffré par une clé KMS (choix de coût pour un projet de deux semaines).
 
 ## VM de staging
