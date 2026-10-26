@@ -15,14 +15,13 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort.
 - **Les rôles de #134 ne sont pas utilisés.** `api` et `etl` se connectent avec `${POSTGRES_USER}`, le super-utilisateur (`docker-compose.staging.yml:32,42`). Créer trois comptes de connexion héritant de `enervision_api`, `enervision_etl`, `enervision_ml` et les donner aux services.
 - **`/health` publie le titre du commit et le sha**, y compris en production (le workflow de déploiement s'en sert). À assumer ou à réduire.
 - **`/auth/register` ouvert à tous, `/auth/login` sans limite d'essais.** À trancher : inscription fermée ou limitation de débit.
-- **Release déclarative.** La case « staging vérifié » de `release.yml` n'est vérifiée par rien, et la personne qui tague peut déployer seule en production. À présenter comme un choix assumé.
 - **Retour arrière du staging** : corrigé dans le script, testé seulement sur des dépôts jetables. À essayer sur la VM.
-- **Aucune alerte** si le minuteur de mise à jour du staging échoue.
+- **Aucune alerte** si le minuteur de mise à jour du staging échoue. La release refuse seulement un commit que le staging n'a pas annoncé, ce qui révèle une VM en retard au moment de livrer.
 
 ### P3
 
 - **Énumération de comptes à l'inscription** : `/auth/register` répond 409 sur un e-mail connu, lié à la décision sur l'inscription ouverte.
-- **Trivy ne scanne pas les images construites.** Les actions sont épinglées par tag, sauf Trivy et `configure-aws-credentials` (sha).
+- **Trivy sur les images : rapport seul pour l'instant** (onglet Security) ; le blocage à la publication viendra une fois les alertes assumées en `.trivyignore`. Les actions sont épinglées par tag, sauf Trivy et `configure-aws-credentials` (sha).
 - **Pas de tests de bout en bout du frontend.** Le job `e2e` (Cypress) a été supprimé : il ne faisait rien (aucune configuration, aucune dépendance). Le front n'a que des tests Vitest (un seul fichier aujourd'hui). À créer : un test de fumée sur le staging (connexion, puis lecture de `/health` par le proxy `/api`), avec Playwright ou Cypress.
 - **`httpx2` : licence vide sur PyPI.** À vérifier avant le rendu.
 - **Pas de seuil de couverture global** dans la CI.
@@ -30,7 +29,7 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort.
 
 ## Traité
 
-- **Publication d'images depuis un fork** : `event == 'push'` et même dépôt exigés. Politique d'approbation passée à `all_external_contributors` (24/10).
+- **Publication d'images depuis un fork** : `publish` est un job de `ci.yml` qui ne tourne que sur un push de `main` (plus de déclencheur `workflow_run`). Politique d'approbation des workflows externes passée à `all_external_contributors` (24/10).
 - **Course sur `:main`** : `:main` n'avance que si le commit est la tête de `main` ; `sha-<commit>` est toujours publiée.
 - **Annulation de la CI sur `main`** : un groupe de concurrence par commit, seules les PR annulent.
 - **Retour arrière du staging** : `update-staging.sh` ramène le compose au commit figé.
@@ -46,8 +45,10 @@ Légende : **P1** avant tout, **P2** bientôt, **P3** confort.
 - **Ports** : l'ETL du staging ne publie plus le 8001 (batch, sonde Docker) ; PostgreSQL de développement lié à `127.0.0.1`.
 - **Images `api`, `etl`, `ml`** : `pip` retiré après l'installation (ses copies embarquées de `certifi`, `urllib3`, `msgpack` causaient 1 critique et 4 hautes) ; Trivy ne trouve plus aucune alerte haute ou critique corrigeable ; `api` et `etl` repassent `healthy`.
 - **Image `frontend` (cible `prod`)** : `npm`, `corepack` et `yarn` retirés (leurs `brace-expansion` et `undici` causaient 4 alertes hautes) ; Trivy ne trouve plus rien, l'image reste `healthy` et sert `/` en 200. La cible `dev` (locale, non publiée) garde 5 alertes hautes, dont `vite`.
-- **Réglages GitHub (24/10, vérifiés par l'API)** : signalement privé de vulnérabilités, alertes Dependabot, mises à jour de sécurité, secret scanning et protection au push activés ; approbation des workflows de tous les contributeurs externes ; Actions ne peut plus créer ni approuver de PR ; environnement `staging` créé (branche `main`).
+- **Réglages GitHub (24/10, vérifiés par l'API, [détail](reglages-github.md))** : signalement privé de vulnérabilités, alertes Dependabot, mises à jour de sécurité, secret scanning et protection au push activés ; approbation des workflows de tous les contributeurs externes ; Actions ne peut plus créer ni approuver de PR ; environnement `staging` créé (branche `main`).
 - **Dependabot étendu** à `pip` (`api`, `etl`, `ml`), `npm` et `docker`, une PR groupée par type le lundi (actif après le merge sur `main`).
+- **CI limitée aux modules touchés** (job `changes`), images réutilisées quand le dossier du module est inchangé (sauf `api`), cache de construction, publication intégrée à `ci.yml`.
+- **Release vérifiée** : la VM annonce à GitHub le commit qu'elle fait tourner (déploiement `staging`), la release refuse un commit non annoncé, puis enchaîne promotion (SBOM joints) et production dans un seul run.
 - **Pilote de base de l'API** : `asyncpg` et `sqlalchemy` présents.
 - **ETL** (PR #97) : client aligné sur l'API, dossier `mock_client`, `/health` seule, sonde Docker `healthy`, plus de Swagger.
 - **Base** (PR #134) : tables, hypertable, rôles, `analytics.refresh_site_baseline()` ; dix migrations rejouées sans erreur. Reste le chargeur de l'ETL.

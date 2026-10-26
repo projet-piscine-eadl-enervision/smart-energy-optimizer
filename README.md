@@ -242,13 +242,21 @@ Les jeux de données de `etl/` sont suivis avec DVC, pas avec Git. Mise en place
 
 ## Staging
 
-Le staging est déployé automatiquement sur la VM de l'école : à chaque merge sur `main` dont la CI est verte, une image Docker par module ayant un `Dockerfile` est publiée sur GHCR, puis la VM tire les images toutes les 2 minutes et relance les conteneurs. La base, l'API, l'ETL et le frontend y tournent ; `ml` n'a pas de service sur le staging. Les migrations de la base y sont appliquées à chaque déploiement, par une image `db` du même tag.
+Le staging est déployé automatiquement sur la VM de l'école : à chaque merge sur `main` dont la CI est verte, une image Docker par module ayant un `Dockerfile` est publiée sur GHCR, puis la VM tire les images toutes les 2 minutes, relance les conteneurs et annonce à GitHub (onglet *Deployments*) que le staging est à jour. La base, l'API, l'ETL et le frontend y tournent ; `ml` n'a pas de service sur le staging. Les migrations de la base y sont appliquées à chaque déploiement, par une image `db` du même tag.
 
 - API du staging : http://10.43.43.50:8000/docs (réseau de l'école)
 - Frontend du staging : http://10.43.43.50:4000
 - Version déployée : http://10.43.43.50:8000/health (titre du commit et sha court)
 
 Le détail (principe, mise en place de la VM, jeton GHCR, dépannage) est dans [`docs/deploiement-staging.md`](docs/deploiement-staging.md). Pour livrer une version (recette, release, production, retour arrière), voir [`docs/mise-en-production.md`](docs/mise-en-production.md).
+
+## Production
+
+La production tourne sur AWS (Paris) et est accessible en HTTPS : https://dvrgizboitg9p.cloudfront.net (page de connexion : `/login`, santé et version déployée : `/api/health`). Seul le frontend est exposé, il transmet `/api/` à l'API. Elle est mise à jour par une release lancée à la main après la recette du staging, avec une approbation dans GitHub : [`docs/mise-en-production.md`](docs/mise-en-production.md). Environnements, URLs et variables : [`docs/environnements-techniques.md`](docs/environnements-techniques.md) ; infrastructure : [`infra/README.md`](infra/README.md).
+
+## Qualité et sécurité de la CI
+
+Chaque PR passe par `ruff`, `pytest`, le build du frontend, le contrôle des migrations, Trivy (dépendances, secrets, Terraform) et SonarQube Cloud (porte de qualité : 80 % de couverture sur le code neuf). Où lire les résultats et que faire quand un contrôle échoue : [`docs/qualite-et-securite-ci.md`](docs/qualite-et-securite-ci.md). Les tests de la CI se lancent aussi en local : `pytest --cov` dans `api/`, `etl/` ou `ml/`, `npm test -- --coverage` dans `frontend/`.
 
 ## Dépendances Python 
 Chaque module Python (`api/`, `etl/`, `ml/`) a deux fichiers :

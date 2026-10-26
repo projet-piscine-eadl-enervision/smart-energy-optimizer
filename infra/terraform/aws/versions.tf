@@ -8,7 +8,7 @@ terraform {
     }
   }
 
-   # State partagé dans S3 (verrou inclus). Les valeurs sont dans backend.hcl (non versionné) :
+  # State partagé dans S3 (verrou inclus). Les valeurs sont dans backend.hcl (non versionné) :
   #   terraform init -backend-config=backend.hcl
   backend "s3" {}
 }

@@ -4,30 +4,32 @@ Ce guide s'adresse à toute personne de l'équipe qui doit faire passer une vers
 
 Pour le reste : les règles de branches, de commits et de versions sont dans [`CONTRIBUTING.md`](../CONTRIBUTING.md), le fonctionnement du staging dans [`deploiement-staging.md`](deploiement-staging.md) et l'infrastructure AWS dans [`infra/terraform/aws/README.md`](../infra/terraform/aws/README.md).
 
-> **La production est désactivée tant que la variable de dépôt `PRODUCTION_ENABLED` n'est pas à `true`** (*Settings > Secrets and variables > Actions > Variables*), ce qui suppose que l'infrastructure AWS existe. Dans cet état, les étapes 1 à 4 fonctionnent normalement. À l'étape 5, le run « Déploiement en production » apparaît avec le statut *skipped* et ne demande aucune approbation : il n'y a donc rien à chercher ni à valider.
+> **La production est désactivée tant que la variable de dépôt `PRODUCTION_ENABLED` n'est pas à `true`** (*Settings > Secrets and variables > Actions > Variables*), ce qui suppose que l'infrastructure AWS existe. Dans cet état, les étapes 1 à 3 fonctionnent normalement. À l'étape 4, le déploiement apparaît avec le statut *skipped* et ne demande aucune approbation.
 
 ## Vocabulaire
 
 - **Recette** : test du staging par une personne de l'équipe, avant de figer une version.
-- **sha** : identifiant court (7 caractères) d'un commit, par exemple `1824be5`. C'est lui qui relie le staging, la release et la production.
-- **Release** : opération qui pose un tag de version `vX.Y.Z` sur un commit et publie une GitHub Release avec ses notes.
+- **sha** : identifiant d'un commit (7 caractères pour la forme courte, par exemple `1824be5`). Il relie le staging, la release et la production.
+- **Release** : opération qui pose un tag de version `vX.Y.Z` sur un commit, publie une GitHub Release avec ses notes, puis promeut les images et déploie la production.
+- **Déploiement `staging`** : enregistrement que la VM du staging crée sur GitHub quand elle fait tourner un commit (onglet *Deployments* du dépôt).
 - **GHCR** : le registre d'images Docker de GitHub, où la CI publie les images des modules.
 - **SSM** (AWS Systems Manager) : service qui permet de lancer des commandes sur l'instance de production sans SSH.
 - **Environnement `production`** : réglage GitHub (*Settings > Environments*) qui impose une approbation humaine avant le déploiement.
 
-## Le parcours en cinq étapes
+## Le parcours en quatre étapes
 
-1. Une PR est fusionnée sur `main` et le staging se met à jour tout seul.
+1. Une PR est fusionnée sur `main` : la CI publie les images, le staging se met à jour et annonce à GitHub le commit qu'il fait tourner.
 2. Une personne fait la recette du staging.
-3. Cette personne lance la release sur le sha recetté.
-4. Le tag déclenche la préparation de la production.
-5. Une personne approuve le déploiement.
+3. Cette personne lance la release : version, promotion des images, déploiement.
+4. Une personne approuve le déploiement en production.
 
 ## 1. Fusion et mise à jour du staging
 
-Le merge d'une PR (squash) crée un `push` sur `main`. La CI s'exécute, puis `Publication des images`, puis la VM tire les nouvelles images (le mécanisme est décrit dans `deploiement-staging.md`). Le staging est à jour quand `version.sha` de http://10.43.43.50:8000/health (réseau de l'école) est le sha du commit de merge. Il n'y a pas de délai garanti : il faut attendre la fin de la CI, celle de la publication, puis au plus 2 minutes de minuteur.
+Le merge d'une PR (squash) crée un `push` sur `main`. La CI s'exécute puis publie les images (job `publish` de `ci.yml`). La VM tire ensuite les nouvelles images (au plus 2 minutes de minuteur, mécanisme décrit dans `deploiement-staging.md`) et annonce à GitHub qu'elle fait tourner ce commit : un déploiement `staging` apparaît dans l'onglet *Deployments* du dépôt. **C'est le signal « le staging est à jour, la recette peut commencer ».** `version.sha` de http://10.43.43.50:8000/health (réseau de l'école) affiche alors le sha du commit de merge.
 
-**Ce que `/health` affiche n'est pas le numéro de version.** `version` y contient le titre du commit et son sha, et change à chaque merge. Le numéro `vX.Y.Z` n'existe qu'après l'étape 3. Tant qu'aucune release n'est lancée, la dernière version publiée reste la précédente, même si des PR ont été fusionnées entre-temps.
+Si l'annonce n'apparaît pas alors que `/health` est à jour, le jeton de la VM est absent ou expiré (voir `deploiement-staging.md`, section « Annonce du staging à GitHub »).
+
+**Ce que `/health` affiche n'est pas le numéro de version.** `version` y contient le titre du commit et son sha, et change à chaque merge. Le numéro `vX.Y.Z` n'existe qu'après l'étape 3.
 
 ## 2. Recette
 
@@ -39,40 +41,44 @@ Il n'existe pas de grille de recette écrite : il s'agit de vérifier sur le sta
 git log <dernier-tag>..<sha> --oneline
 ```
 
-La page *Releases* du dépôt donne le dernier tag. La release est figée sur le sha saisi à l'étape suivante, quels que soient les merges qui arrivent ensuite. Un merge arrivé pendant la recette fait pourtant avancer le staging : `/health` n'affiche plus le sha recetté, alors que la case de confirmation de l'étape 3 atteste qu'il l'affiche. Il faut alors recetter le nouvel état, ou convenir dans l'équipe de ne pas fusionner pendant une recette.
+Un merge arrivé pendant la recette fait avancer le staging. Pour livrer le commit recetté et non le plus récent, saisir son sha à l'étape 3 : la release est figée sur lui, à condition que le staging l'ait annoncé un jour.
 
 ## 3. Release
 
-1. Relever `version.sha` dans http://10.43.43.50:8000/health.
-2. Ouvrir GitHub > *Actions* > *Release* (colonne de gauche) > *Run workflow*, la branche `main` étant sélectionnée. Il faut avoir le droit d'écriture sur le dépôt.
-3. Coller le sha, cocher la confirmation, lancer. La case est une déclaration : le workflow ne peut pas lire le staging lui-même, c'est la personne qui atteste avoir vérifié `/health` et fait la recette.
+1. Ouvrir GitHub > *Actions* > *Release* (colonne de gauche) > *Run workflow*, la branche `main` étant sélectionnée. Il faut avoir le droit d'écriture sur le dépôt.
+2. **Sha** : laisser vide pour livrer le dernier commit annoncé par le staging, ou saisir le sha recetté.
+3. Cocher la confirmation et lancer. La case atteste que la recette est faite : le workflow ne peut pas le vérifier.
 
-Le workflow vérifie le sha, calcule la version selon les règles de `CONTRIBUTING.md`, puis crée le tag et la GitHub Release (avec ses notes générées) sur ce commit exact. Le tag déclenche deux workflows : `Publication des images`, qui ajoute le tag de version à l'image déjà construite pour ce commit, sans reconstruction, et `Déploiement en production`. Le résumé du run `Release` affiche la version calculée et la liste des commits inclus.
+Le workflow vérifie le sha, que la CI du commit est verte et que le staging l'a annoncé avec succès. Il calcule la version selon les règles de `CONTRIBUTING.md` et crée le tag et la GitHub Release (notes générées) sur ce commit exact. Il enchaîne ensuite, dans le même run :
 
-Si ces deux workflows n'apparaissent pas après la release, le tag a été créé avec le jeton par défaut de GitHub, qui ne déclenche aucun workflow. Le workflow `Release` utilise normalement une GitHub App (variable d'organisation `RELEASE_APP_ID`, secret `RELEASE_APP_PRIVATE_KEY`) : vérifier qu'elle est toujours installée sur le dépôt.
+- la **promotion des images** : le tag de version est ajouté à l'image déjà construite pour ce commit, sans reconstruction, et un SBOM (CycloneDX) de chaque image est joint à la GitHub Release ;
+- le **déploiement en production** (étape 4).
+
+Le résumé du run affiche la version calculée et la liste des commits inclus. Si la promotion échoue, *Re-run failed jobs* sur le run de la release suffit ; elle peut aussi être relancée seule (*Actions > Promotion des images*, avec le tag).
 
 **Si la release est refusée**, le message d'erreur du run indique pourquoi :
 
 | Message | Cause | Que faire |
 |---|---|---|
-| Cocher la confirmation | la case n'était pas cochée | relancer en la cochant, après avoir vérifié `/health` |
-| Sha invalide, ou inconnu ou ambigu | sha mal copié | recopier `version.sha` : 7 à 40 caractères hexadécimaux en minuscules |
-| n'est pas sur `main` | le sha vient d'une autre branche | utiliser le sha affiché par le staging |
+| Cocher la confirmation | la case n'était pas cochée | relancer en la cochant, après la recette |
+| Aucun déploiement « staging » connu | la VM n'a jamais annoncé de commit | vérifier le jeton de la VM (`deploiement-staging.md`) |
+| Le staging n'a jamais annoncé le commit | ce commit n'a pas encore (ou jamais) tourné sur le staging | attendre le passage du minuteur (2 minutes), ou choisir un commit que le staging a fait tourner |
+| Le déploiement staging … n'a jamais atteint l'état success | l'annonce n'a pas abouti | attendre le passage suivant, ou vérifier la VM |
+| Sha invalide, ou inconnu ou ambigu | sha mal copié | recopier le sha : 7 à 40 caractères hexadécimaux en minuscules |
+| n'est pas sur `main` | le sha vient d'une autre branche | utiliser un commit de `main` |
 | porte déjà la version | ce commit est déjà publié | rien à faire |
 | plus ancien que `vX.Y.Z` | une version plus récente existe déjà | recetter un commit plus récent |
-| La CI du commit n'est pas verte (résultat : `failure`) | la CI de ce commit a échoué | corriger par une PR, puis recetter le nouveau commit |
+| La CI du commit n'est pas verte (résultat : `failure`) | la CI de ce commit a échoué, publication des images comprise | corriger par une PR, puis recetter le nouveau commit |
 | La CI du commit n'est pas verte (résultat : `aucune`) | aucune CI `push` n'existe pour ce commit | arrive si GitHub perd l'événement (incident du 21/10 sur les merges de #81 et #88) : fusionner une PR suivante et utiliser son sha |
 | Aucun commit `feat` ou `fix` | seuls des commits sans effet sur la version depuis le dernier tag | rien à publier |
 
-## 4. Préparation de la production
+## 4. Approbation et déploiement
 
-Le tag lance `Déploiement en production`. Son premier job (`resume`) n'a pas d'environnement : il écrit tout de suite, sur la page du run, un résumé avec le tag, le commit et le lien vers les notes de la version. Le job `deploy` attend ensuite l'approbation de l'environnement `production`.
+Le job de déploiement de la release commence par un résumé sur la page du run : le tag, le commit et le lien vers les notes de la version. Il attend ensuite l'approbation de l'environnement `production`.
 
-## 5. Approbation et déploiement
+Quand la production est activée, la personne qui approuve ouvre le run *Release* (onglet *Actions*), lit le résumé et vérifie que le tag est bien celui annoncé à l'équipe. Elle clique sur *Review deployments*, coche `production`, puis *Approve and deploy*. Les relecteurs sont ceux de *Settings > Environments > production* (six personnes) et l'auteur de la release peut approuver lui-même. Les administrateurs du dépôt peuvent aussi contourner l'approbation.
 
-Quand la production est activée, la personne qui approuve ouvre le run *Déploiement en production* du tag (onglet *Actions*), lit le résumé et vérifie que le tag est bien celui annoncé à l'équipe. Elle clique sur *Review deployments*, coche `production`, puis *Approve and deploy*. Les relecteurs sont ceux de *Settings > Environments > production* (six personnes) et l'auteur de la release peut approuver lui-même. Les administrateurs du dépôt peuvent aussi contourner l'approbation.
-
-Après l'approbation, le workflow attend jusqu'à 10 minutes que les images du tag soient publiées sur GHCR, sauvegarde la base sur l'instance (`/var/backups/enervision`, les cinq dernières copies), déploie le tag par SSM puis contrôle que `/health` annonce l'environnement `production` et le commit du tag. Le détail technique est dans le README d'AWS. Un déploiement réussi se termine par « Production à jour : vX.Y.Z (sha) ». Un seul déploiement de production s'exécute à la fois.
+Après l'approbation, le workflow vérifie que les images du tag existent, sauvegarde la base sur l'instance (`/var/backups/enervision`, les cinq dernières copies), déploie le tag par SSM puis contrôle que `/health` annonce l'environnement `production` et le commit du tag. Le détail technique est dans le README d'AWS. Un déploiement réussi se termine par « Production à jour : vX.Y.Z (sha) ». Le même contrôle se fait à la main sur https://dvrgizboitg9p.cloudfront.net/api/health (`environment` = `production`, `version.sha` = le commit de la version). Un seul déploiement de production s'exécute à la fois.
 
 Pour activer la production, la liste ordonnée des opérations (Terraform, `production.env`, variables GitHub) est dans `infra/terraform/aws/README.md`.
 

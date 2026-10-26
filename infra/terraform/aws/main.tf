@@ -119,7 +119,7 @@ resource "aws_instance" "main" {
     Name = local.name
   }
 
-   lifecycle {
+  lifecycle {
     ignore_changes = [ami, user_data]
   }
 }

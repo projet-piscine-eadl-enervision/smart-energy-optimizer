@@ -1,16 +1,19 @@
 name: Release
 
-# Release manuelle : la personne qui a fait la recette du staging fige la version
-# sur le commit qu'elle a testé (Actions > Release > Run workflow).
+# Release manuelle : la personne qui a fait la recette du staging fige la version sur le commit
+# qu'elle a testé (Actions > Release > Run workflow), puis le même workflow promeut les images et
+# lance le déploiement en production, qui attend l'approbation de l'environnement `production`.
+# Le staging annonce lui-même à GitHub le commit qu'il fait tourner (déploiement « staging »,
+# voir infra/scripts/report-staging-deployment.sh) : la release refuse un commit qu'il n'a pas annoncé.
 on:
   workflow_dispatch:
     inputs:
       sha:
-        description: "Sha du commit recetté : ouvrir http://10.43.43.50:8000/health (réseau de l'école) et copier version.sha"
-        required: true
+        description: "Sha du commit recetté. Laisser vide pour prendre le dernier commit annoncé par le staging (onglet Deployments)"
+        required: false
         type: string
       staging_verifie:
-        description: "Je confirme que /health du staging affiche ce sha et que la recette est faite"
+        description: "Je confirme avoir fait la recette du staging sur ce commit"
         required: true
         type: boolean
         default: false
@@ -18,6 +21,7 @@ on:
 permissions:
   contents: write
   actions: read
+  deployments: read
 
 # Une seule release à la fois.
 concurrency:
@@ -27,6 +31,8 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
     steps:
       - name: Vérification manuelle du staging
         env:
@@ -36,23 +42,13 @@ jobs:
             {
               echo "### Release refusée : recette non confirmée"
               echo
-              echo "1. Ouvrir http://10.43.43.50:8000/health (réseau de l'école)."
-              echo "2. Recetter le staging et relever \`version.sha\`."
-              echo "3. Relancer le workflow avec ce sha et la case cochée."
+              echo "1. Vérifier dans l'onglet Deployments (environnement staging) que le staging est à jour sur le commit à livrer."
+              echo "2. Recetter le staging."
+              echo "3. Relancer le workflow avec la case cochée (et le sha, ou rien pour prendre le dernier commit du staging)."
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::Cocher la confirmation après avoir vérifié /health du staging (http://10.43.43.50:8000/health)."
+            echo "::error::Cocher la confirmation après avoir recetté le staging."
             exit 1
           fi
-
-      # Jeton de la GitHub App (variable RELEASE_APP_ID, secret RELEASE_APP_PRIVATE_KEY) :
-      # un tag créé avec ce jeton déclenche les workflows de déploiement sur tag, ce que
-      # GITHUB_TOKEN ne fait pas. Sans l'App, repli sur GITHUB_TOKEN.
-      - uses: actions/create-github-app-token@v3
-        id: app
-        if: vars.RELEASE_APP_ID != ''
-        with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@v7
         with:
@@ -66,6 +62,12 @@ jobs:
           INPUT_SHA: ${{ inputs.sha }}
         run: |
           set -euo pipefail
+
+          # Sans sha saisi : le dernier commit que le staging a annoncé.
+          if [ -z "$INPUT_SHA" ]; then
+            INPUT_SHA=$(bash infra/scripts/staging-deployment.sh latest)
+            echo "Commit pris du dernier déploiement staging : $INPUT_SHA"
+          fi
 
           # Le sha est une entrée saisie à la main : format contrôlé avant tout usage.
           if ! grep -Eq '^[0-9a-f]{7,40}$' <<<"$INPUT_SHA"; then
@@ -82,6 +84,9 @@ jobs:
             echo "::error::Le commit $full n'est pas sur main."
             exit 1
           fi
+
+          # Le staging doit avoir annoncé ce commit (déploiement « staging » en succès).
+          bash infra/scripts/staging-deployment.sh check "$full"
 
           tags=$(git tag --points-at "$full" --list 'v[0-9]*')
           if [ -n "$tags" ]; then
@@ -106,8 +111,9 @@ jobs:
           echo "last=$last" >> "$GITHUB_OUTPUT"
 
       - name: Calculer la version et publier la release
+        id: publish
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          GH_TOKEN: ${{ github.token }}
           FULL_SHA: ${{ steps.commit.outputs.full }}
           LAST: ${{ steps.commit.outputs.last }}
         run: |
@@ -157,3 +163,28 @@ jobs:
           echo "Release $next ($bump depuis $last)"
           gh release create "$next" --repo "$GITHUB_REPOSITORY" --target "$FULL_SHA" \
             --title "$next" --generate-notes --latest
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+
+  # Les images du commit reçoivent le tag de version (et leur SBOM est joint à la release), puis la
+  # production est déployée. Les deux étapes sont des workflows réutilisables : plus de dépendance à
+  # un tag poussé qui déclenche d'autres workflows.
+  promote:
+    needs: release
+    uses: ./.github/workflows/publish-images.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+    permissions:
+      contents: write
+      packages: write
+
+  deploy:
+    needs: [release, promote]
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+      new_release: true
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+

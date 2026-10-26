@@ -1,0 +1,7 @@
+# Copier en backend.hcl (ignoré par Git) : terraform init -backend-config=backend.hcl
+# Le bucket du state est créé à la main, une fois ; il ne contient aucun secret dans ce fichier.
+bucket       = "enervision-tfstate-dreamteam2026"
+key          = "prod/terraform.tfstate"
+region       = "eu-west-3"
+encrypt      = true
+use_lockfile = true

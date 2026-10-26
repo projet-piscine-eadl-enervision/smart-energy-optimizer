@@ -1,18 +1,23 @@
-name: Publication des images
+name: Promotion des images
 
-# Une image par module (dossier contenant un Dockerfile), publiée sur GHCR.
-# - CI verte sur main : image :sha-<commit> pour chaque commit, puis :main si ce commit est encore
-#   la tête de main (c'est :main que la VM de staging récupère).
-# - Tag vX.Y.Z, posé à la main par le workflow Release après la recette : l'image du commit taggé
-#   reçoit le tag de version, sans reconstruction, pour que la production déploie exactement ce
-#   qui a été validé en staging.
+# L'image de chaque module, construite pour le commit du tag (ci.yml, job publish), reçoit le tag
+# de version vX.Y.Z sans reconstruction : la production déploie exactement ce qui a été recetté en
+# staging. Le SBOM (CycloneDX) de chaque image versionnée est joint à la GitHub Release.
+# Appelé par release.yml. Se relance aussi à la main (Actions > Promotion des images) si une
+# promotion a échoué, avec le tag déjà créé.
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
-  push:
-    tags: ["v*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Version à promouvoir, par exemple v1.4.2"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version déjà créée par la release, par exemple v1.4.2"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -23,101 +28,66 @@ env:
   IMAGE_PREFIX: ghcr.io/${{ github.repository }}
 
 jobs:
-  build:
-    # `branches: [main]` filtre sur le nom de la branche d'origine : une PR d'un fork dont la branche
-    # s'appelle main déclencherait ce job, qui dispose de packages: write. On exige donc un push sur
-    # ce dépôt, et non un run de pull_request.
-    if: >-
-      github.event_name == 'workflow_run'
-      && github.event.workflow_run.conclusion == 'success'
-      && github.event.workflow_run.event == 'push'
-      && github.event.workflow_run.head_repository.full_name == github.repository
+  promote:
+    name: promote (${{ matrix.module }})
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         module: [frontend, api, etl, ml, db]
+    env:
+      TAG: ${{ inputs.tag }}
+      MODULE: ${{ matrix.module }}
     steps:
+      - name: Contrôler le tag
+        run: |
+          # Le nom du tag est repris dans des commandes : on n'accepte que vX.Y.Z.
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Tag $TAG refusé : seuls les tags vX.Y.Z sont promus."; exit 1; }
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: refs/tags/${{ inputs.tag }}
       - uses: docker/login-action@v4
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v4
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-      - name: Version du commit (titre et sha court)
-        id: version
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-        # Le message du commit est une entrée non fiable : il passe par l'environnement,
-        # jamais directement dans le script. Seule la première ligne est gardée.
-        env:
-          COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      - name: Ajouter le tag de version à l'image du commit
         run: |
-          title=$(printf '%s' "$COMMIT_MESSAGE" | head -n 1 | tr -d '\r')
-          echo "title=$title" >> "$GITHUB_OUTPUT"
-          echo "sha=${HEAD_SHA::7}" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v7
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
+          # L'image du commit existe déjà : elle est publiée avant la recette du staging.
+          src="$IMAGE_PREFIX/$MODULE:sha-$(git rev-parse HEAD)"
+          docker buildx imagetools inspect "$src" >/dev/null 2>&1 \
+            || { echo "::error::Image $src introuvable : la CI de ce commit a-t-elle publié ses images ?"; exit 1; }
+          docker buildx imagetools create -t "$IMAGE_PREFIX/$MODULE:$TAG" "$src"
+      - name: SBOM de l'image versionnée
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0, même version que le job security (voir CONTRIBUTING.md)
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
-          context: ${{ matrix.module }}
-          push: true
-          build-args: |
-            GIT_TITLE=${{ steps.version.outputs.title }}
-            GIT_SHA=${{ steps.version.outputs.sha }}
-          tags: ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:sha-${{ github.event.workflow_run.head_sha }}
-      - name: Avancer :main si ce commit est encore la tête de main
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
+          image-ref: ${{ env.IMAGE_PREFIX }}/${{ matrix.module }}:${{ inputs.tag }}
+          format: cyclonedx
+          output: sbom-${{ matrix.module }}.cdx.json
+          exit-code: "0"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.module }}
+          path: sbom-${{ matrix.module }}.cdx.json
+
+  # Les cinq SBOM sont joints à la GitHub Release du tag.
+  sbom:
+    needs: promote
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sbom-*
+          merge-multiple: true
+          path: sbom
+      - name: Joindre les SBOM à la release
         env:
           GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          MODULE: ${{ matrix.module }}
-        run: |
-          # Deux merges rapprochés peuvent se terminer dans le désordre : seul le commit le plus
-          # récent a le droit de déplacer :main, sinon un commit plus ancien ferait reculer le
-          # staging. Les images sha-<commit> sont toutes conservées. Si le commit plus récent échoue
-          # en CI, :main reste en retard jusqu'au prochain commit vert.
-          tete=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
-          if [ "$tete" != "$HEAD_SHA" ]; then
-            echo "::notice::${HEAD_SHA::7} n'est plus la tête de main (${tete::7}) : :main n'est pas déplacé."
-            exit 0
-          fi
-          docker buildx imagetools create -t "$IMAGE_PREFIX/$MODULE:main" "$IMAGE_PREFIX/$MODULE:sha-$HEAD_SHA"
-
-  promote:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        module: [frontend, api, etl, ml, db]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: docker/login-action@v4
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@v4
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-      - name: Ajouter le tag de version à l'image du commit
-        if: hashFiles(format('{0}/Dockerfile', matrix.module)) != ''
-        run: |
-          src="$IMAGE_PREFIX/${{ matrix.module }}:sha-$GITHUB_SHA"
-          # Le tag est posé après la recette du staging, donc l'image du commit existe déjà. La
-          # boucle d'attente ne sert que si le tag est créé à la main avant la fin de la publication.
-          for i in $(seq 1 40); do
-            if docker buildx imagetools inspect "$src" >/dev/null 2>&1; then
-              docker buildx imagetools create -t "$IMAGE_PREFIX/${{ matrix.module }}:$GITHUB_REF_NAME" "$src"
-              exit 0
-            fi
-            echo "Image $src absente, nouvel essai dans 60 s ($i/40)"
-            sleep 60
-          done
-          echo "::error::Image $src introuvable : la CI de ce commit a-t-elle réussi ?"
-          exit 1
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" sbom/*.cdx.json --clobber --repo "$GITHUB_REPOSITORY"
