@@ -107,6 +107,20 @@ Un seuil en quantile ou en part de la capacité ne convient pas : il marquerait 
 
 La nMAE est utilisée plutôt que la MAE pour qu'une usine à 600 kW ne pèse pas plus qu'un bureau à 100 kW. Le test donne le chiffre final et ne sert à aucune décision.
 
+**Impact métier** (`evaluate.business_kpis`). Processus simulé : la veille, le gestionnaire reçoit les pics prévus et décale 10 % de la consommation de ces heures vers les heures creuses ; chaque kWh au-dessus du seuil de pic est facturé 0,15 €. Ces deux valeurs sont des **hypothèses** (`SHIFTABLE_RATIO`, `PEAK_PENALTY_EUR_KWH` dans `config.py`), le mock ne donnant aucun coût (constat 14). Sans modèle, aucun pic n'est annoncé et rien n'est évité.
+
+| KPI | Rôle |
+|---|---|
+| `kpi_peak_kwh_avoided` | dépassement évité grâce aux pics annoncés (kWh) |
+| `kpi_peak_avoided_ratio` | part du dépassement qu'une prévision parfaite aurait évité |
+| `kpi_penalty_saved_eur` | dépassement évité valorisé en euros |
+| `kpi_missed_peak_hours`, `kpi_false_alarm_hours` | pics non annoncés, alertes inutiles |
+| `test_nmae_gain_vs_naive`, `test_kpi_penalty_gain_vs_naive_eur` | ce que le modèle apporte en plus du naïf, sur le même test |
+
+Sur des données construites comme le mock (test `test_impact_et_donnees_enregistres_dans_mlflow`), le profil réduit l'erreur d'environ 30 % par rapport au naïf, mais les deux annoncent tous les pics : les pics de bureau dépassent le seuil de loin. Le gain en euros sur le naïf est alors nul ; il viendra des sites où le pic est proche du seuil, à vérifier sur les données du mock.
+
+**Versions** (MLflow). Chaque entraînement crée une version du modèle `enervision-consumption`, rattachée à son run : paramètres, métriques, version du code (`code_version`, le commit) et empreinte des données de chaque période (onglet *Datasets* du run, contextes `training`, `validation`, `test`). Deux runs sur les mêmes données ont la même empreinte. Les alias `champion` et `challenger` désignent les versions en service.
+
 **Promotion** (`training.py`, règle de `CONTRIBUTING.md`). Chaque entraînement enregistre une version `challenger`. Le champion est réévalué **sur la validation actuelle** (les données s'enrichissent avec le temps), et le challenger le remplace seulement si sa nMAE est plus basse. La décision est notée dans le tag `decision` du run.
 
 ## Structure

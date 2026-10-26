@@ -1,9 +1,6 @@
 """Bout en bout sans base ni serveur : MLflow dans un fichier SQLite temporaire, et des
 données factices à la place de analytics.energy_hourly."""
 
-from datetime import UTC, datetime
-
-import pandas as pd
 import pytest
 from mlflow import MlflowClient
 
@@ -25,11 +22,11 @@ def pipeline(tmp_path, monkeypatch):
 
     # Un an d'entraînement, plus 60 jours de validation et 60 de test
     data = make_mock_like(days=500)
-    monkeypatch.setattr(training, "load_hourly", lambda url, start=None, end=None: data)
+    monkeypatch.setattr(training, "load_hourly", lambda url, start=None: data)
     return data
 
 
-def test_naive_does_not_dethrone_profile(pipeline):
+def test_le_naif_ne_detrone_pas_le_profil(pipeline):
     training.main(["--model", "site_profile"])
     training.main(["--model", "seasonal_naive"])
 
@@ -40,7 +37,7 @@ def test_naive_does_not_dethrone_profile(pipeline):
     assert "reste challenger" in decision(client, "2")
 
 
-def test_better_model_is_promoted(pipeline):
+def test_un_meilleur_modele_est_promu(pipeline):
     training.main(["--model", "seasonal_naive"])
     training.main(["--model", "site_profile"])
 
@@ -49,14 +46,14 @@ def test_better_model_is_promoted(pipeline):
     assert "promu champion : nMAE" in decision(client, "2")
 
 
-def test_insufficient_history(pipeline, monkeypatch):
+def test_historique_insuffisant(pipeline, monkeypatch):
     short = make_mock_like(days=200)
-    monkeypatch.setattr(training, "load_hourly", lambda url, start=None, end=None: short)
+    monkeypatch.setattr(training, "load_hourly", lambda url, start=None: short)
     with pytest.raises(SystemExit, match="Historique insuffisant"):
         training.main([])
 
 
-def test_prediction_with_champion(pipeline, monkeypatch):
+def test_prediction_avec_le_champion(pipeline, monkeypatch):
     training.main([])
 
     saved = {}
@@ -67,11 +64,11 @@ def test_prediction_with_champion(pipeline, monkeypatch):
 
     monkeypatch.setattr(predict, "latest_hour", lambda url: pipeline["hour"].max())
     monkeypatch.setattr(
-        predict, "load_hourly", lambda url, start=None, end=None: pipeline[pipeline["hour"] >= start]
+        predict, "load_hourly", lambda url, start=None: pipeline[pipeline["hour"] >= start]
     )
     monkeypatch.setattr(predict, "save_predictions", fake_save)
 
-    count = predict.run(now=pipeline["hour"].max() + pd.Timedelta(hours=1))
+    count = predict.run()
 
     sites = pipeline["site_id"].nunique()
     assert count == HORIZON_HOURS * sites
@@ -84,30 +81,28 @@ def test_prediction_with_champion(pipeline, monkeypatch):
     assert peak_hours.between(8, 18).all()
 
 
-def test_prediction_without_champion(pipeline):
+def test_prediction_sans_champion(pipeline):
     with pytest.raises(SystemExit, match="Aucun modèle champion"):
         predict.run()
 
 
-def test_prediction_refused_when_data_is_stale(pipeline, monkeypatch):
-    training.main([])
-    monkeypatch.setattr(predict, "latest_hour", lambda url: pipeline["hour"].max())
-    monkeypatch.setattr(
-        predict, "save_predictions", lambda *args: pytest.fail("rien ne doit être écrit")
-    )
+def test_impact_et_donnees_enregistres_dans_mlflow(pipeline):
+    training.main(["--model", "site_profile"])
 
-    with pytest.raises(SystemExit, match="Données trop anciennes"):
-        predict.run(now=pipeline["hour"].max() + pd.Timedelta(hours=10))
-
-
-def test_data_end_is_passed_to_the_query(pipeline, monkeypatch):
-    seen = {}
-
-    def fake_load(url, start=None, end=None):
-        seen["end"] = end
-        return pipeline
-
-    monkeypatch.setattr(training, "load_hourly", fake_load)
-    monkeypatch.setenv("ML_DATA_END", "2025-05-15")
-    training.main([])
-    assert seen["end"] == datetime(2025, 5, 15, tzinfo=UTC)
+    client = MlflowClient()
+    run = client.get_run(client.get_model_version(MODEL_NAME, "1").run_id)
+    metrics = run.data.metrics
+    # Le profil se trompe moins que le naïf. Sur un mock, les pics de bureau dépassent le seuil
+    # de loin : les deux les annoncent tous, et évitent le même dépassement
+    assert metrics["test_nmae_gain_vs_naive"] > 0.2
+    assert metrics["test_kpi_penalty_gain_vs_naive_eur"] == 0
+    assert metrics["test_kpi_peak_avoided_ratio"] == 1
+    assert metrics["test_kpi_penalty_saved_eur"] > 0
+    # Chaque période est rattachée au run par l'empreinte de ses données
+    contexts = {
+        tag.value
+        for dataset_input in run.inputs.dataset_inputs
+        for tag in dataset_input.tags
+        if tag.key == "mlflow.data.context"
+    }
+    assert contexts == {"training", "validation", "test"}
