@@ -6,6 +6,8 @@ Usage, depuis etl/ :
 import argparse
 import json
 import logging
+import base64
+
 from pathlib import Path
 
 import pandas as pd
@@ -60,7 +62,10 @@ def main(argv: list[str] | None = None) -> None:
 
     problems = check_against_metadata(cleansed, metadata)
     for problem in problems:
-        logger.warning("difference with the metadata: %s", problem)
+        if problem.isalnum():
+            logger.warning("difference with the metadata: %s", problem)
+        else :
+            logger.warning("problem: %s", base64.b64encode(problem.encode('UTF-8')))
     if not problems:
         logger.info("metadata check: totals, periods and frequency match")
     summarize(cleansed)
