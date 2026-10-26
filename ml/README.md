@@ -63,7 +63,7 @@ MLflow n'a pas d'authentification : sur la VM, il écoute sur `127.0.0.1:5000` e
 
 Pour ouvrir celui du staging, lancer **depuis le poste** (pas depuis la VM) `ssh -L 5001:127.0.0.1:5000 root@<VM>`, laisser la fenêtre ouverte, puis aller sur http://localhost:5001. Le port 5000 est celui du MLflow de développement : si le compose local tourne, c'est lui qui répond, et on voit une autre base, sans l'expérience `enervision` du staging.
 
-L'entraînement affiche en dernière ligne `lien MLflow : …`, déjà construit pour l'environnement avec la variable `MLFLOW_PUBLIC_URL` des fichiers compose (sans elle, l'adresse de suivi du module). Les deux lignes `View run` de MLflow qui le précèdent montrent l'adresse du réseau Docker (`http://mlflow:5000/…`) : elle ne s'ouvre pas depuis le poste.
+L'entraînement affiche en dernière ligne `lien MLflow : …`, déjà construit pour l'environnement avec la variable `MLFLOW_PUBLIC_URL` des fichiers compose (sans elle, l'adresse de suivi du module), et rien en production (`APP_ENV=production`). Les deux lignes `View run` de MLflow qui le précèdent montrent l'adresse du réseau Docker (`http://mlflow:5000/…`) : elle ne s'ouvre pas depuis le poste.
 
 Le module utilise le compte propriétaire de la base, comme l'ETL, en attendant les comptes par module (ticket #145). Sans historique chargé, `run --rm ml` s'arrête sur « Historique insuffisant » et `predict` sur « Aucun modèle champion » : les connexions à la base et à MLflow fonctionnent.
 

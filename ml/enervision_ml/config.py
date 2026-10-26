@@ -48,7 +48,7 @@ MAX_DATA_AGE_HOURS = 3
 class Settings:
     database_url: str
     tracking_uri: str
-    public_url: str
+    public_url: str | None
     code_version: str
     data_end: datetime
 
@@ -73,8 +73,10 @@ def load_settings() -> Settings:
         database_url=os.environ["DATABASE_URL"],
         tracking_uri=tracking_uri,
         # Adresse d'MLflow telle qu'on l'ouvre depuis son poste (celle du réseau Docker ne s'ouvre pas) ;
-        # à défaut, celle de suivi : un lien est toujours affiché
-        public_url=os.getenv("MLFLOW_PUBLIC_URL") or tracking_uri,
+        # à défaut, celle de suivi. Aucune en production : MLflow n'y est pas déployé
+        public_url=None
+        if os.getenv("APP_ENV", "dev") == "production"
+        else os.getenv("MLFLOW_PUBLIC_URL") or tracking_uri,
         code_version=os.getenv("GIT_SHA", "dev"),
         data_end=parse_data_end(os.getenv("ML_DATA_END")),
     )

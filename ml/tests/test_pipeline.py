@@ -187,3 +187,10 @@ def test_training_prints_a_link_without_public_url(pipeline, monkeypatch, capsys
     training.main(["--model", "site_profile"])
 
     assert "lien MLflow : sqlite:///" in capsys.readouterr().out
+
+
+def test_training_prints_no_link_in_production(pipeline, monkeypatch, capsys):
+    monkeypatch.setenv("APP_ENV", "production")
+    training.main(["--model", "site_profile"])
+
+    assert "lien MLflow" not in capsys.readouterr().out

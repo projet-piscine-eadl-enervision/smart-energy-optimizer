@@ -35,6 +35,13 @@ def test_stale_data_is_refused():
         check_fresh(pd.Timestamp("2026-10-26 07:00", tz="UTC"), now)
 
 
+def test_public_url_is_none_in_production(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://non-utilisee")
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("MLFLOW_PUBLIC_URL", "http://localhost:5001")
+    assert load_settings().public_url is None
+
+
 def test_public_url_comes_from_the_environment(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://non-utilisee")
     monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
