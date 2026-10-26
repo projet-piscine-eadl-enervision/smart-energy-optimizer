@@ -5,3 +5,4 @@ python-dotenv
 pandas
 pyarrow
 psycopg[binary]
+prometheus-client
