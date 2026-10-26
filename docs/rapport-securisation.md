@@ -37,7 +37,7 @@ AWS_INSTANCE_ID
 AWS_REGION
 ```
 
-GitHub analyse les secrets (`secret_scanning=enabled`) et refuse les pushs qui en contiennent (`secret_scanning_push_protection=enabled`) ; le nombre d'alertes ouvertes est 0. Le hook `detect-private-key` s'exécute avant chaque commit, et Trivy cherche aussi des secrets à chaque PR. Aucune clé AWS n'est stockée : le déploiement s'authentifie par OIDC (voir plus bas).
+GitHub analyse les secrets (`secret_scanning=enabled`) et refuse les pushs qui en contiennent (`secret_scanning_push_protection=enabled`) ; le nombre d'alertes ouvertes est 0. Le hook `detect-private-key` s'exécute avant chaque commit, et Trivy cherche aussi des secrets à chaque PR. La clé de signature des jetons de l'API fait 64 caractères en staging comme en production (seule la longueur est relevée, par `awk` sur le fichier d'environnement, jamais la valeur). Aucune clé AWS n'est stockée : le déploiement s'authentifie par OIDC (voir plus bas).
 
 ## Chaîne de livraison
 

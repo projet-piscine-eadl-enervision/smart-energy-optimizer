@@ -1,6 +1,6 @@
 # Audit du dépôt, état au 26/10/2026
 
-Base : `main` à `fe0793b` (PR #191, #192 et #194 incluses). Tests et couverture lus dans le journal de la CI de ce commit ; `pip-audit`, `npm audit` et Trivy relancés sur ce commit le 26/10 ; réglages GitHub lus par l'API le 26/10. Sauf mesure du 26/10, les lignes de *Traité* et *Assumé* sont reprises de l'audit du 24/10. Non vérifié : l'instance de production et son `production.env`, l'état réel de Terraform.
+Base : `main` à `fe0793b` (PR #191, #192 et #194 incluses). Tests et couverture lus dans le journal de la CI de ce commit ; `pip-audit`, `npm audit` et Trivy relancés sur ce commit le 26/10 ; réglages GitHub lus par l'API le 26/10. Sauf mesure du 26/10, les lignes de *Traité* et *Assumé* sont reprises de l'audit du 24/10. Non vérifié : le contenu de `production.env` (seule la longueur de `SECRET_KEY` a été relevée).
 
 Légende : **P1** avant tout, **P2** bientôt, **P3** confort.
 
@@ -34,7 +34,7 @@ Aucun.
 - **Pas de `terraform plan` en lecture seule en CI** : le job `terraform` ne lance que `fmt -check` et `validate`.
 - **Compose de développement : MLflow (5000, sans authentification), l'ETL (8001) et l'API publiés sur toutes les interfaces** ; seul PostgreSQL est lié à `127.0.0.1`. Lier au moins MLflow à `127.0.0.1`, comme dans le compose du staging.
 - **Trivy sur les images : rapport seul** (onglet Security, 2 alertes hautes ouvertes sur `db`) ; le blocage à la publication viendra une fois les alertes assumées en `.trivyignore` (#146). Les actions sont épinglées par tag, sauf Trivy, SonarQube et `configure-aws-credentials` (sha).
-- **Longueur de `SECRET_KEY` non imposée** : `PyJWT` avertit sous 32 octets, mais l'API démarre quand même. 64 caractères en staging (vérifié le 26/10) ; la production est à vérifier.
+- **Longueur de `SECRET_KEY` non imposée** : `PyJWT` avertit sous 32 octets, mais l'API démarre quand même. 64 caractères en staging et en production (vérifié le 26/10).
 
 ## Traité
 
