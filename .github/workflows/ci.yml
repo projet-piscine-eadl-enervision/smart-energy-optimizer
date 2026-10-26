@@ -315,8 +315,11 @@ jobs:
   # commit est encore la tête de main (c'est :main que la VM de staging récupère).
   publish:
     needs: ci-ok
+    # always() : sans lui, le succès implicite exige que tous les ancêtres aient réussi, et les
+    # contrôles réservés aux PR (pr-title, branch-name, commit-messages) sont ignorés sur un push.
     if: >-
-      github.event_name == 'push'
+      always()
+      && github.event_name == 'push'
       && github.ref == 'refs/heads/main'
       && needs.ci-ok.result == 'success'
     runs-on: ubuntu-24.04
