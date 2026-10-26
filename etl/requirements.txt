@@ -14,8 +14,8 @@ anyio==4.15.1
     #   starlette
 click==8.5.0
     # via uvicorn
-fastapi==0.156.8
-    # via -r etl/requirements.in
+fastapi==0.161.1
+    # via -r requirements.in
 h11==0.16.0
     # via
     #   httpcore2
@@ -23,7 +23,7 @@ h11==0.16.0
 httpcore2==2.16.0
     # via httpx2
 httpx2==2.16.0
-    # via -r etl/requirements.in
+    # via -r requirements.in
 idna==3.20
     # via
     #   anyio
@@ -33,9 +33,9 @@ numpy==2.5.4
 opentelemetry-api==1.45.1
     # via fastapi
 pandas==3.1.0
-    # via -r etl/requirements.in
+    # via -r requirements.in
 pyarrow==26.0.0
-    # via -r etl/requirements.in
+    # via -r requirements.in
 pydantic==2.14.1
     # via fastapi
 pydantic-core==2.50.1
@@ -43,7 +43,7 @@ pydantic-core==2.50.1
 python-dateutil==3.0.0
     # via pandas
 python-dotenv==1.2.4
-    # via -r etl/requirements.in
+    # via -r requirements.in
 six==1.17.0
     # via python-dateutil
 starlette==1.9.0
@@ -67,4 +67,4 @@ typing-inspection==0.4.4
 tzdata==2026.5
     # via python-dateutil
 uvicorn==0.54.0
-    # via -r etl/requirements.in
+    # via -r requirements.in
