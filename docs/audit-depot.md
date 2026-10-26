@@ -24,6 +24,7 @@ Aucun.
 ### P3
 
 - **Une approbation survit aux pushs suivants.** La règle `main` a `dismiss_stale_reviews_on_push` et `require_last_push_approval` désactivés, et ne couvre pas les PR qui visent une autre branche que `main` : le code fusionné n'est donc pas forcément celui qui a été relu.
+- **VM de staging : SSH de `root` et par mot de passe acceptés** (`sshd -T` le 26/10). Machine de l'école, joignable depuis son seul réseau ; restreindre à la clé seule si elle sert au-delà de la démonstration.
 - **Énumération de comptes à l'inscription** : `/auth/register` répond 409 sur un e-mail connu, lié à la décision sur l'inscription ouverte.
 - **`/health/mock` est public** et déclenche un appel sortant vers le mock à chaque requête.
 - **Pas de linter pour le frontend** (#148) : `npm run lint --if-present` réussit faute de script `lint`.
@@ -32,7 +33,7 @@ Aucun.
 - **Pas de `terraform plan` en lecture seule en CI** : le job `terraform` ne lance que `fmt -check` et `validate`.
 - **Compose de développement : MLflow (5000, sans authentification), l'ETL (8001) et l'API publiés sur toutes les interfaces** ; seul PostgreSQL est lié à `127.0.0.1`. Lier au moins MLflow à `127.0.0.1`, comme dans le compose du staging.
 - **Trivy sur les images : rapport seul** (onglet Security, 2 alertes hautes ouvertes sur `db`) ; le blocage à la publication viendra une fois les alertes assumées en `.trivyignore` (#146). Les actions sont épinglées par tag, sauf Trivy, SonarQube et `configure-aws-credentials` (sha).
-- **Longueur de `SECRET_KEY` non imposée** : `PyJWT` avertit sous 32 octets, mais l'API démarre quand même. 64 caractères en staging (vérifié le 24/10) ; la production est à vérifier.
+- **Longueur de `SECRET_KEY` non imposée** : `PyJWT` avertit sous 32 octets, mais l'API démarre quand même. 64 caractères en staging (vérifié le 26/10) ; la production est à vérifier.
 
 ## Traité
 

@@ -108,6 +108,31 @@ actions = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
 
 L'instance impose IMDSv2 (`http_tokens = "required"`), son disque est chiffré, et le bucket S3 est privé, chiffré (SSE-S3) et bloque tout accès public (`block_public_acls`, `ignore_public_acls`, `block_public_policy`, `restrict_public_buckets`). Les commandes passent par Systems Manager.
 
+## VM de staging
+
+La VM de l'école héberge le staging. Elle n'est joignable que depuis le réseau de l'école. Relevé du 26/10, en tant que `root` :
+
+```console
+# sshd -T | grep -E '^(permitrootlogin|passwordauthentication|pubkeyauthentication)'
+permitrootlogin yes
+pubkeyauthentication yes
+passwordauthentication yes
+# stat -c '%a %U %n' /etc/enervision/staging.env
+600 root /etc/enervision/staging.env
+# awk -F= '/^SECRET_KEY=/{print "SECRET_KEY : " length($2) " caractères"}' /etc/enervision/staging.env
+SECRET_KEY : 64 caractères
+# ss -tlnp      # ports en écoute, colonnes réduites
+0.0.0.0:4000   frontend (docker-proxy)
+0.0.0.0:8000   API (docker-proxy)
+127.0.0.1:5000 MLflow (docker-proxy)
+127.0.0.1:25   messagerie locale
+*:22           sshd
+```
+
+Le fichier d'environnement, qui contient les secrets, n'est lisible que par `root`, et la clé de signature des jetons fait 64 caractères. MLflow n'écoute que sur la boucle locale, on y accède par tunnel SSH. L'ETL ne publie aucun port. Les ports 4000 et 8000 sont ouverts sur le réseau de l'école : la recette lit la version sur `:8000/health`.
+
+Limite : la VM accepte la connexion SSH de `root` et par mot de passe. Nous ne gérons pas sa configuration (machine de l'école), mais c'est le point à restreindre en premier (clé seule, `PermitRootLogin no`) si la VM sert au-delà de la démonstration.
+
 ## Base de données
 
 Les migrations (dbmate) créent un rôle par module, `enervision_api`, `enervision_etl` et `enervision_ml`, avec des droits propres à chacun. Le test `ml/tests/test_data_db.py` exécute les requêtes du module ML avec ce rôle, et la CI le rejoue sur une base TimescaleDB migrée. Limite : ces rôles n'ont pas encore de droit de connexion, les services se connectent donc avec le compte propriétaire (#145).
