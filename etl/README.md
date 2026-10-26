@@ -11,7 +11,7 @@ source .venv/bin/activate        # Windows : .venv\Scripts\Activate
 pip install -r requirements-dev.txt
 ```
 
-Variables dans un `.env` (dans `etl/` ou à la racine) : `MOCK_API_URL`, `MOCK_API_USERNAME`, `MOCK_API_PASSWORD`.
+Variables dans un `.env` (dans `etl/` ou à la racine) : `MOCK_API_URL`, `MOCK_API_USERNAME`, `MOCK_API_PASSWORD`, et `DATABASE_URL` pour les traitements qui écrivent en base (`postgresql://postgres:dev@localhost:5432/enervision` avec la base du compose local ; dans les conteneurs, le compose la fournit).
 
 - Réseau de l'école : `MOCK_API_URL=http://10.43.43.80:8000`, identifiants vides. C'est la valeur par défaut.
 - Internet : `https://api-mock.charlieandre.fr` avec l'authentification basique (notes Teams). Un 401 signifie que l'identifiant ou le mot de passe est refusé.
@@ -44,6 +44,7 @@ Pile complète : `docker compose up -d` à la racine, puis `docker ps` doit mont
 - `pipeline/cleaning.py` : règles de remplissage des manquants, fonctions pures testées sans fichier.
 - `pipeline/metadata.py` : anomalies étiquetées et contrôle des totaux, de la période et de la fréquence.
 - `pipeline/timestamps.py` : horodatages ramenés en UTC.
+- `pipeline/db.py`, `pipeline/runs.py` : connexion à la base (`DATABASE_URL`, autocommit) et suivi de chaque traitement dans `etl.run`.
 - `pipeline/rows.py` : lignes prêtes à insérer en base (`core.energy_reading` : axe `time`, heure du mock, décimaux).
 - `pipeline/jobs/` : un module par traitement, avec `main(argv)`. Lancement : `python -m pipeline <traitement>` (aujourd'hui `clean-history`).
 - `pipeline/provided_files/`, `pipeline/edited_files/` : données suivies par DVC, voir [`docs/donnees-dvc.md`](../docs/donnees-dvc.md).

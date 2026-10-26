@@ -60,12 +60,16 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dev}@db:5432/${POSTGRES_DB:-enervision}
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "${ETL_PORT:-8001}:8000"
     volumes:
       - ./etl:/app
     depends_on:
+      db:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
 
