@@ -27,7 +27,7 @@ from enervision_ml.config import (
     VALIDATION_DAYS,
     load_settings,
 )
-from enervision_ml.data import load_hourly
+from enervision_ml.data import load_hourly, save_model_run
 from enervision_ml.evaluate import evaluate, temporal_split
 from enervision_ml.features import (
     FEATURE_COLUMNS,
@@ -101,9 +101,12 @@ def main(argv: list[str] | None = None) -> None:
         )
         test_output = model.predict(None, test[MODEL_INPUT_COLUMNS])
         test_metrics = evaluate(test, test_output["predicted_kw"], model.thresholds)
-        mlflow.log_metrics({f"val_{k}": v for k, v in validation_metrics.items()})
-        mlflow.log_metrics({f"test_{k}": v for k, v in test_metrics.items()})
-        mlflow.log_metrics(gain_vs_naive(train, test, test_metrics, model.thresholds))
+        metrics = {
+            **{f"val_{k}": v for k, v in validation_metrics.items()},
+            **{f"test_{k}": v for k, v in test_metrics.items()},
+            **gain_vs_naive(train, test, test_metrics, model.thresholds),
+        }
+        mlflow.log_metrics(metrics)
         mlflow.log_dict(model.thresholds, "peak_thresholds.json")
         # Empreinte des données de chaque période : une version se rattache aux données exactes
         # qui l'ont produite, et deux runs sur les mêmes données ont la même empreinte
@@ -130,6 +133,23 @@ def main(argv: list[str] | None = None) -> None:
     registry.set_alias(client, registry.CHALLENGER, version)
     decision = promote_if_better(client, version, validation, validation_metrics["nmae"])
     client.set_tag(run.info.run_id, "decision", decision)
+    # Copie en base pour le suivi en SQL (vues ml.prediction_*, Grafana)
+    save_model_run(
+        settings.database_url,
+        {
+            "model_version": version,
+            "run_id": run.info.run_id,
+            "model": estimator.name,
+            "train_start": train["hour"].min(),
+            "train_end": train["hour"].max(),
+            "promoted": str(registry.get_alias(client, registry.CHAMPION).version) == version,
+            "decision": decision,
+            "shiftable_ratio": SHIFTABLE_RATIO,
+            "peak_penalty_eur_kwh": PEAK_PENALTY_EUR_KWH,
+        },
+        metrics,
+        model.thresholds,
+    )
 
     print(f"Run {run.info.run_id} : {MODEL_NAME} v{version} ({estimator.name})")
     print(f"  validation : nMAE {validation_metrics['nmae']:.3f}, MAE {validation_metrics['mae']:.1f} kW")
