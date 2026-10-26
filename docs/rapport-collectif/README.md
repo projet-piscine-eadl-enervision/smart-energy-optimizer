@@ -21,6 +21,7 @@ Brouillon commun du rapport collectif de management de projet (EC02), publié au
 ## Écrire sa partie
 
 - Modifier uniquement sa page ou son dossier, dans une PR courte. Chaque fichier commence par un seul titre de niveau 1.
+- Chaque contribution de rôle suit les compétences de la grille d'auto-évaluation qui lui correspondent : pour chacune, des pistes et des preuves possibles sont données, à remplacer par le texte de l'auteur.
 - Environ 10 pages au total pour tout le rapport, hors annexes : une page par contribution suffit.
 - Prose, sans tiret quadratin, peu de tableaux. Rien qui ne parle qu'à l'équipe (codes de travail, étapes internes) : le lecteur ne connaît pas notre historique.
 - Une partie terminée perd sa ligne « En cours » et ses consignes. Les images se placent à côté de la page, avec un lien relatif.
