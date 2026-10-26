@@ -20,7 +20,9 @@ from enervision_ml.config import (
     MAX_MISSING_RATIO,
     MIN_TRAIN_DAYS,
     MODEL_NAME,
+    PEAK_PENALTY_EUR_KWH,
     PEAK_RATIO,
+    SHIFTABLE_RATIO,
     TEST_DAYS,
     VALIDATION_DAYS,
     load_settings,
@@ -33,7 +35,12 @@ from enervision_ml.features import (
     mask_unreliable_hours,
     to_hourly_grid,
 )
-from enervision_ml.models import MODELS, ConsumptionModel, peak_thresholds
+from enervision_ml.models import (
+    MODELS,
+    ConsumptionModel,
+    SeasonalNaive,
+    peak_thresholds,
+)
 
 MODEL_INPUT_COLUMNS = ["site_id", *FEATURE_COLUMNS]
 
@@ -80,6 +87,8 @@ def main(argv: list[str] | None = None) -> None:
                 "calendar_tz": CALENDAR_TZ,
                 "peak_ratio": PEAK_RATIO,
                 "max_missing_ratio": MAX_MISSING_RATIO,
+                "shiftable_ratio": SHIFTABLE_RATIO,
+                "peak_penalty_eur_kwh": PEAK_PENALTY_EUR_KWH,
                 "validation_days": VALIDATION_DAYS,
                 "test_days": TEST_DAYS,
                 "train_period": f"{train['hour'].min()} → {train['hour'].max()}",
@@ -94,7 +103,19 @@ def main(argv: list[str] | None = None) -> None:
         test_metrics = evaluate(test, test_output["predicted_kw"], model.thresholds)
         mlflow.log_metrics({f"val_{k}": v for k, v in validation_metrics.items()})
         mlflow.log_metrics({f"test_{k}": v for k, v in test_metrics.items()})
+        mlflow.log_metrics(gain_vs_naive(train, test, test_metrics, model.thresholds))
         mlflow.log_dict(model.thresholds, "peak_thresholds.json")
+        # Empreinte des données de chaque période : une version se rattache aux données exactes
+        # qui l'ont produite, et deux runs sur les mêmes données ont la même empreinte
+        for context, period in (("training", train), ("validation", validation), ("test", test)):
+            mlflow.log_input(
+                mlflow.data.from_pandas(
+                    period[["hour", "site_id", "consumption_kw"]],
+                    name=f"energy_hourly_{context}",
+                    targets="consumption_kw",
+                ),
+                context=context,
+            )
 
         info = mlflow.pyfunc.log_model(
             name="model",
@@ -113,7 +134,32 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Run {run.info.run_id} : {MODEL_NAME} v{version} ({estimator.name})")
     print(f"  validation : nMAE {validation_metrics['nmae']:.3f}, MAE {validation_metrics['mae']:.1f} kW")
     print(f"  test       : nMAE {test_metrics['nmae']:.3f}, MAE {test_metrics['mae']:.1f} kW")
+    print(
+        f"  impact     : {test_metrics['kpi_peak_kwh_avoided']:.0f} kWh de dépassement évités "
+        f"({test_metrics['kpi_peak_avoided_ratio']:.0%} du maximum), "
+        f"{test_metrics['kpi_penalty_saved_eur']:.0f} € sur le test"
+    )
     print(f"  décision   : {decision}")
+
+
+def gain_vs_naive(train, test, test_metrics: dict[str, float], thresholds) -> dict[str, float]:
+    """Compare au modèle naïf sur le même test : ce que le modèle apporte en plus.
+
+    test_nmae_gain_vs_naive : baisse relative de l'erreur (0,3 = 30 % d'erreur en moins).
+    test_kpi_penalty_gain_vs_naive_eur : dépassement facturé évité en plus du naïf.
+    """
+    naive = ConsumptionModel(SeasonalNaive().fit(train), thresholds)
+    naive_output = naive.predict(None, test[MODEL_INPUT_COLUMNS])
+    naive_metrics = evaluate(test, naive_output["predicted_kw"], thresholds)
+    return {
+        "test_naive_nmae": naive_metrics["nmae"],
+        "test_naive_peak_f1": naive_metrics["peak_f1"],
+        "test_naive_kpi_penalty_saved_eur": naive_metrics["kpi_penalty_saved_eur"],
+        "test_nmae_gain_vs_naive": 1 - test_metrics["nmae"] / naive_metrics["nmae"],
+        "test_kpi_penalty_gain_vs_naive_eur": (
+            test_metrics["kpi_penalty_saved_eur"] - naive_metrics["kpi_penalty_saved_eur"]
+        ),
+    }
 
 
 def promote_if_better(client: MlflowClient, version: str, validation, challenger_nmae: float) -> str:

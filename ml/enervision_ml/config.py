@@ -23,6 +23,13 @@ CALENDAR_TZ = "UTC"
 # Un quantile marquerait du bruit comme pic sur les sites plats, datacenter et hôpital (constat 9)
 PEAK_RATIO = 1.25
 
+# Processus métier simulé (KPI d'impact) : la veille, le gestionnaire du site reçoit les pics
+# prévus et décale une part de la consommation de ces heures vers les heures creuses. Chaque kWh
+# au-dessus du seuil de pic est facturé en dépassement. Ce sont des hypothèses, pas des mesures :
+# le mock ne donne aucun coût (constat 14)
+SHIFTABLE_RATIO = 0.10  # part de la consommation d'une heure qu'on sait décaler
+PEAK_PENALTY_EUR_KWH = 0.15  # coût d'un kWh consommé au-dessus du seuil de pic
+
 # Une heure dont plus de la moitié des mesures n'ont pas de consommation n'est pas fiable :
 # sa moyenne repose sur trop peu de points (constat 10)
 MAX_MISSING_RATIO = 0.5
