@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installe AWS CLI v2, Terraform et GitHub CLI dans ~/.local/bin (sans sudo).
-# Usage : scripts/aws/install-tools.sh [nom-du-profil-aws]   (défaut : enervision)
+# Usage : infra/scripts/install-tools.sh [nom-du-profil-aws]   (défaut : enervision)
 # Relançable pour mettre à jour les outils.
 set -euo pipefail
 
