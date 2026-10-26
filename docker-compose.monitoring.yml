@@ -1,0 +1,96 @@
+# Supervision : Prometheus, Grafana et les exporteurs. S'ajoute au compose de l'environnement, sur le
+# même réseau que la base et l'API :
+#
+#   docker compose -f docker-compose.staging.yml -f docker-compose.monitoring.yml up -d   # staging, production
+#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d           # poste de développement
+#
+# Configuration dans monitoring/. Prometheus et Grafana n'écoutent que sur 127.0.0.1 : rien n'est
+# exposé sur le réseau. En production, on y accède par une redirection de port SSM (aucune règle de
+# groupe de sécurité à ajouter). Les exporteurs ne publient aucun port : seul Prometheus les interroge.
+# GRAFANA_ADMIN_PASSWORD doit être présent dans .env, staging.env ou production.env.
+
+services:
+  # Collecte toutes les cibles de monitoring/prometheus/prometheus.yml. Rétention bornée en durée
+  # et en taille pour ne pas remplir le disque de l'instance.
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=5GB
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  # Tableaux de bord. Source de données et dashboards provisionnés depuis le dépôt.
+  grafana:
+    image: grafana/grafana:13.2.4
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD manquant dans .env, staging.env ou production.env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  # Métriques de l'hôte (EC2 ou VM) : CPU, mémoire, disque, réseau.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+
+  # Métriques de chaque conteneur : CPU, mémoire, réseau, redémarrages.
+  cadvisor:
+    image: ghcr.io/google/cadvisor:0.60.6
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  # Métriques de PostgreSQL : connexions, taille de la base, activité. Utilisateur de l'application
+  # par défaut ; MONITORING_DB_USER et MONITORING_DB_PASSWORD permettent un utilisateur dédié.
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_URI: db:5432/${POSTGRES_DB:-enervision}?sslmode=disable
+      DATA_SOURCE_USER: ${MONITORING_DB_USER:-${POSTGRES_USER:-enervision}}
+      DATA_SOURCE_PASS: ${MONITORING_DB_PASSWORD:-${POSTGRES_PASSWORD:-dev}}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Sondes HTTP (/health de l'API, frontend, URL CloudFront), lancées par Prometheus.
+  blackbox:
+    image: prom/blackbox-exporter:v0.29.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./monitoring/blackbox:/etc/blackbox:ro
+
+volumes:
+  prometheus_data:
+  grafana_data:
