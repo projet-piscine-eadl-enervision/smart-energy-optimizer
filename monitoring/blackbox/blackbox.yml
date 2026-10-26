@@ -8,3 +8,15 @@ modules:
       # Vide : n'importe quel code 2xx
       valid_status_codes: []
       follow_redirects: true
+
+  # Frontend : il n'accepte que les noms d'hôte autorisés (allowedHosts en dev, NG_ALLOWED_HOSTS
+  # en prod). La sonde le joint par le réseau Docker mais se présente comme le navigateur.
+  http_frontend:
+    prober: http
+    timeout: 5s
+    http:
+      preferred_ip_protocol: ip4
+      valid_status_codes: []
+      follow_redirects: true
+      headers:
+        Host: localhost
