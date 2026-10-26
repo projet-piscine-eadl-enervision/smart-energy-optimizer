@@ -65,11 +65,11 @@ Un seuil en quantile ou en part de la capacité ne convient pas : il marquerait 
 | `hour_of_day`, `day_of_week`, `is_weekend`, `month` | le profil ; en **UTC**, que suit le mock sans changement d'heure (constat 11) |
 | `lag_24`, `lag_168` | même heure la veille, la semaine dernière ; utilisés seulement par le modèle de comparaison |
 
-Écartées : la température, qui n'explique pas la consommation (constat 7) ; `current_a`, copie de la cible (constat 13) ; l'ensoleillement et le coût, absents du mock (constat 14) ; les jours fériés, ignorés par le mock (constat 6). Une heure dont plus de la moitié des mesures n'ont pas de consommation est traitée comme absente (`nb_missing`, constat 10). Aucune variable tirée des mesures n'a un décalage inférieur à 24 h : un test le vérifie (`test_aucune_fuite_du_futur`).
+Écartées : la température, qui n'explique pas la consommation (constat 7) ; `current_a`, copie de la cible (constat 13) ; l'ensoleillement et le coût, absents du mock (constat 14) ; les jours fériés, ignorés par le mock (constat 6). Une heure dont plus de la moitié des mesures n'ont pas de consommation est traitée comme absente (`nb_missing`, constat 10). Aucune variable tirée des mesures n'a un décalage inférieur à 24 h : un test le vérifie (`test_no_future_leakage`).
 
 **Modèles** (`models.py`).
 1. `site_profile` : moyenne de l'entraînement par site, mois, type de jour et heure. C'est la meilleure prévision possible sur ces données, et la référence que tout modèle doit battre.
-2. `seasonal_naive` : même heure la semaine dernière. Il recopie le bruit de la semaine passée et fait environ 1,4 fois moins bien que le profil (vérifié par `test_profil_bat_le_naif_sur_des_donnees_comme_le_mock`) : la preuve que les mesures récentes n'apportent rien.
+2. `seasonal_naive` : même heure la semaine dernière. Il recopie le bruit de la semaine passée et fait environ 1,4 fois moins bien que le profil (vérifié par `test_profile_beats_naive_on_mock_like_data`) : la preuve que les mesures récentes n'apportent rien.
 3. Un modèle plus complexe (LightGBM) peut être proposé comme challenger ; il n'est pas attendu qu'il batte le profil, puisque le reste est du bruit.
 
 **Évaluation** (`evaluate.py`). Découpage dans l'ordre du temps, jamais aléatoire : entraînement, puis validation (60 derniers jours avant le test), puis test (60 derniers jours). L'entraînement doit couvrir **au moins un an**, sinon le facteur du mois n'est pas appris (constat 5) : l'entraînement s'arrête avec un message clair. Le profil est calculé sur l'entraînement seulement : `analytics.site_baseline`, calculée par l'ETL sur toutes les données, ne doit pas servir de modèle (fuite de la validation et du test).

@@ -19,24 +19,24 @@ def profile_frame(**columns) -> pd.DataFrame:
     return pd.DataFrame({**{k: [v] * n for k, v in base.items()}, **columns})
 
 
-def test_site_profile_predit_la_moyenne_de_la_case():
+def test_site_profile_predicts_cell_mean():
     train = profile_frame(consumption_kw=[100.0, 110.0, np.nan], hour_of_day=[10, 10, 10])
     model = SiteProfile().fit(train)
     assert model.predict(profile_frame(hour_of_day=[10])).tolist() == [105.0]
 
 
-def test_site_profile_mois_jamais_vu_prend_la_moyenne_sans_le_mois():
+def test_site_profile_unseen_month_falls_back_to_mean_without_month():
     train = profile_frame(consumption_kw=[100.0, 120.0], month=[1, 2])
     model = SiteProfile().fit(train)
     assert model.predict(profile_frame(month=[7])).tolist() == [110.0]
 
 
-def test_seasonal_naive_prend_la_semaine_derniere_sinon_la_veille():
+def test_seasonal_naive_uses_last_week_else_yesterday():
     features = pd.DataFrame({"lag_168": [10.0, np.nan], "lag_24": [99.0, 20.0]})
     assert SeasonalNaive().predict(features).tolist() == [10.0, 20.0]
 
 
-def test_profil_bat_le_naif_sur_des_donnees_comme_le_mock():
+def test_profile_beats_naive_on_mock_like_data():
     """Le naïf recopie le bruit de la semaine passée : environ 1,4 fois l'erreur du profil.
 
     C'est la justification du choix de SiteProfile comme référence (constat 3).
@@ -52,7 +52,7 @@ def test_profil_bat_le_naif_sur_des_donnees_comme_le_mock():
     assert naive["nmae"] > 1.2 * profile["nmae"]
 
 
-def test_seuil_de_pic_relatif_a_la_moyenne_du_site():
+def test_peak_threshold_relative_to_site_mean():
     train = pd.DataFrame(
         {"site_id": ["bureau"] * 2 + ["datacenter"] * 2, "consumption_kw": [60, 140, 740, 760]}
     )
@@ -60,7 +60,7 @@ def test_seuil_de_pic_relatif_a_la_moyenne_du_site():
     assert thresholds == {"bureau": 125.0, "datacenter": 937.5}
 
 
-def test_site_plat_n_a_pas_de_pic_de_demande():
+def test_flat_site_has_no_demand_peak():
     data = add_features(to_hourly_grid(make_mock_like(days=30)))
     # Datacenter : consommation plate autour de 735 kW avec 5 % de bruit
     flat = data.assign(consumption_kw=735 * (1 + 0.05 * np.random.default_rng(1).standard_normal(len(data))))
@@ -68,7 +68,7 @@ def test_site_plat_n_a_pas_de_pic_de_demande():
     assert not (flat["consumption_kw"] > flat["site_id"].map(thresholds)).any()
 
 
-def test_consumption_model_signale_les_pics():
+def test_consumption_model_flags_peaks():
     model = ConsumptionModel(SeasonalNaive(), {"A": 50.0, "B": 500.0})
     model_input = pd.DataFrame(
         {"site_id": ["A", "B"], "lag_168": [80.0, 80.0], "lag_24": [np.nan, np.nan]}

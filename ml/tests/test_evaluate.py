@@ -5,14 +5,14 @@ import pytest
 from enervision_ml.evaluate import evaluate, temporal_split
 
 
-def test_decoupage_temporel_sans_chevauchement(hourly):
+def test_temporal_split_without_overlap(hourly):
     train, validation, test = temporal_split(hourly, validation_days=3, test_days=2)
     assert train["hour"].max() < validation["hour"].min()
     assert validation["hour"].max() < test["hour"].min()
     assert len(train) + len(validation) + len(test) == len(hourly)
 
 
-def test_metriques_sur_un_cas_simple():
+def test_metrics_on_simple_case():
     df = pd.DataFrame(
         {
             "site_id": ["A", "A", "B", "B"],
@@ -33,7 +33,7 @@ def test_metriques_sur_un_cas_simple():
     assert metrics["peak_recall"] == 1.0
 
 
-def test_couverture_quand_le_modele_ne_peut_pas_prevoir():
+def test_coverage_when_model_cannot_predict():
     df = pd.DataFrame({"site_id": ["A", "A"], "consumption_kw": [1.0, 2.0]})
     metrics = evaluate(df, pd.Series([1.0, np.nan]), thresholds={"A": 10.0})
     assert metrics["coverage"] == pytest.approx(0.5)

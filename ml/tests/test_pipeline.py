@@ -26,7 +26,7 @@ def pipeline(tmp_path, monkeypatch):
     return data
 
 
-def test_le_naif_ne_detrone_pas_le_profil(pipeline):
+def test_naive_does_not_dethrone_profile(pipeline):
     training.main(["--model", "site_profile"])
     training.main(["--model", "seasonal_naive"])
 
@@ -37,7 +37,7 @@ def test_le_naif_ne_detrone_pas_le_profil(pipeline):
     assert "reste challenger" in decision(client, "2")
 
 
-def test_un_meilleur_modele_est_promu(pipeline):
+def test_better_model_is_promoted(pipeline):
     training.main(["--model", "seasonal_naive"])
     training.main(["--model", "site_profile"])
 
@@ -46,14 +46,14 @@ def test_un_meilleur_modele_est_promu(pipeline):
     assert "promu champion : nMAE" in decision(client, "2")
 
 
-def test_historique_insuffisant(pipeline, monkeypatch):
+def test_insufficient_history(pipeline, monkeypatch):
     short = make_mock_like(days=200)
     monkeypatch.setattr(training, "load_hourly", lambda url, start=None: short)
     with pytest.raises(SystemExit, match="Historique insuffisant"):
         training.main([])
 
 
-def test_prediction_avec_le_champion(pipeline, monkeypatch):
+def test_prediction_with_champion(pipeline, monkeypatch):
     training.main([])
 
     saved = {}
@@ -81,6 +81,6 @@ def test_prediction_avec_le_champion(pipeline, monkeypatch):
     assert peak_hours.between(8, 18).all()
 
 
-def test_prediction_sans_champion(pipeline):
+def test_prediction_without_champion(pipeline):
     with pytest.raises(SystemExit, match="Aucun modèle champion"):
         predict.run()
