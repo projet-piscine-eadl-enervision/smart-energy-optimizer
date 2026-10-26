@@ -1,0 +1,16 @@
+# Chargement des dashboards versionnés dans monitoring/grafana/dashboards (montés dans
+# /var/lib/grafana/dashboards). Le dépôt est la seule source : une modification faite dans l'interface
+# n'est pas conservée, il faut exporter le JSON du dashboard et le commiter.
+apiVersion: 1
+
+providers:
+  - name: enervision
+    folder: EnerVision
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    # Un JSON modifié est relu sans redémarrer Grafana
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
