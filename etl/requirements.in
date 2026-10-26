@@ -4,3 +4,4 @@ httpx2
 python-dotenv
 pandas
 pyarrow
+psycopg[binary]

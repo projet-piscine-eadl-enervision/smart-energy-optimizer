@@ -69,6 +69,12 @@ NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
 - `COMPOSE_PROFILES=apps` active `etl` et `frontend`. Leurs images doivent être publiées sur GHCR (vérifier avec `docker pull ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer/etl:main`), sinon le `pull` échoue.
 - `NG_ALLOWED_HOSTS` : liste des noms ou IP sous lesquels le frontend est joint (`10.43.43.50` en staging). Sans elle, le serveur de rendu refuse les requêtes qui arrivent avec l'IP de la VM.
 - Sur l'hôte, l'API écoute sur le port 8000 et le frontend sur le 4000. L'ETL ne publie aucun port : son état se lit avec `docker ps` (`healthy`).
+- `ref.site` est vide à l'installation : charger les sites une fois, après la première mise à jour réussie. Relancer est sans danger.
+
+  ```bash
+  cd /opt/enervision && docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env \
+    run --rm etl python -m pipeline load-ref      # attendu : « 7 sites loaded in ref.site »
+  ```
 
 ## Mise en place sur la VM (une seule fois)
 
