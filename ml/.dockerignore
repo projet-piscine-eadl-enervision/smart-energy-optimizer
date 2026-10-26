@@ -2,8 +2,16 @@
 .env
 __pycache__
 *.pyc
+**/__pycache__
+**/*.pyc
 .pytest_cache
 tests
 mlruns
 mlartifacts
 data
+.env.*
+.git
+.coverage
+.ruff_cache
+.dvc/cache
+*.md
