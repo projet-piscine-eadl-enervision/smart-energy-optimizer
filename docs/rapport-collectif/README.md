@@ -28,4 +28,4 @@ Brouillon commun du rapport collectif de management de projet (EC02), publié au
 
 ## Assemblage final
 
-Le rendu est un seul fichier, `EADL26_EC02 - Rapport Collectif READL_006-G3.md`, avec son PDF. Il est copié depuis ces pages, dans l'ordre du sommaire, sans ce sommaire, sans les consignes ni les parties restées « en cours ».
+Le rendu est un seul fichier, `EADL26_EC02 - Rapport Collectif READL_006-G3.md`, avec son PDF. Il est copié depuis ces pages, dans l'ordre du sommaire, sans ce sommaire, sans les consignes ni les parties restées « en cours ». Les schémas sont des images placées à côté des pages : un fichier copié hors du dépôt les perd, il faut donc les intégrer au fichier final (en base64) ou produire le PDF depuis le dépôt.

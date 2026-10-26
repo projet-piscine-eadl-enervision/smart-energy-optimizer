@@ -1,6 +1,6 @@
 # DevOps
 
-Cette partie décrit la chaîne d'intégration et de livraison de la plateforme, de la modification d'une ligne de code au déploiement en production, avec ses contrôles de qualité et de sécurité. Elle se rattache aux compétences C16 à C20 (CI/CD), C23 (administration par scripts) et C24 (supervision) de la grille. Les références (#NNN) renvoient aux pull requests du dépôt, qui sont la trace du travail ; les commits de cette partie sont signés `Mushkhushu` et `Flavie` (même adresse). Les chiffres sont lus sur `main` et sur GitHub le 26/10/2026.
+Cette partie décrit la chaîne d'intégration et de livraison de la plateforme, de la modification d'une ligne de code au déploiement en production, avec ses contrôles de qualité et de sécurité. Elle se rattache aux compétences C16 à C20 (CI/CD), C23 (administration par scripts) et C24 (supervision) de la grille. Les références (#NNN) renvoient aux pull requests du dépôt, qui sont la trace du travail ; les commits de cette partie sont signés `Mushkhushu` et `Flavie` (même adresse). Les chiffres sont lus sur `main` à `fe0793b` et sur GitHub le 26/10/2026.
 
 ## Rôle et périmètre
 
@@ -56,7 +56,7 @@ Les scripts d'exploitation sont versionnés dans `infra/scripts/` et testés par
 
 ## La supervision (C24)
 
-Les sondes existent : `/health` publie la version, le commit et l'environnement ; les images `api`, `etl` et `frontend` ont un `HEALTHCHECK` Docker ; le collecteur de l'ETL écrit un signal de vivacité à chaque tour réussi, lu par une sonde qui le déclare `unhealthy` après trois intervalles sans tour ; le staging annonce ses déploiements à GitHub, et la production est contrôlée après chaque déploiement. Il n'y a en revanche ni collecte de métriques ni alerte (#150) : le renommage d'un fichier a ainsi fait échouer en silence les mises à jour du staging pendant environ deux heures. L'évolution prévue est un export des métriques de l'hôte et des conteneurs vers Prometheus, un tableau Grafana (processeur, mémoire, disque, taux d'erreur, latence de `/health`) et une alerte sur l'échec du minuteur de mise à jour.
+Les sondes existent : `/health` publie la version, le commit et l'environnement ; les images `api`, `etl` et `frontend` ont un `HEALTHCHECK` Docker ; le collecteur de l'ETL écrit un signal de vivacité à chaque tour réussi, lu par une sonde qui le déclare `unhealthy` après trois intervalles sans tour ; le staging annonce ses déploiements à GitHub, et la production est contrôlée après chaque déploiement. Il n'y a en revanche ni collecte de métriques ni alerte (#150) : rien ne signale l'échec du minuteur de mise à jour du staging, qui se lit seulement dans le journal de l'unité systemd. L'évolution prévue est un export des métriques de l'hôte et des conteneurs vers Prometheus, un tableau Grafana (processeur, mémoire, disque, taux d'erreur, latence de `/health`) et une alerte sur l'échec du minuteur de mise à jour.
 
 ## La documentation (C20)
 
