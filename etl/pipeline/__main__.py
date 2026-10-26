@@ -1,8 +1,7 @@
 """Point d'entrée des traitements : python -m pipeline <traitement> [options].
 
-Traitements disponibles : voir JOBS. Prévu, pas encore écrit :
-- backfill : rattrapage de l'historique par /readings, un site à la fois sur une grille fixe.
-  Ponctuel : `docker compose run --rm etl python -m pipeline backfill`, ou minuteur systemd sur la VM.
+Traitements disponibles : voir JOBS. Les traitements ponctuels se lancent avec
+`docker compose run --rm etl python -m pipeline <traitement>`, ou par un minuteur systemd sur la VM.
 """
 import importlib
 import sys
@@ -12,6 +11,7 @@ JOBS = {
     "clean-history": "pipeline.jobs.clean_history",
     "load-ref": "pipeline.jobs.load_ref",
     "poll-current": "pipeline.jobs.poll_current",
+    "backfill": "pipeline.jobs.backfill",
 }
 
 
