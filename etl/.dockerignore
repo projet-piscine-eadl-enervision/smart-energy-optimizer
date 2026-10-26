@@ -2,5 +2,17 @@
 .env
 __pycache__
 *.pyc
+**/__pycache__
+**/*.pyc
 .pytest_cache
 tests
+.env.*
+.git
+.coverage
+.ruff_cache
+.dvc/cache
+*.md
+# Données de l'historique (DVC) : traitées hors de l'image
+pipeline/provided_files/*.csv
+pipeline/provided_files/*.json
+pipeline/edited_files

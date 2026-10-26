@@ -17,7 +17,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --only-binary=:all: -r requirements.txt \
     && pip uninstall -y pip
 
-COPY --chown=app:app . .
+# Copie explicite du seul code exécuté (règle Sonar S6470) : ni .env, ni tests, ni données
+# scripts/ : seed_dev.py se lance dans l'image (docker compose run --rm ml python scripts/seed_dev.py)
+COPY --chown=root:root --chmod=755 train.py ./
+COPY --chown=root:root --chmod=755 enervision_ml/ ./enervision_ml/
+COPY --chown=root:root --chmod=755 scripts/ ./scripts/
 
 # Version du code, passée par la CI à la construction
 ARG GIT_TITLE=dev
