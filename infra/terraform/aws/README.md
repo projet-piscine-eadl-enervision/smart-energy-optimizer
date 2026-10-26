@@ -137,7 +137,7 @@ compte), mettre `create_github_oidc_provider = false`.
 | `instance_type` | `t3.large` | 8 Go de mémoire pour base, API, ETL et frontend |
 | `root_volume_gb` | `64` | taille du disque |
 | `api_ingress_cidrs` | `[]` | CIDR autorisés sur le port 8000 ; vide = l'API n'est pas ouverte (le site passe par CloudFront) |
-| `github_oidc_sub_prefix` | `repo:projet-piscine-eadl-enervision@344791702/enervision@1425243299` | préfixe du `sub` OIDC (format immuable) |
+| `github_oidc_sub_prefix` | `repo:projet-piscine-eadl-enervision@344791702/smart-energy-optimizer@1425243299` | préfixe du `sub` OIDC (format immuable) |
 | `create_github_oidc_provider` | `true` | créer le fournisseur OIDC |
 
 ## Sorties
