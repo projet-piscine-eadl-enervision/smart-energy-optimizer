@@ -166,7 +166,7 @@ Changes to Outputs:
   ~ instance_public_ip = "<ancienne adresse>" -> "<nouvelle adresse>"
 ```
 
-Les 16 ressources du code existent telles qu'il les décrit. Le seul écart est l'adresse IP publique que Terraform lit sur l'instance, une valeur de sortie et non un réglage : aucun `apply` n'est nécessaire. Le `plan` est en lecture seule ; l'`apply` reste une décision d'équipe.
+Les 16 ressources du code existent telles qu'il les décrit. Le seul écart est l'adresse IP publique lue sur l'instance : l'adresse élastique du projet y est bien associée (`aws ec2 describe-addresses` renvoie l'instance et l'adresse que Terraform lit désormais), le state gardait une adresse antérieure. C'est une valeur lue et non un réglage : aucun `apply` n'est nécessaire. Le `plan` est en lecture seule ; l'`apply` reste une décision d'équipe.
 
 Limites : le trafic entre CloudFront et l'instance est en HTTP (pas de nom de domaine ni de certificat à nous) ; le bucket n'est ni versionné ni chiffré par une clé KMS (choix de coût pour un projet de deux semaines).
 
