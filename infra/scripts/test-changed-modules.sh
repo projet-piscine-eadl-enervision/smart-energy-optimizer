@@ -40,7 +40,7 @@ terraform=$terraform"
 expect "api seul" "api/a" '["api"]' false false false
 expect "etl et ml" "etl/a ml/a" '["etl","ml"]' false false false
 expect "frontend seul" "frontend/a" '[]' true false false
-expect "base de données seule" "db/a" '[]' false true false
+expect "base de données seule : migrations et tests de l'ETL et du ML" "db/a" '["etl","ml"]' false true false
 expect "documentation seule" "docs/a" '[]' false false false
 expect "terraform seul" "infra/terraform/a" '[]' false false true
 expect "workflow : tout" ".github/workflows/a" '["api","etl","ml"]' true true true

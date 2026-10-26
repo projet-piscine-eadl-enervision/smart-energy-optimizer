@@ -127,6 +127,19 @@ jobs:
           pip install -r requirements.txt
           # Outils de lint et de test figés dans requirements-dev.txt ; sans ce fichier (module qui n'en a pas encore), versions du jour
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; else pip install ruff pytest pytest-cov; fi
+      - name: Base TimescaleDB migrée (tests d'intégration de l'ETL et du ML)
+        if: matrix.component == 'etl' || matrix.component == 'ml'
+        # Sans DATABASE_URL, les tests qui touchent la base sont ignorés. La base démarre deux fois (initialisation
+        # puis service) : on attend les deux messages « ready » avant d'appliquer les migrations de db/.
+        working-directory: .
+        run: |
+          docker run -d --name db -e POSTGRES_PASSWORD=ci -p 5432:5432 timescale/timescaledb:2.30.2-pg16
+          until [ "$(docker logs db 2>&1 | grep -c 'ready to accept connections')" -ge 2 ]; do sleep 1; done
+          docker build -q -t enervision-migrate db
+          docker run --rm --network host \
+            -e DATABASE_URL="postgres://postgres:ci@localhost:5432/postgres?sslmode=disable" \
+            enervision-migrate up
+          echo "DATABASE_URL=postgresql://postgres:ci@localhost:5432/postgres" >> "$GITHUB_ENV"
       - name: Lint (ruff)
         if: hashFiles(format('{0}/requirements.txt', matrix.component)) != ''
         run: ruff check .
