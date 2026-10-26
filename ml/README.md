@@ -29,7 +29,31 @@ docker compose run --rm ml python -m enervision_ml.predict
 
 Résultats dans MLflow : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
 
-La prédiction toutes les heures viendra avec le service ML (planificateur intégré et `POST /predictions/run`).
+La prédiction toutes les heures viendra avec le service ML (planificateur intégré et `POST /predictions/run`). Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
+
+### Données attendues de l'ETL
+
+Le ML lit `analytics.energy_hourly`. L'historique du rattrapage horaire (`python -m pipeline backfill`) n'y apparaît qu'après le rafraîchissement de l'agrégat, que le rattrapage lance : sans lui, l'entraînement s'arrête (moins de 365 jours). Le collecteur complète ensuite heure par heure.
+
+Pour que deux entraînements donnent les mêmes chiffres, fixer la fin du jeu avec `ML_DATA_END` (date ISO, UTC) : sans elle, les fenêtres de validation et de test glissent à chaque heure ajoutée.
+
+```bash
+ML_DATA_END=2026-10-25 docker compose run --rm ml
+```
+
+### Sur le staging
+
+Compose : `docker-compose.staging.yml`. Le suivi des modèles (`mlflow`) s'ajoute à `COMPOSE_PROFILES` ; l'entraînement et la prévision se lancent à la demande, jamais en service (une mise à jour toutes les 2 minutes les relancerait).
+
+```bash
+# staging.env : COMPOSE_PROFILES=apps,collector,mlflow
+C="docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env"
+$C pull ml && $C up -d
+$C run --rm ml                                      # entraîne un challenger
+$C run --rm ml python -m enervision_ml.predict      # prévoit les 24 prochaines heures
+```
+
+MLflow n'a pas d'authentification : il écoute sur `127.0.0.1:5000` de la VM (`ssh -L 5000:127.0.0.1:5000 <VM>`). Le module utilise le compte propriétaire de la base, comme l'ETL, en attendant les comptes par module (ticket #145). Sans historique chargé, `run --rm ml` s'arrête sur « Historique insuffisant » et `predict` sur « Aucun modèle champion » : les connexions à la base et à MLflow fonctionnent.
 
 ### Données en local (développement)
 
@@ -40,7 +64,7 @@ cp "<dossier du sujet>/data/all_sites_combined.csv" ml/data/   # ignoré par Git
 docker compose run --rm ml python scripts/seed_dev.py
 ```
 
-Le script refuse de tourner si `APP_ENV` n'est pas `dev`. Le CSV n'est pas le mock (niveaux, noms des sites, anomalies) : il sert à faire tourner le code, pas à évaluer le modèle, qui s'entraîne sur l'historique du mock chargé par l'ETL. Ce jeu d'entraînement doit être **figé et commun** à l'équipe : le mock redessine son bruit à chaque appel, deux chargements ne donnent pas les mêmes données.
+Le script refuse de tourner si `APP_ENV` n'est pas `dev` (le service `ml` du staging fixe `APP_ENV=staging`). Le CSV n'est pas le mock (niveaux, noms des sites, anomalies) : il sert à faire tourner le code, pas à évaluer le modèle, qui s'entraîne sur l'historique du mock chargé par l'ETL. Ce jeu d'entraînement doit être **figé et commun** à l'équipe : le mock redessine son bruit à chaque appel, deux chargements ne donnent pas les mêmes données.
 
 ## Stratégie
 
@@ -113,4 +137,4 @@ ruff check .
 pytest --cov=enervision_ml
 ```
 
-`test_pipeline.py` enchaîne entraînement, promotion et prédiction avec un MLflow en fichier SQLite temporaire et des données factices : ni base ni serveur nécessaires. Seules les requêtes SQL de `data.py` ne sont pas couvertes, elles demandent TimescaleDB et les schémas de l'équipe.
+`test_pipeline.py` enchaîne entraînement, promotion et prédiction avec un MLflow en fichier SQLite temporaire et des données factices : ni base ni serveur nécessaires. `test_data_db.py` teste les requêtes SQL de `data.py` avec le rôle `enervision_ml` ; il est ignoré sans `DATABASE_URL` (base migrée par `db/migrations`, par exemple `DATABASE_URL=postgresql://postgres:…@localhost:5432/postgres`).

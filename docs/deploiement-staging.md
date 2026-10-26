@@ -75,6 +75,7 @@ NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
   cd /opt/enervision && docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env \
     run --rm etl python -m pipeline load-ref      # attendu : « 7 sites loaded in ref.site »
   ```
+- Module ML : ajouter `mlflow` à `COMPOSE_PROFILES`, puis `docker compose … run --rm ml` pour entraîner et `run --rm ml python -m enervision_ml.predict` pour prévoir (détails dans `ml/README.md`). Le service `ml` n'est jamais dans `COMPOSE_PROFILES`. MLflow écoute sur `127.0.0.1:5000` de la VM, sans authentification.
 - Collecte des mesures : ajouter `collector` à `COMPOSE_PROFILES` (`apps,collector`), puis attendre la mise à jour automatique. `docker ps` montre `collector` en `healthy` après environ 90 secondes (`unhealthy` : aucun tour réussi depuis trois minutes, mock injoignable ou base arrêtée). Les tours se lisent avec `docker compose logs --tail 5 collector` (staging : mêmes options `-f` et `--env-file` que ci-dessus).
 
 ## Mise en place sur la VM (une seule fois)
