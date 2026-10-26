@@ -1,5 +1,5 @@
 variable "region" {
-  description = "Région AWS des ressources (à confirmer avec l'accès fourni)."
+  description = "Région AWS des ressources (Paris)."
   type        = string
   default     = "eu-west-3"
 }
@@ -17,17 +17,17 @@ variable "environment" {
 }
 
 variable "vpc_id" {
-  description = "VPC dans lequel créer le groupe de sécurité (fourni par l'accès AWS ou à créer)."
+  description = "VPC dans lequel créer le groupe de sécurité (VPC par défaut du compte)."
   type        = string
 }
 
 variable "subnet_id" {
-  description = "Sous-réseau de l'instance (fourni par l'accès AWS ou à créer)."
+  description = "Sous-réseau de l'instance (dans le VPC par défaut du compte)."
   type        = string
 }
 
 variable "instance_type" {
-  description = "Type d'instance. Elle héberge base, API, ETL et frontend : 8 Go de mémoire visés (hypothèse à valider avec le dimensionnement)."
+  description = "Type d'instance. Elle héberge base, API, ETL et frontend : 8 Go de mémoire."
   type        = string
   default     = "t3.large"
 }
@@ -39,7 +39,7 @@ variable "root_volume_gb" {
 }
 
 variable "api_ingress_cidrs" {
-  description = "CIDR autorisés à joindre l'API (port 8000). Vide par défaut : aucune ouverture tant que l'exposition (HTTPS, répartiteur) n'est pas décidée."
+  description = "CIDR autorisés à joindre l'API (port 8000). Vide par défaut : le site passe par CloudFront et le frontend, l'API n'a pas à être ouverte."
   type        = list(string)
   default     = []
 }

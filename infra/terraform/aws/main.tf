@@ -100,7 +100,7 @@ resource "aws_instance" "main" {
   vpc_security_group_ids = [aws_security_group.instance.id]
   iam_instance_profile   = aws_iam_instance_profile.instance.name
 
-  # Docker, agent SSM et clone du dépôt : voir user_data.sh (à valider sur une vraie instance).
+  # Docker, agent SSM et clone du dépôt : voir user_data.sh (premier démarrage uniquement).
   user_data                   = file("${path.module}/user_data.sh")
   user_data_replace_on_change = false
 

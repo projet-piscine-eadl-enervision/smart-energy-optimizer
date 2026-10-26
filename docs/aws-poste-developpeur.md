@@ -135,10 +135,10 @@ Tu dois voir le numéro du compte et ton prénom à la fin de la ligne `Arn`.
 cd infra/terraform/aws
 ```
 
-Copie le fichier `backend.hcl` fournis par Lea:
+Crée ton `backend.hcl` (non versionné) à partir du modèle `backend.hcl.example` :
 
 ```bash
-sed -i 's/<suffixe-unique>/dreamteam2026/' backend.hcl
+cp backend.hcl.example backend.hcl
 cat backend.hcl     # doit afficher bucket = "enervision-tfstate-dreamteam2026"
 ```
 

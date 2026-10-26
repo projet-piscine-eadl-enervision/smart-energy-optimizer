@@ -1,6 +1,6 @@
 #!/bin/bash
 # Préparation de l'instance de production au premier démarrage (Debian 13).
-# Ce script n'a pas encore été exécuté sur une vraie instance : à valider.
+# Ne s'exécute qu'à la création de l'instance : le modifier ne change pas l'instance en place.
 set -euxo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
@@ -23,6 +23,6 @@ curl -fsSL https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian
 dpkg -i /tmp/amazon-ssm-agent.deb
 systemctl enable --now amazon-ssm-agent
 
-# Dépôt de déploiement et dossier de configuration (staging.env et jeton GHCR : à créer à la main, jamais ici)
+# Dépôt de déploiement et dossier de configuration (production.env et jeton GHCR : à créer à la main, jamais ici)
 git clone https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer /opt/enervision
 install -d -m 700 /etc/enervision
