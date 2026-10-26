@@ -164,6 +164,12 @@ def main(argv: list[str] | None = None) -> None:
         f"{test_metrics['kpi_penalty_saved_eur']:.0f} € sur le test"
     )
     print(f"  décision   : {decision}")
+    print(f"  lien MLflow : {run_url(settings.public_url, run.info.experiment_id, run.info.run_id)}")
+
+
+def run_url(base: str, experiment_id: str, run_id: str) -> str:
+    """Adresse du run dans l'interface MLflow."""
+    return f"{base.rstrip('/')}/#/experiments/{experiment_id}/runs/{run_id}"
 
 
 def gain_vs_naive(train, test, test_metrics: dict[str, float], thresholds) -> dict[str, float]:
