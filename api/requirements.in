@@ -9,3 +9,4 @@ email-validator
 PyJWT
 pwdlib[bcrypt]
 python-multipart
+prometheus-fastapi-instrumentator
