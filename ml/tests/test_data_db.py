@@ -30,7 +30,7 @@ def as_ml_role(url: str) -> str:
 
 def cleanup(conn) -> None:
     conn.execute("DELETE FROM ml.prediction WHERE site_id = %s", (SITE,))
-    conn.execute("DELETE FROM ml.model_run WHERE model_version = %s", (RUN_VERSION,))
+    conn.execute("DELETE FROM ml.model_run WHERE model_version LIKE %s", (RUN_VERSION + "%",))
     conn.execute("DELETE FROM core.energy_reading WHERE site_id = %s", (SITE,))
     conn.execute("DELETE FROM ref.site WHERE site_id = %s", (SITE,))
 
@@ -128,6 +128,7 @@ def model_run(**changes) -> dict:
         "train_start": pd.Timestamp("2025-01-01", tz="UTC"),
         "train_end": pd.Timestamp("2026-01-01", tz="UTC"),
         "promoted": True,
+        "champion_version": RUN_VERSION,
         "decision": "promu champion (premier modèle)",
         "shiftable_ratio": 0.1,
         "peak_penalty_eur_kwh": 0.15,
@@ -172,3 +173,33 @@ def test_save_model_run_writes_nothing_when_a_table_fails(seeded):
             "SELECT count(*) FROM ml.model_run WHERE model_version = %s", (RUN_VERSION,)
         ).fetchone()[0]
     assert count == 0
+
+
+def test_save_model_run_keeps_a_single_champion(seeded):
+    url = as_ml_role(DATABASE_URL)
+    second = RUN_VERSION + "-2"
+    data.save_model_run(url, model_run(), {"val_nmae": 0.04}, {SITE: 125.0})
+    # Le nouvel entraînement détrône le premier : un seul champion, sans violer l'index unique
+    data.save_model_run(
+        url,
+        model_run(model_version=second, run_id="run-b", champion_version=second),
+        {"val_nmae": 0.03},
+        {SITE: 125.0},
+    )
+    # Un troisième entraînement qui ne gagne pas laisse le champion en place
+    data.save_model_run(
+        url,
+        model_run(model_version=RUN_VERSION + "-3", run_id="run-c", promoted=False,
+                  champion_version=second),
+        {"val_nmae": 0.09},
+        {SITE: 125.0},
+    )
+
+    with psycopg.connect(DATABASE_URL) as conn:
+        rows = dict(
+            conn.execute(
+                "SELECT model_version, is_champion FROM ml.model_run WHERE model_version LIKE %s",
+                (RUN_VERSION + "%",),
+            ).fetchall()
+        )
+    assert rows == {RUN_VERSION: False, second: True, RUN_VERSION + "-3": False}

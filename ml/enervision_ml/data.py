@@ -59,6 +59,11 @@ DO UPDATE SET run_id = EXCLUDED.run_id, model = EXCLUDED.model, trained_at = now
               peak_penalty_eur_kwh = EXCLUDED.peak_penalty_eur_kwh
 """
 
+# Deux instructions : l'index unique est vérifié à chaque ligne modifiée, passer le nouveau champion à
+# vrai avant l'ancien à faux le violerait
+RELEASE_CHAMPION = "UPDATE ml.model_run SET is_champion = false WHERE is_champion AND model_version <> %s"
+SET_CHAMPION = "UPDATE ml.model_run SET is_champion = true WHERE model_version = %s AND NOT is_champion"
+
 UPSERT_MODEL_METRIC = """
 INSERT INTO ml.model_metric (model_version, metric, value) VALUES (%s, %s, %s)
 ON CONFLICT (model_version, metric) DO UPDATE SET value = EXCLUDED.value
@@ -105,10 +110,13 @@ def save_model_run(
 
     Rejouable : une version déjà connue est mise à jour (le registre MLflow remis à zéro
     repart de la version 1). Le rôle ML n'a pas le droit de supprimer : on écrase, on ne purge pas.
+    run["champion_version"] est la version en service après la décision de promotion.
     """
     version = run["model_version"]
     with psycopg.connect(database_url) as conn, conn.cursor() as cur:
         cur.execute(UPSERT_MODEL_RUN, run)
+        cur.execute(RELEASE_CHAMPION, (run["champion_version"],))
+        cur.execute(SET_CHAMPION, (run["champion_version"],))
         cur.executemany(
             UPSERT_MODEL_METRIC, [(version, name, float(value)) for name, value in metrics.items()]
         )

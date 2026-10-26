@@ -123,8 +123,13 @@ def test_training_copies_run_to_database(pipeline, monkeypatch):
     training.main(["--model", "seasonal_naive"])
 
     (first, metrics, thresholds), (second, _, _) = saved
-    assert (first["model_version"], first["promoted"]) == ("1", True)
-    assert (second["model_version"], second["promoted"]) == ("2", False)
+    assert (first["model_version"], first["promoted"], first["champion_version"]) == ("1", True, "1")
+    # Le naïf ne détrône pas le profil : la version 1 reste en service
+    assert (second["model_version"], second["promoted"], second["champion_version"]) == (
+        "2",
+        False,
+        "1",
+    )
     assert {"val_nmae", "test_kpi_penalty_saved_eur", "test_nmae_gain_vs_naive"} <= metrics.keys()
     assert set(thresholds) == set(pipeline["site_id"])
 

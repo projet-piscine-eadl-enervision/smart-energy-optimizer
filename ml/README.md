@@ -129,7 +129,7 @@ Chaque entraînement copie en base ce que MLflow garde pour lui, et des vues com
 
 | Objet | Contenu | Usage dans Grafana |
 |---|---|---|
-| `ml.model_run` | une ligne par version : modèle, période d'entraînement, promue ou non, décision, hypothèses du KPI | historique des versions, champion actuel |
+| `ml.model_run` | une ligne par version : modèle, période d'entraînement, promue à son entraînement (`promoted`), champion actuel (`is_champion`, une seule ligne), décision, hypothèses du KPI | historique des versions, champion actuel (`WHERE is_champion`) |
 | `ml.model_metric` | métriques de l'entraînement (`val_nmae`, `test_nmae`, `test_kpi_penalty_saved_eur`, `test_nmae_gain_vs_naive`…) | notes de chaque version, gain sur le naïf |
 | `ml.peak_threshold` | seuil de pic par version et par site | référence des vues |
 | `ml.prediction_vs_actual` | chaque prévision passée face à la mesure : erreur, pic annoncé, pic réel, kWh évités | courbe prévu / réel |

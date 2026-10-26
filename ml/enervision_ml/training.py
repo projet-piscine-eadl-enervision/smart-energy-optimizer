@@ -134,6 +134,7 @@ def main(argv: list[str] | None = None) -> None:
     decision = promote_if_better(client, version, validation, validation_metrics["nmae"])
     client.set_tag(run.info.run_id, "decision", decision)
     # Copie en base pour le suivi en SQL (vues ml.prediction_*, Grafana)
+    champion_version = str(registry.get_alias(client, registry.CHAMPION).version)
     save_model_run(
         settings.database_url,
         {
@@ -142,7 +143,8 @@ def main(argv: list[str] | None = None) -> None:
             "model": estimator.name,
             "train_start": train["hour"].min(),
             "train_end": train["hour"].max(),
-            "promoted": str(registry.get_alias(client, registry.CHAMPION).version) == version,
+            "promoted": champion_version == version,
+            "champion_version": champion_version,
             "decision": decision,
             "shiftable_ratio": SHIFTABLE_RATIO,
             "peak_penalty_eur_kwh": PEAK_PENALTY_EUR_KWH,
