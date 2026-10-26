@@ -1,7 +1,7 @@
 """Bout en bout sans base ni serveur : MLflow dans un fichier SQLite temporaire, et des
 données factices à la place de analytics.energy_hourly."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 
 import pandas as pd
 import pytest
@@ -156,3 +156,16 @@ def test_data_end_is_passed_to_the_query(pipeline, monkeypatch):
     monkeypatch.setenv("ML_DATA_END", "2025-05-15")
     training.main([])
     assert seen["end"] == datetime(2025, 5, 15, tzinfo=UTC)
+
+
+def test_data_end_defaults_to_midnight_today(pipeline, monkeypatch):
+    seen = {}
+
+    def fake_load(url, start=None, end=None):
+        seen["end"] = end
+        return pipeline
+
+    monkeypatch.setattr(training, "load_hourly", fake_load)
+    monkeypatch.delenv("ML_DATA_END", raising=False)
+    training.main([])
+    assert seen["end"] == datetime.combine(datetime.now(UTC).date(), time.min, tzinfo=UTC)

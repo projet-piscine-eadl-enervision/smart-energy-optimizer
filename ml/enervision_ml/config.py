@@ -6,7 +6,7 @@ numéro de constat.
 
 import os
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 
 from dotenv import load_dotenv
 
@@ -49,13 +49,18 @@ class Settings:
     database_url: str
     tracking_uri: str
     code_version: str
-    data_end: datetime | None = None
+    data_end: datetime
 
 
-def parse_data_end(value: str | None) -> datetime | None:
-    """ML_DATA_END (ISO, UTC par défaut) : première heure exclue de l'entraînement, ou rien."""
+def parse_data_end(value: str | None, now: datetime | None = None) -> datetime:
+    """ML_DATA_END (ISO, UTC par défaut) : première heure exclue de l'entraînement.
+
+    Sans valeur, minuit UTC du jour : les fenêtres de validation et de test ne glissent qu'une
+    fois par jour, au lieu d'une fois par heure collectée, et deux entraînements du même jour
+    portent sur les mêmes données.
+    """
     if not value:
-        return None
+        return datetime.combine((now or datetime.now(UTC)).date(), time.min, tzinfo=UTC)
     end = datetime.fromisoformat(value)
     return end if end.tzinfo else end.replace(tzinfo=UTC)
 

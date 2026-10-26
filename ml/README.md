@@ -35,7 +35,7 @@ La prédiction toutes les heures viendra avec le service ML (planificateur inté
 
 Le ML lit `analytics.energy_hourly`. L'historique du rattrapage horaire (`python -m pipeline backfill`) n'y apparaît qu'après le rafraîchissement de l'agrégat, que le rattrapage lance : sans lui, l'entraînement s'arrête (moins de 365 jours). Le collecteur complète ensuite heure par heure.
 
-Pour que deux entraînements donnent les mêmes chiffres, fixer la fin du jeu avec `ML_DATA_END` (date ISO, UTC) : sans elle, les fenêtres de validation et de test glissent à chaque heure ajoutée.
+La fin du jeu est figée pour que deux entraînements donnent les mêmes chiffres : `ML_DATA_END` (date ISO, UTC) si elle est définie, sinon minuit UTC du jour. Les fenêtres de validation et de test ne glissent donc qu'une fois par jour. La valeur utilisée est enregistrée dans MLflow (`data_end`) et dans `ml.model_run.data_end`.
 
 ```bash
 ML_DATA_END=2026-10-25 docker compose run --rm ml

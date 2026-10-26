@@ -55,8 +55,8 @@ def main(argv: list[str] | None = None) -> None:
     mlflow.set_experiment(EXPERIMENT)
     client = MlflowClient()
 
-    # ML_DATA_END fige la fin du jeu : les fenêtres de découpage ne glissent plus
-    # quand le collecteur ajoute des heures
+    # La fin du jeu est figée (ML_DATA_END, sinon minuit UTC du jour) : les fenêtres de
+    # découpage ne glissent plus quand le collecteur ajoute des heures
     raw = load_hourly(settings.database_url, end=settings.data_end)
     if raw.empty:
         raise SystemExit(
@@ -91,6 +91,7 @@ def main(argv: list[str] | None = None) -> None:
                 "peak_penalty_eur_kwh": PEAK_PENALTY_EUR_KWH,
                 "validation_days": VALIDATION_DAYS,
                 "test_days": TEST_DAYS,
+                "data_end": settings.data_end.isoformat(),
                 "train_period": f"{train['hour'].min()} → {train['hour'].max()}",
                 "validation_period": f"{validation['hour'].min()} → {validation['hour'].max()}",
                 "test_period": f"{test['hour'].min()} → {test['hour'].max()}",
@@ -143,6 +144,7 @@ def main(argv: list[str] | None = None) -> None:
             "model": estimator.name,
             "train_start": train["hour"].min(),
             "train_end": train["hour"].max(),
+            "data_end": settings.data_end,
             "promoted": champion_version == version,
             "champion_version": champion_version,
             "decision": decision,

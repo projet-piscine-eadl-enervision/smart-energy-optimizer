@@ -7,9 +7,17 @@ from enervision_ml.config import parse_data_end
 from enervision_ml.predict import check_fresh
 
 
-def test_data_end_empty_means_no_limit():
-    assert parse_data_end(None) is None
-    assert parse_data_end("") is None
+def test_data_end_empty_means_midnight_utc_today():
+    now = datetime(2026, 10, 26, 16, 50, tzinfo=UTC)
+    expected = datetime(2026, 10, 26, tzinfo=UTC)
+    assert parse_data_end(None, now) == expected
+    assert parse_data_end("", now) == expected
+
+
+def test_data_end_default_is_stable_within_a_day():
+    morning = datetime(2026, 10, 26, 0, 5, tzinfo=UTC)
+    evening = datetime(2026, 10, 26, 23, 55, tzinfo=UTC)
+    assert parse_data_end(None, morning) == parse_data_end(None, evening)
 
 
 def test_data_end_defaults_to_utc():
