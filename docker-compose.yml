@@ -83,6 +83,26 @@ services:
     depends_on:
       - api
 
+  # Tests de bout en bout (Cypress). Lancé seulement à la demande, une fois la pile démarrée :
+  #   docker compose up -d
+  #   docker compose --profile e2e run --rm e2e
+  # Partage le réseau du conteneur frontend : Cypress joint l'application sur localhost:4000,
+  # comme un navigateur sur le poste. Aucun Node ni Cypress à installer dans WSL.
+  e2e:
+    image: cypress/included:16.1.1
+    container_name: enervision-e2e
+    profiles: [e2e]
+    restart: "no"
+    network_mode: "service:frontend"
+    # Utilisateur node (uid 1000) : les captures d'écran appartiennent à l'utilisateur WSL, pas à root
+    user: node
+    working_dir: /e2e
+    volumes:
+      - ./frontend/cypress.config.js:/e2e/cypress.config.js:ro
+      - ./frontend/cypress:/e2e/cypress
+    depends_on:
+      - frontend
+
   mlflow:
     image: ghcr.io/mlflow/mlflow:v3.17.2
     container_name: enervision-mlflow
