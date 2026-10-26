@@ -46,6 +46,35 @@ DO UPDATE SET predicted_kw = EXCLUDED.predicted_kw,
 """
 
 
+UPSERT_MODEL_RUN = """
+INSERT INTO ml.model_run (model_version, run_id, model, train_start, train_end, promoted,
+                          decision, shiftable_ratio, peak_penalty_eur_kwh)
+VALUES (%(model_version)s, %(run_id)s, %(model)s, %(train_start)s, %(train_end)s, %(promoted)s,
+        %(decision)s, %(shiftable_ratio)s, %(peak_penalty_eur_kwh)s)
+ON CONFLICT (model_version)
+DO UPDATE SET run_id = EXCLUDED.run_id, model = EXCLUDED.model, trained_at = now(),
+              train_start = EXCLUDED.train_start, train_end = EXCLUDED.train_end,
+              promoted = EXCLUDED.promoted, decision = EXCLUDED.decision,
+              shiftable_ratio = EXCLUDED.shiftable_ratio,
+              peak_penalty_eur_kwh = EXCLUDED.peak_penalty_eur_kwh
+"""
+
+# Deux instructions : l'index unique est vérifié à chaque ligne modifiée, passer le nouveau champion à
+# vrai avant l'ancien à faux le violerait
+RELEASE_CHAMPION = "UPDATE ml.model_run SET is_champion = false WHERE is_champion AND model_version <> %s"
+SET_CHAMPION = "UPDATE ml.model_run SET is_champion = true WHERE model_version = %s AND NOT is_champion"
+
+UPSERT_MODEL_METRIC = """
+INSERT INTO ml.model_metric (model_version, metric, value) VALUES (%s, %s, %s)
+ON CONFLICT (model_version, metric) DO UPDATE SET value = EXCLUDED.value
+"""
+
+UPSERT_PEAK_THRESHOLD = """
+INSERT INTO ml.peak_threshold (model_version, site_id, threshold_kw) VALUES (%s, %s, %s)
+ON CONFLICT (model_version, site_id) DO UPDATE SET threshold_kw = EXCLUDED.threshold_kw
+"""
+
+
 def load_hourly(
     database_url: str, start: datetime | None = None, end: datetime | None = None
 ) -> pd.DataFrame:
@@ -72,3 +101,26 @@ def save_predictions(database_url: str, predictions: pd.DataFrame, model_version
     with psycopg.connect(database_url) as conn, conn.cursor() as cur:
         cur.executemany(UPSERT_PREDICTION, rows)
     return len(rows)
+
+
+def save_model_run(
+    database_url: str, run: dict, metrics: dict[str, float], thresholds: dict[str, float]
+) -> None:
+    """Copie un entraînement en base pour le suivi en SQL, en une seule transaction.
+
+    Rejouable : une version déjà connue est mise à jour (le registre MLflow remis à zéro
+    repart de la version 1). Le rôle ML n'a pas le droit de supprimer : on écrase, on ne purge pas.
+    run["champion_version"] est la version en service après la décision de promotion.
+    """
+    version = run["model_version"]
+    with psycopg.connect(database_url) as conn, conn.cursor() as cur:
+        cur.execute(UPSERT_MODEL_RUN, run)
+        cur.execute(RELEASE_CHAMPION, (run["champion_version"],))
+        cur.execute(SET_CHAMPION, (run["champion_version"],))
+        cur.executemany(
+            UPSERT_MODEL_METRIC, [(version, name, float(value)) for name, value in metrics.items()]
+        )
+        cur.executemany(
+            UPSERT_PEAK_THRESHOLD,
+            [(version, site_id, float(value)) for site_id, value in thresholds.items()],
+        )

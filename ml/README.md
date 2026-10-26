@@ -107,7 +107,46 @@ Un seuil en quantile ou en part de la capacité ne convient pas : il marquerait 
 
 La nMAE est utilisée plutôt que la MAE pour qu'une usine à 600 kW ne pèse pas plus qu'un bureau à 100 kW. Le test donne le chiffre final et ne sert à aucune décision.
 
+**Impact métier** (`evaluate.business_kpis`). Processus simulé : la veille, le gestionnaire reçoit les pics prévus et décale 10 % de la consommation de ces heures vers les heures creuses ; chaque kWh au-dessus du seuil de pic est facturé 0,15 €. Ces deux valeurs sont des **hypothèses** (`SHIFTABLE_RATIO`, `PEAK_PENALTY_EUR_KWH` dans `config.py`), le mock ne donnant aucun coût (constat 14). Sans modèle, aucun pic n'est annoncé et rien n'est évité.
+
+| KPI | Rôle |
+|---|---|
+| `kpi_peak_kwh_avoided` | dépassement évité grâce aux pics annoncés (kWh) |
+| `kpi_peak_avoided_ratio` | part du dépassement qu'une prévision parfaite aurait évité |
+| `kpi_penalty_saved_eur` | dépassement évité valorisé en euros |
+| `kpi_missed_peak_hours`, `kpi_false_alarm_hours` | pics non annoncés, alertes inutiles |
+| `test_nmae_gain_vs_naive`, `test_kpi_penalty_gain_vs_naive_eur` | ce que le modèle apporte en plus du naïf, sur le même test |
+
+Sur des données construites comme le mock (test `test_impact_and_data_recorded_in_mlflow`), le profil réduit l'erreur d'environ 30 % par rapport au naïf, mais les deux annoncent tous les pics : les pics de bureau dépassent le seuil de loin. Le gain en euros sur le naïf est alors nul ; il viendra des sites où le pic est proche du seuil, à vérifier sur les données du mock.
+
+**Versions** (MLflow). Chaque entraînement crée une version du modèle `enervision-consumption`, rattachée à son run : paramètres, métriques, version du code (`code_version`, le commit) et empreinte des données de chaque période (onglet *Datasets* du run, contextes `training`, `validation`, `test`). Deux runs sur les mêmes données ont la même empreinte. Les alias `champion` et `challenger` désignent les versions en service.
+
 **Promotion** (`training.py`, règle de `CONTRIBUTING.md`). Chaque entraînement enregistre une version `challenger`. Le champion est réévalué **sur la validation actuelle** (les données s'enrichissent avec le temps), et le challenger le remplace seulement si sa nMAE est plus basse. La décision est notée dans le tag `decision` du run.
+
+## Suivi en SQL (Grafana)
+
+Chaque entraînement copie en base ce que MLflow garde pour lui, et des vues comparent les prédictions à la mesure réelle (migration `db/migrations/20261026120000_ml_monitoring.sql`). Une source PostgreSQL suffit à Grafana, sans MLflow ni Prometheus.
+
+| Objet | Contenu | Usage dans Grafana |
+|---|---|---|
+| `ml.model_run` | une ligne par version : modèle, période d'entraînement, promue à son entraînement (`promoted`), champion actuel (`is_champion`, une seule ligne), décision, hypothèses du KPI | historique des versions, champion actuel (`WHERE is_champion`) |
+| `ml.model_metric` | métriques de l'entraînement (`val_nmae`, `test_nmae`, `test_kpi_penalty_saved_eur`, `test_nmae_gain_vs_naive`…) | notes de chaque version, gain sur le naïf |
+| `ml.peak_threshold` | seuil de pic par version et par site | référence des vues |
+| `ml.prediction_vs_actual` | chaque prévision passée face à la mesure : erreur, pic annoncé, pic réel, kWh évités | courbe prévu / réel |
+| `ml.prediction_quality_daily` | par jour, site et version : nMAE réelle, pics annoncés / ratés / fausses alertes, kWh et € évités | **dérive de la performance** (C33), **impact métier en production** (C35) |
+| `ml.prediction_freshness` | dernière prédiction par site et son âge | alerte si l'âge dépasse 2 h |
+
+Mêmes règles qu'à l'entraînement : heure à plus de 50 % de mesures nulles écartée, dépassement évité calculé comme `evaluate.business_kpis`. Les vues ne se remplissent qu'une fois les prédictions passées confrontées aux mesures, donc avec la prédiction horaire en service. Le rôle de lecture de Grafana a besoin de `SELECT` sur ces objets (`USAGE` sur le schéma `ml`).
+
+Exemple, nMAE réelle par jour et par version :
+
+```sql
+SELECT day AS time, model_version, avg(nmae) AS nmae
+FROM ml.prediction_quality_daily
+WHERE $__timeFilter(day)
+GROUP BY day, model_version
+ORDER BY day;
+```
 
 ## Structure
 

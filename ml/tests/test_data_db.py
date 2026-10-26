@@ -19,6 +19,7 @@ pytestmark = pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL absent : 
 
 SITE = "SITE997"
 HOURS = 3
+RUN_VERSION = "test-run"
 
 
 def as_ml_role(url: str) -> str:
@@ -29,6 +30,7 @@ def as_ml_role(url: str) -> str:
 
 def cleanup(conn) -> None:
     conn.execute("DELETE FROM ml.prediction WHERE site_id = %s", (SITE,))
+    conn.execute("DELETE FROM ml.model_run WHERE model_version LIKE %s", (RUN_VERSION + "%",))
     conn.execute("DELETE FROM core.energy_reading WHERE site_id = %s", (SITE,))
     conn.execute("DELETE FROM ref.site WHERE site_id = %s", (SITE,))
 
@@ -116,3 +118,88 @@ def test_ml_role_cannot_write_measures(seeded):
             "VALUES (now(), now(), %s, 'good', 'readings')",
             (SITE,),
         )
+
+
+def model_run(**changes) -> dict:
+    run = {
+        "model_version": RUN_VERSION,
+        "run_id": "run-a",
+        "model": "site_profile",
+        "train_start": pd.Timestamp("2025-01-01", tz="UTC"),
+        "train_end": pd.Timestamp("2026-01-01", tz="UTC"),
+        "promoted": True,
+        "champion_version": RUN_VERSION,
+        "decision": "promu champion (premier modèle)",
+        "shiftable_ratio": 0.1,
+        "peak_penalty_eur_kwh": 0.15,
+    }
+    return {**run, **changes}
+
+
+def test_save_model_run_is_replayable_with_the_ml_role(seeded):
+    url = as_ml_role(DATABASE_URL)
+    data.save_model_run(url, model_run(), {"val_nmae": 0.04, "test_nmae": 0.05}, {SITE: 125.0})
+    # Le registre MLflow remis à zéro réutilise la version : la ligne est remplacée, pas dupliquée
+    data.save_model_run(
+        url, model_run(run_id="run-b", promoted=False), {"val_nmae": 0.03}, {SITE: 130.0}
+    )
+
+    with psycopg.connect(DATABASE_URL) as conn:
+        runs = conn.execute(
+            "SELECT run_id, promoted FROM ml.model_run WHERE model_version = %s", (RUN_VERSION,)
+        ).fetchall()
+        metrics = dict(
+            conn.execute(
+                "SELECT metric, value FROM ml.model_metric WHERE model_version = %s", (RUN_VERSION,)
+            ).fetchall()
+        )
+        thresholds = conn.execute(
+            "SELECT threshold_kw::float FROM ml.peak_threshold WHERE model_version = %s",
+            (RUN_VERSION,),
+        ).fetchall()
+    assert runs == [("run-b", False)]
+    assert metrics == {"val_nmae": 0.03, "test_nmae": 0.05}
+    assert thresholds == [(130.0,)]
+
+
+def test_save_model_run_writes_nothing_when_a_table_fails(seeded):
+    with pytest.raises(psycopg.errors.ForeignKeyViolation):
+        data.save_model_run(
+            as_ml_role(DATABASE_URL), model_run(), {"val_nmae": 0.04}, {"SITE_INCONNU": 1.0}
+        )
+
+    with psycopg.connect(DATABASE_URL) as conn:
+        count = conn.execute(
+            "SELECT count(*) FROM ml.model_run WHERE model_version = %s", (RUN_VERSION,)
+        ).fetchone()[0]
+    assert count == 0
+
+
+def test_save_model_run_keeps_a_single_champion(seeded):
+    url = as_ml_role(DATABASE_URL)
+    second = RUN_VERSION + "-2"
+    data.save_model_run(url, model_run(), {"val_nmae": 0.04}, {SITE: 125.0})
+    # Le nouvel entraînement détrône le premier : un seul champion, sans violer l'index unique
+    data.save_model_run(
+        url,
+        model_run(model_version=second, run_id="run-b", champion_version=second),
+        {"val_nmae": 0.03},
+        {SITE: 125.0},
+    )
+    # Un troisième entraînement qui ne gagne pas laisse le champion en place
+    data.save_model_run(
+        url,
+        model_run(model_version=RUN_VERSION + "-3", run_id="run-c", promoted=False,
+                  champion_version=second),
+        {"val_nmae": 0.09},
+        {SITE: 125.0},
+    )
+
+    with psycopg.connect(DATABASE_URL) as conn:
+        rows = dict(
+            conn.execute(
+                "SELECT model_version, is_champion FROM ml.model_run WHERE model_version LIKE %s",
+                (RUN_VERSION + "%",),
+            ).fetchall()
+        )
+    assert rows == {RUN_VERSION: False, second: True, RUN_VERSION + "-3": False}

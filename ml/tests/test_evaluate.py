@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from enervision_ml.evaluate import evaluate, temporal_split
+from enervision_ml.evaluate import business_kpis, evaluate, temporal_split
 
 
 def test_temporal_split_without_overlap(hourly):
@@ -37,3 +37,28 @@ def test_coverage_when_model_cannot_predict():
     df = pd.DataFrame({"site_id": ["A", "A"], "consumption_kw": [1.0, 2.0]})
     metrics = evaluate(df, pd.Series([1.0, np.nan]), thresholds={"A": 10.0})
     assert metrics["coverage"] == pytest.approx(0.5)
+
+
+def test_business_kpis_on_simple_case():
+    # Seuil 100 kW. Heure 1 : pic de 150 kW annoncé ; heure 2 : pic de 105 kW manqué ;
+    # heure 3 : fausse alerte ; heure 4 : rien
+    actual = pd.Series([150.0, 105.0, 90.0, 80.0])
+    predicted_peak = pd.Series([True, False, True, False])
+    threshold = pd.Series([100.0] * 4)
+    kpis = business_kpis(actual, predicted_peak, threshold, shiftable_ratio=0.1, penalty_eur_kwh=2.0)
+
+    # Heure 1 : dépassement 50 kWh, on ne sait décaler que 10 % de 150 = 15 kWh
+    assert kpis["kpi_peak_kwh_avoided"] == pytest.approx(15.0)
+    # Avec une prévision parfaite : 15 + min(5, 10,5) = 20 kWh
+    assert kpis["kpi_peak_avoided_ratio"] == pytest.approx(15.0 / 20.0)
+    assert kpis["kpi_penalty_saved_eur"] == pytest.approx(30.0)
+    assert kpis["kpi_missed_peak_hours"] == 1
+    assert kpis["kpi_false_alarm_hours"] == 1
+
+
+def test_no_announced_peak_avoids_nothing():
+    actual = pd.Series([150.0, 120.0])
+    kpis = business_kpis(actual, pd.Series([False, False]), pd.Series([100.0, 100.0]))
+    assert kpis["kpi_peak_kwh_avoided"] == 0.0
+    assert kpis["kpi_penalty_saved_eur"] == 0.0
+    assert kpis["kpi_missed_peak_hours"] == 2
