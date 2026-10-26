@@ -221,6 +221,7 @@ source .venv/bin/activate
    - Utilisateur : `postgres`
    - Mot de passe : `dev`
    - Base : `enervision`
+4. Dans les properties de la datasource, onglet Schemas, activer les tables voulues dans la base 'enervision'
 
 ### 7. Activer les contrôles avant commit
 
