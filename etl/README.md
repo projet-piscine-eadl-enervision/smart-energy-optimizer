@@ -13,7 +13,7 @@ pip install -r requirements-dev.txt
 
 Variables dans un `.env` (dans `etl/` ou à la racine) : `MOCK_API_URL`, `MOCK_API_USERNAME`, `MOCK_API_PASSWORD`, et `DATABASE_URL` pour les traitements qui écrivent en base (`postgresql://postgres:dev@localhost:5432/enervision` avec la base du compose local ; dans les conteneurs, le compose la fournit).
 
-- Réseau de l'école : `MOCK_API_URL=http://10.43.43.80:8000`, identifiants vides. C'est la valeur par défaut.
+- Réseau de l'école : `MOCK_API_URL=http://10.43.43.80:8000`, identifiants vides.
 - Internet : `https://api-mock.charlieandre.fr` avec l'authentification basique (notes Teams). Un 401 signifie que l'identifiant ou le mot de passe est refusé.
 
 ## Tester en local

@@ -19,7 +19,11 @@ def test_every_declared_job_is_importable():
         assert callable(importlib.import_module(module).main)
 
 
-def test_runs_the_requested_job(tmp_path):
+def test_runs_the_requested_job(tmp_path, monkeypatch):
+    from pipeline.jobs import clean_history
+
+    monkeypatch.setattr(clean_history, "PROVIDED_DIR", tmp_path)
+    monkeypatch.setattr(clean_history, "EDITED_DIR", tmp_path)
     input_file, output_file, meta = tmp_path / "in.csv", tmp_path / "out.parquet", tmp_path / "meta.json"
     meta.write_text(json.dumps({"frequency": "1h", "sites": {}}))
     pd.DataFrame(

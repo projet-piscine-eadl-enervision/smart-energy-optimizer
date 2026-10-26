@@ -80,6 +80,15 @@ def test_no_anomaly_columns_without_metadata():
     assert "anomaly_type" not in ch.clean(make_readings([1.0, 2.0]))
 
 
+@pytest.fixture
+def allowed_dirs(tmp_path, monkeypatch):
+    """Point the allowed input and output folders of the job to tmp_path."""
+    monkeypatch.setattr(job, "PROVIDED_DIR", tmp_path)
+    monkeypatch.setattr(job, "EDITED_DIR", tmp_path)
+    return tmp_path
+
+
+@pytest.mark.usefixtures("allowed_dirs")
 def test_cli_writes_parquet_with_anomalies(tmp_path):
     input_file, meta, output_file = tmp_path / "in.csv", tmp_path / "meta.json", tmp_path / "sortie" / "out.parquet"
     make_readings([1.0, NAN, 3.0]).to_csv(input_file, index=False)
@@ -94,11 +103,38 @@ def test_cli_writes_parquet_with_anomalies(tmp_path):
     assert written.loc[1, "anomaly_type"] == "outage"
 
 
+@pytest.mark.usefixtures("allowed_dirs")
 def test_cli_fails_without_metadata_file(tmp_path):
     input_file = tmp_path / "in.csv"
     make_readings([1.0]).to_csv(input_file, index=False)
     with pytest.raises(FileNotFoundError):
         job.main(["--input", str(input_file), "--metadata", str(tmp_path / "absent.json"), "--output", str(tmp_path / "o.parquet")])
+
+
+@pytest.mark.parametrize(
+    "option, value",
+    [
+        ("--output", "../../tmp/x.parquet"),
+        ("--input", "../outside.csv"),
+        ("--metadata", "/etc/meta.json"),
+        ("--output", "out.csv"),
+        ("--input", "in.txt"),
+    ],
+)
+def test_cli_rejects_path_outside_allowed_dir_or_bad_extension(allowed_dirs, capsys, option, value):
+    path = value if value.startswith("/") else str(allowed_dirs / value)
+    with pytest.raises(SystemExit) as exc:
+        job.main([option, path])
+    assert exc.value.code == 2
+    assert option in capsys.readouterr().err
+    assert not (allowed_dirs.parent.parent / "tmp" / "x.parquet").exists()
+
+
+def test_default_paths_are_accepted():
+    parser = job.argparse.ArgumentParser()
+    assert job.checked_path(parser, "--input", job.DEFAULT_INPUT, job.PROVIDED_DIR, ".csv") == job.DEFAULT_INPUT
+    assert job.checked_path(parser, "--metadata", job.DEFAULT_METADATA, job.PROVIDED_DIR, ".json") == job.DEFAULT_METADATA
+    assert job.checked_path(parser, "--output", job.DEFAULT_OUTPUT, job.EDITED_DIR, ".parquet") == job.DEFAULT_OUTPUT
 
 
 def test_duplicates_and_irregular_intervals_logged(caplog):

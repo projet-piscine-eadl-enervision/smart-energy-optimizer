@@ -149,7 +149,7 @@ Le rendu SSR d'Angular n'accepte que les hôtes listés dans `NG_ALLOWED_HOSTS` 
 `frontend/Dockerfile` a deux usages. En local, `docker-compose.yml` utilise l'étape `dev` (serveur de développement). La CI construit l'étape finale `prod` : l'application compilée, servie par le serveur SSR Node sur le port 4000. C'est la même image en staging et en production, donc rien qui dépend de l'environnement n'est fixé à la construction. Deux variables sont lues au lancement :
 
 - `NG_ALLOWED_HOSTS` : nom ou IP sous lesquels le site est joint (celle de la VM en staging, l'adresse AWS en production).
-- `API_UPSTREAM` : adresse de l'API (`http://api:8000` par défaut). Le front appelle l'API par un chemin relatif (`/api/...`) et le serveur (`frontend/src/api-proxy.ts`) transmet la requête à cette adresse. **Dans le code du front, toujours utiliser `/api/...`, jamais une URL complète** : elle ne serait valable que dans un seul environnement.
+- `API_UPSTREAM` : adresse de l'API, **obligatoire** (`http://api:8000` dans le `Dockerfile` et le `docker-compose.yml` ; le serveur refuse de démarrer sans elle). Le front appelle l'API par un chemin relatif (`/api/...`) et le serveur (`frontend/src/api-proxy.ts`) transmet la requête à cette adresse. **Dans le code du front, toujours utiliser `/api/...`, jamais une URL complète** : elle ne serait valable que dans un seul environnement.
 
 Pour tester l'image de production en local, avec l'API lancée par `docker compose up -d` :
 

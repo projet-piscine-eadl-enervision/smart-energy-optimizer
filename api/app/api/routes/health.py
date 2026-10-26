@@ -6,9 +6,10 @@ from fastapi import APIRouter, HTTPException
 
 from app.core.config import settings
 
-router = APIRouter(prefix="/health", tags=["Health"])
+router = APIRouter(prefix="/health", tags=["health"])
 
-MOCK_API_URL = (settings.MOCK_API_URL or "http://10.43.43.80:8000").rstrip("/")
+# Aucune adresse codée en dur (Sonar S5332, S1313) : l'URL vient uniquement de la configuration
+MOCK_API_URL = settings.MOCK_API_URL.strip().rstrip("/")
 MOCK_API_CREDENTIALS = (settings.MOCK_API_USERNAME, settings.MOCK_API_PASSWORD)
 # Authentification basique requise sur l'URL publique, absente sur le réseau de l'école
 MOCK_API_AUTH = MOCK_API_CREDENTIALS if all(MOCK_API_CREDENTIALS) else None
@@ -24,8 +25,13 @@ async def health():
     }
 
 
-@router.get("/mock", summary="Mock service health check")
+@router.get("/mock", summary="Mock service health check",
+            responses={503: {"description": "API Mock inaccessible ou mal configurée"},
+                       502: {"description": "Erreur de l'API Mock"},})
 async def health_mock():
+    if not MOCK_API_URL:
+        raise HTTPException(status_code=503, detail="MOCK_API_URL non configurée")
+
     try:
         async with httpx2.AsyncClient(timeout=5.0, auth=MOCK_API_AUTH) as client:
             response = await client.get(f"{MOCK_API_URL}/health")
