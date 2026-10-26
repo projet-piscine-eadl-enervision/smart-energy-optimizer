@@ -117,7 +117,7 @@ La nMAE est utilisée plutôt que la MAE pour qu'une usine à 600 kW ne pèse pa
 | `kpi_missed_peak_hours`, `kpi_false_alarm_hours` | pics non annoncés, alertes inutiles |
 | `test_nmae_gain_vs_naive`, `test_kpi_penalty_gain_vs_naive_eur` | ce que le modèle apporte en plus du naïf, sur le même test |
 
-Sur des données construites comme le mock (test `test_impact_et_donnees_enregistres_dans_mlflow`), le profil réduit l'erreur d'environ 30 % par rapport au naïf, mais les deux annoncent tous les pics : les pics de bureau dépassent le seuil de loin. Le gain en euros sur le naïf est alors nul ; il viendra des sites où le pic est proche du seuil, à vérifier sur les données du mock.
+Sur des données construites comme le mock (test `test_impact_and_data_recorded_in_mlflow`), le profil réduit l'erreur d'environ 30 % par rapport au naïf, mais les deux annoncent tous les pics : les pics de bureau dépassent le seuil de loin. Le gain en euros sur le naïf est alors nul ; il viendra des sites où le pic est proche du seuil, à vérifier sur les données du mock.
 
 **Versions** (MLflow). Chaque entraînement crée une version du modèle `enervision-consumption`, rattachée à son run : paramètres, métriques, version du code (`code_version`, le commit) et empreinte des données de chaque période (onglet *Datasets* du run, contextes `training`, `validation`, `test`). Deux runs sur les mêmes données ont la même empreinte. Les alias `champion` et `challenger` désignent les versions en service.
 
