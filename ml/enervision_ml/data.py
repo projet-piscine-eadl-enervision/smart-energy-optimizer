@@ -47,13 +47,14 @@ DO UPDATE SET predicted_kw = EXCLUDED.predicted_kw,
 
 
 UPSERT_MODEL_RUN = """
-INSERT INTO ml.model_run (model_version, run_id, model, train_start, train_end, promoted,
-                          decision, shiftable_ratio, peak_penalty_eur_kwh)
-VALUES (%(model_version)s, %(run_id)s, %(model)s, %(train_start)s, %(train_end)s, %(promoted)s,
-        %(decision)s, %(shiftable_ratio)s, %(peak_penalty_eur_kwh)s)
+INSERT INTO ml.model_run (model_version, run_id, model, train_start, train_end, data_end,
+                          promoted, decision, shiftable_ratio, peak_penalty_eur_kwh)
+VALUES (%(model_version)s, %(run_id)s, %(model)s, %(train_start)s, %(train_end)s, %(data_end)s,
+        %(promoted)s, %(decision)s, %(shiftable_ratio)s, %(peak_penalty_eur_kwh)s)
 ON CONFLICT (model_version)
 DO UPDATE SET run_id = EXCLUDED.run_id, model = EXCLUDED.model, trained_at = now(),
               train_start = EXCLUDED.train_start, train_end = EXCLUDED.train_end,
+              data_end = EXCLUDED.data_end,
               promoted = EXCLUDED.promoted, decision = EXCLUDED.decision,
               shiftable_ratio = EXCLUDED.shiftable_ratio,
               peak_penalty_eur_kwh = EXCLUDED.peak_penalty_eur_kwh

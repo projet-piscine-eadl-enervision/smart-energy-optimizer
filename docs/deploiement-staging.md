@@ -76,7 +76,7 @@ NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
     run --rm etl python -m pipeline load-ref      # attendu : « 7 sites loaded in ref.site »
   ```
 - Historique : une fois les sites chargés, `run --rm etl python -m pipeline backfill` (mêmes options que ci-dessus) charge les mesures du mock du 2023-01-01 à maintenant, par pas d'une heure : environ une minute, 233 940 lignes (33 420 par site). Relancer est sans danger.
-- Module ML : ajouter `mlflow` à `COMPOSE_PROFILES`, puis `docker compose … run --rm ml` pour entraîner et `run --rm ml python -m enervision_ml.predict` pour prévoir (détails dans `ml/README.md`). Le service `ml` n'est jamais dans `COMPOSE_PROFILES`. MLflow écoute sur `127.0.0.1:5000` de la VM, sans authentification.
+- Module ML : ajouter `mlflow` à `COMPOSE_PROFILES`, puis `docker compose … run --rm ml` pour entraîner et `run --rm ml python -m enervision_ml.predict` pour prévoir (détails dans `ml/README.md`). Le service `ml` n'est jamais dans `COMPOSE_PROFILES`. MLflow écoute sur `127.0.0.1:5000` de la VM, sans authentification : s'y connecter par un tunnel SSH (voir `ml/README.md`).
 - Collecte des mesures : ajouter `collector` à `COMPOSE_PROFILES` (`apps,collector`), puis attendre la mise à jour automatique. `docker ps` montre `collector` en `healthy` après environ 90 secondes (`unhealthy` : aucun tour réussi depuis trois minutes, mock injoignable ou base arrêtée). Les tours se lisent avec `docker compose logs --tail 5 collector` (staging : mêmes options `-f` et `--env-file` que ci-dessus).
 
 ## Mise en place sur la VM (une seule fois)
@@ -104,7 +104,7 @@ Ce clone est réservé au déploiement : le script le réinitialise sur `origin/
 /opt/enervision/infra/scripts/setup-vm-roles.sh
 ```
 
-- Le script affiche leur `uid:gid`, à passer à `user:` dans le compose quand MLflow et Prometheus seront déployés ; il n'installe aucun de ces services.
+- Le script affiche leur `uid:gid`, à passer à `user:` dans le compose. MLflow est déployé (profil `mlflow`) mais sans `user:` et avec un volume Docker nommé, pas `/srv/mlflow` ; Prometheus n'est pas déployé. Le script n'installe aucun de ces services.
 - Sur la VM de staging (`ml-stagiaire-01`, créés le 24/10/2026) : `mlflow` vaut `999:991` et `monitoring` vaut `997:988`, soit `user: "999:991"` pour MLflow et `user: "997:988"` pour la supervision. L'`uid` et le `gid` diffèrent. Ces numéros sont attribués par le système : sur une autre machine, les relire avec `getent passwd mlflow monitoring` (uid et gid du compte) avant de les écrire dans le compose.
 - Il ne touche à aucun compte de personne : l'administration de la VM reste faite en `root`. Des comptes individuels et leurs droits viendront dans une étape ultérieure, si besoin, ainsi que l'interdiction de la connexion SSH de `root` et par mot de passe.
 - La production sur AWS n'a pas de SSH (déploiement par SSM) et n'est pas concernée.

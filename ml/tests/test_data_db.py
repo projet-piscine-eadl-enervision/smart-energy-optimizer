@@ -127,6 +127,7 @@ def model_run(**changes) -> dict:
         "model": "site_profile",
         "train_start": pd.Timestamp("2025-01-01", tz="UTC"),
         "train_end": pd.Timestamp("2026-01-01", tz="UTC"),
+        "data_end": pd.Timestamp("2026-01-02", tz="UTC"),
         "promoted": True,
         "champion_version": RUN_VERSION,
         "decision": "promu champion (premier modèle)",
@@ -146,7 +147,7 @@ def test_save_model_run_is_replayable_with_the_ml_role(seeded):
 
     with psycopg.connect(DATABASE_URL) as conn:
         runs = conn.execute(
-            "SELECT run_id, promoted FROM ml.model_run WHERE model_version = %s", (RUN_VERSION,)
+            "SELECT run_id, promoted, data_end FROM ml.model_run WHERE model_version = %s", (RUN_VERSION,)
         ).fetchall()
         metrics = dict(
             conn.execute(
@@ -157,7 +158,7 @@ def test_save_model_run_is_replayable_with_the_ml_role(seeded):
             "SELECT threshold_kw::float FROM ml.peak_threshold WHERE model_version = %s",
             (RUN_VERSION,),
         ).fetchall()
-    assert runs == [("run-b", False)]
+    assert runs == [("run-b", False, pd.Timestamp("2026-01-02", tz="UTC"))]
     assert metrics == {"val_nmae": 0.03, "test_nmae": 0.05}
     assert thresholds == [(130.0,)]
 

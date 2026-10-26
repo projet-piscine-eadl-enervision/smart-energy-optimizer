@@ -27,7 +27,7 @@ docker compose run --rm ml python train.py --model seasonal_naive     # modèle 
 docker compose run --rm ml python -m enervision_ml.predict
 ```
 
-Résultats dans MLflow : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
+Résultats dans le MLflow de développement : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
 
 La prédiction toutes les heures viendra avec le service ML (planificateur intégré et `POST /predictions/run`). Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
 
@@ -35,7 +35,7 @@ La prédiction toutes les heures viendra avec le service ML (planificateur inté
 
 Le ML lit `analytics.energy_hourly`. L'historique du rattrapage horaire (`python -m pipeline backfill`) n'y apparaît qu'après le rafraîchissement de l'agrégat, que le rattrapage lance : sans lui, l'entraînement s'arrête (moins de 365 jours). Le collecteur complète ensuite heure par heure.
 
-Pour que deux entraînements donnent les mêmes chiffres, fixer la fin du jeu avec `ML_DATA_END` (date ISO, UTC) : sans elle, les fenêtres de validation et de test glissent à chaque heure ajoutée.
+La fin du jeu est figée pour que deux entraînements donnent les mêmes chiffres : `ML_DATA_END` (date ISO, UTC) si elle est définie, sinon minuit UTC du jour. Les fenêtres de validation et de test ne glissent donc qu'une fois par jour. La valeur utilisée est enregistrée dans MLflow (`data_end`) et dans `ml.model_run.data_end`.
 
 ```bash
 ML_DATA_END=2026-10-25 docker compose run --rm ml
@@ -53,7 +53,19 @@ $C run --rm ml                                      # entraîne un challenger
 $C run --rm ml python -m enervision_ml.predict      # prévoit les 24 prochaines heures
 ```
 
-MLflow n'a pas d'authentification : il écoute sur `127.0.0.1:5000` de la VM (`ssh -L 5000:127.0.0.1:5000 <VM>`). Le module utilise le compte propriétaire de la base, comme l'ETL, en attendant les comptes par module (ticket #145). Sans historique chargé, `run --rm ml` s'arrête sur « Historique insuffisant » et `predict` sur « Aucun modèle champion » : les connexions à la base et à MLflow fonctionnent.
+MLflow n'a pas d'authentification : sur la VM, il écoute sur `127.0.0.1:5000` et n'est atteignable que par un tunnel SSH. L'adresse à ouvrir depuis le poste dépend de l'environnement :
+
+| Où tourne l'entraînement | Adresse à ouvrir depuis le poste |
+|---|---|
+| Développement (`docker compose` local) | `http://localhost:5000` |
+| Staging (VM, avec le tunnel) | `http://localhost:5001` |
+| Production | aucune, MLflow n'y est pas déployé |
+
+Pour ouvrir celui du staging, lancer **depuis le poste** (pas depuis la VM) `ssh -L 5001:127.0.0.1:5000 root@<VM>`, laisser la fenêtre ouverte, puis aller sur http://localhost:5001. Le port 5000 est celui du MLflow de développement : si le compose local tourne, c'est lui qui répond, et on voit une autre base, sans l'expérience `enervision` du staging.
+
+L'entraînement affiche en dernière ligne `lien MLflow : …`, déjà construit pour l'environnement avec la variable `MLFLOW_PUBLIC_URL` des fichiers compose (sans elle, l'adresse de suivi du module), et rien en production (`APP_ENV=production`). Les deux lignes `View run` de MLflow qui le précèdent montrent l'adresse du réseau Docker (`http://mlflow:5000/…`) : elle ne s'ouvre pas depuis le poste.
+
+Le module utilise le compte propriétaire de la base, comme l'ETL, en attendant les comptes par module (ticket #145). Sans historique chargé, `run --rm ml` s'arrête sur « Historique insuffisant » et `predict` sur « Aucun modèle champion » : les connexions à la base et à MLflow fonctionnent.
 
 ### Données en local (développement)
 

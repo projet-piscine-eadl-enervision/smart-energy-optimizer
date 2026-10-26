@@ -136,7 +136,9 @@ services:
       APP_ENV: ${APP_ENV:-staging}
       DATABASE_URL: postgresql://${POSTGRES_USER:-enervision}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-enervision}
       MLFLOW_TRACKING_URI: http://mlflow:5000
-      # Fin figée du jeu d'entraînement (ISO, UTC) ; vide : tout l'historique
+      # Adresse à ouvrir depuis le poste (tunnel SSH, voir ml/README.md), affichée à la fin de l'entraînement
+      MLFLOW_PUBLIC_URL: ${MLFLOW_PUBLIC_URL:-http://localhost:5001}
+      # Fin figée du jeu d'entraînement (ISO, UTC) ; vide : minuit UTC du jour
       ML_DATA_END: ${ML_DATA_END:-}
     depends_on:
       db:

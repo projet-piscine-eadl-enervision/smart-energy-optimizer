@@ -1,7 +1,7 @@
 """Bout en bout sans base ni serveur : MLflow dans un fichier SQLite temporaire, et des
 données factices à la place de analytics.energy_hourly."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 
 import pandas as pd
 import pytest
@@ -156,3 +156,41 @@ def test_data_end_is_passed_to_the_query(pipeline, monkeypatch):
     monkeypatch.setenv("ML_DATA_END", "2025-05-15")
     training.main([])
     assert seen["end"] == datetime(2025, 5, 15, tzinfo=UTC)
+
+
+def test_data_end_defaults_to_midnight_today(pipeline, monkeypatch):
+    seen = {}
+
+    def fake_load(url, start=None, end=None):
+        seen["end"] = end
+        return pipeline
+
+    monkeypatch.setattr(training, "load_hourly", fake_load)
+    monkeypatch.delenv("ML_DATA_END", raising=False)
+    training.main([])
+    assert seen["end"] == datetime.combine(datetime.now(UTC).date(), time.min, tzinfo=UTC)
+
+
+def test_training_prints_a_link_to_the_run(pipeline, monkeypatch, capsys):
+    monkeypatch.setenv("MLFLOW_PUBLIC_URL", "http://localhost:5001/")
+    training.main(["--model", "site_profile"])
+
+    run_id = MlflowClient().get_model_version(MODEL_NAME, "1").run_id
+    assert "lien MLflow : http://localhost:5001/#/experiments/" in capsys.readouterr().out
+    assert training.run_url("http://localhost:5001/", "1", run_id) == (
+        f"http://localhost:5001/#/experiments/1/runs/{run_id}"
+    )
+
+
+def test_training_prints_a_link_without_public_url(pipeline, monkeypatch, capsys):
+    monkeypatch.delenv("MLFLOW_PUBLIC_URL", raising=False)
+    training.main(["--model", "site_profile"])
+
+    assert "lien MLflow : sqlite:///" in capsys.readouterr().out
+
+
+def test_training_prints_no_link_in_production(pipeline, monkeypatch, capsys):
+    monkeypatch.setenv("APP_ENV", "production")
+    training.main(["--model", "site_profile"])
+
+    assert "lien MLflow" not in capsys.readouterr().out
