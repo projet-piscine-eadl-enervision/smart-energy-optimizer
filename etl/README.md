@@ -21,7 +21,7 @@ Variables dans un `.env` (dans `etl/` ou à la racine) : `MOCK_API_URL`, `MOCK_A
 Depuis `etl/`, environnement virtuel activé.
 
 ```bash
-python -m pytest && ruff check .          # tests et lint, sans réseau ni base, moins d'une seconde
+python -m pytest && ruff check .          # tests et lint, sans réseau, moins d'une seconde ; les tests de base sont ignorés sans DATABASE_URL (fournie par la CI)
 dvc pull && python -m pipeline clean-history --output /tmp/essai.parquet   # nettoyage sur le vrai fichier
 docker build -t etl-local . && docker run -d --rm --name etl-local -p 8001:8000 etl-local
 docker inspect --format '{{.State.Health.Status}}' etl-local               # healthy après environ 30 s

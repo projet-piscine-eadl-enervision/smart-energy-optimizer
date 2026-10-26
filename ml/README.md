@@ -164,7 +164,7 @@ ml/
 │   └── predict.py           # prédiction des 24 prochaines heures
 ├── scripts/seed_dev.py      # développement uniquement : CSV du sujet → base locale
 ├── data/                    # CSV du sujet, ignoré par Git
-└── tests/                   # sans base ni serveur (MLflow en SQLite temporaire)
+└── tests/                   # MLflow en SQLite temporaire ; base seulement pour test_data_db.py
 ```
 
 ## Tests
@@ -176,4 +176,4 @@ ruff check .
 pytest --cov=enervision_ml
 ```
 
-`test_pipeline.py` enchaîne entraînement, promotion et prédiction avec un MLflow en fichier SQLite temporaire et des données factices : ni base ni serveur nécessaires. `test_data_db.py` teste les requêtes SQL de `data.py` avec le rôle `enervision_ml` ; il est ignoré sans `DATABASE_URL` (base migrée par `db/migrations`, par exemple `DATABASE_URL=postgresql://postgres:…@localhost:5432/postgres`).
+`test_pipeline.py` enchaîne entraînement, promotion et prédiction avec un MLflow en fichier SQLite temporaire et des données factices : ni base ni serveur nécessaires. `test_data_db.py` teste les requêtes SQL de `data.py` avec le rôle `enervision_ml` ; il est ignoré sans `DATABASE_URL`, que la CI fournit (base migrée par `db/migrations`, par exemple `DATABASE_URL=postgresql://postgres:…@localhost:5432/postgres`).

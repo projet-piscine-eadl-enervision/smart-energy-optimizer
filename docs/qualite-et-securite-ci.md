@@ -8,7 +8,7 @@ Ce que la CI contrôle sur chaque PR, où lire les résultats et que faire quand
 |---|---|---|
 | `pr-title`, `branch-name`, `commit-messages` | Conventional Commits, nom de branche | oui |
 | `changes` | liste des modules touchés (voir plus bas) | oui |
-| `python (api\|etl\|ml)` | `ruff` et `pytest` du module | oui |
+| `python (api\|etl\|ml)` | `ruff` et `pytest` du module ; pour `etl` et `ml`, sur une base TimescaleDB migrée | oui |
 | `frontend` | tests et build Angular | oui |
 | `migrations` | migrations SQL appliquées deux fois sur une base vide | oui |
 | `terraform` | `terraform fmt -check` et `terraform validate` sur `infra/terraform/`, sans identifiants ni state | oui |
@@ -16,7 +16,7 @@ Ce que la CI contrôle sur chaque PR, où lire les résultats et que faire quand
 | `sonar` | analyse SonarQube Cloud et porte de qualité | oui |
 | `ci-ok` | résume tous les précédents : c'est le seul contrôle exigé sur `main` | oui |
 
-La CI ne teste que les modules dont le dossier change (`api/`, `etl/`, `ml/`, `frontend/`, `db/`, `infra/terraform/`) ; un changement dans `.github/`, `infra/scripts/`, les fichiers compose ou les hooks lance tout. Sur un push de `main`, tout est testé.
+La CI ne teste que les modules dont le dossier change (`api/`, `etl/`, `ml/`, `frontend/`, `db/`, `infra/terraform/`) ; un changement dans `db/` lance aussi `etl` et `ml` ; un changement dans `.github/`, `infra/scripts/`, les fichiers compose ou les hooks lance tout. Sur un push de `main`, tout est testé.
 
 ## Trivy
 
