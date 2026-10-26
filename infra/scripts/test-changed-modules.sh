@@ -9,17 +9,17 @@ cd "$tmp"
 git init -q -b main .
 git config user.email test@example.com
 git config user.name test
-mkdir -p api etl ml frontend db docs .github/workflows infra/scripts infra/terraform
-for f in api/a etl/a ml/a frontend/a db/a docs/a .github/workflows/a infra/scripts/a infra/terraform/a docker-compose.yml; do
+mkdir -p api etl ml frontend db docs .github/workflows infra/scripts infra/terraform monitoring
+for f in api/a etl/a ml/a frontend/a db/a docs/a .github/workflows/a infra/scripts/a infra/terraform/a monitoring/a docker-compose.yml; do
   echo x > "$f"
 done
 git add -A && git commit -q -m base
 base="$(git rev-parse HEAD)"
 
 fail=0
-# expect <description> <fichiers modifiés> <python> <frontend> <migrations> <terraform>
+# expect <description> <fichiers modifiés> <python> <frontend> <migrations> <terraform> <monitoring>
 expect() {
-  local description="$1" files="$2" python="$3" frontend="$4" migrations="$5" terraform="$6" file
+  local description="$1" files="$2" python="$3" frontend="$4" migrations="$5" terraform="$6" monitoring="$7" file
   git reset -q --hard "$base"
   for file in $files; do echo "$RANDOM" >> "$file"; done
   git add -A && git commit -q --allow-empty -m change
@@ -28,7 +28,8 @@ expect() {
   want="python=$python
 frontend=$frontend
 migrations=$migrations
-terraform=$terraform"
+terraform=$terraform
+monitoring=$monitoring"
   if [ "$got" = "$want" ]; then
     echo "ok   $description"
   else
@@ -43,6 +44,7 @@ expect "frontend seul" "frontend/a" '[]' true false false
 expect "base de données seule : migrations et tests de l'ETL et du ML" "db/a" '["etl","ml"]' false true false
 expect "documentation seule" "docs/a" '[]' false false false
 expect "terraform seul" "infra/terraform/a" '[]' false false true
+expect "monitoring seul" "monitoring/a" '[]' false false false true
 expect "workflow : tout" ".github/workflows/a" '["api","etl","ml"]' true true true
 expect "scripts d'infra : tout" "infra/scripts/a" '["api","etl","ml"]' true true true
 expect "compose : tout" "docker-compose.yml" '["api","etl","ml"]' true true true
@@ -53,7 +55,8 @@ for bad in "" 0000000000000000000000000000000000000000 deadbeefdeadbeefdeadbeefd
   want='python=["api","etl","ml"]
 frontend=true
 migrations=true
-terraform=true'
+terraform=true
+monitoring=true'
   if [ "$got" = "$want" ]; then echo "ok   base « ${bad:-vide} »"; else echo "ÉCHEC base « ${bad:-vide} »"; fail=1; fi
 done
 
