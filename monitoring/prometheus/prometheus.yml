@@ -4,9 +4,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
-# Règles d'alerte : à décommenter quand alerts.yml existera (promtool refuse un fichier absent)
-# rule_files:
-#   - /etc/prometheus/alerts.yml
+# Règles d'alerte (testées par alerts.test.yml)
+rule_files:
+  - /etc/prometheus/alerts.yml
 
 scrape_configs:
   # Prometheus lui-même
