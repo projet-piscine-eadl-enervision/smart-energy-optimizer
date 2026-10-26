@@ -178,7 +178,8 @@ jobs:
         run: |
           # Commandes exécutées sur l'instance. TAG est validé dans le job resume (vX.Y.Z).
           # production.env (droits 600, créé à la main sur l'instance) contient POSTGRES_PASSWORD,
-          # MOCK_API_*, APP_ENV=production et, si besoin, COMPOSE_PROFILES.
+          # SECRET_KEY, MOCK_API_*, APP_ENV=production, NG_ALLOWED_HOSTS (nom CloudFront du site)
+          # et, si besoin, COMPOSE_PROFILES.
           # Avant de changer de version, la base est sauvegardée (les 5 dernières sauvegardes sont
           # gardées) : revenir au code précédent ne défait pas les données déjà écrites.
           script=$(cat <<EOF
