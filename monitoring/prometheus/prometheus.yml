@@ -23,6 +23,20 @@ scrape_configs:
   - job_name: cadvisor
     static_configs:
       - targets: ["cadvisor:8080"]
+    metric_relabel_configs:
+      # Labels courts utilisés par le dashboard : service (nom du service compose) et container
+      - source_labels: [container_label_com_docker_compose_service]
+        target_label: service
+      - source_labels: [name]
+        target_label: container
+      # Seules les séries des conteneurs Docker sont gardées (pas les cgroups système) ;
+      # les métriques machine_* n'ont pas de service et passent
+      - source_labels: [__name__, service]
+        regex: "container_.*;"
+        action: drop
+      # Les labels Docker bruts ne servent plus et multiplient les séries
+      - regex: container_label_.*
+        action: labeldrop
 
   # Base PostgreSQL
   - job_name: postgres
@@ -39,6 +53,21 @@ scrape_configs:
       - targets:
           - http://api:8000/health
           - http://etl:8000/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # Frontend : module http_frontend (en-tête Host accepté par le serveur Angular)
+  - job_name: blackbox-frontend
+    metrics_path: /probe
+    params:
+      module: [http_frontend]
+    static_configs:
+      - targets:
           - http://frontend:4000/
     relabel_configs:
       - source_labels: [__address__]
