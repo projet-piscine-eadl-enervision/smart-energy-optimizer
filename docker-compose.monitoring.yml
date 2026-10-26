@@ -53,7 +53,7 @@ services:
       - --path.rootfs=/host
     pid: host
     volumes:
-      - /:/host:ro
+      - /:/host:ro,rslave
 
   # Métriques de chaque conteneur : CPU, mémoire, réseau, redémarrages.
   cadvisor:
