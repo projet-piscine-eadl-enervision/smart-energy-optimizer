@@ -11,7 +11,12 @@ import pandas as pd
 from mlflow import MlflowClient
 
 from enervision_ml import registry
-from enervision_ml.config import HORIZON_HOURS, MODEL_NAME, load_settings
+from enervision_ml.config import (
+    HORIZON_HOURS,
+    MAX_DATA_AGE_HOURS,
+    MODEL_NAME,
+    load_settings,
+)
 from enervision_ml.data import latest_hour, load_hourly, save_predictions
 from enervision_ml.features import (
     FEATURE_COLUMNS,
@@ -26,8 +31,24 @@ from enervision_ml.features import (
 HISTORY_HOURS = 168 + HORIZON_HOURS + 24
 
 
-def run() -> int:
+def check_fresh(last: pd.Timestamp, now: pd.Timestamp) -> None:
+    """Refuse de prévoir si la dernière mesure est trop ancienne.
+
+    Les prévisions partent de la dernière heure connue : avec un collecteur arrêté, elles
+    porteraient sur des heures passées et seraient écrites comme si elles étaient à venir.
+    """
+    age = now - pd.Timestamp(last).tz_convert("UTC")
+    if age > pd.Timedelta(hours=MAX_DATA_AGE_HOURS):
+        raise SystemExit(
+            f"Données trop anciennes : dernière heure {last:%Y-%m-%d %H:%M} UTC, "
+            f"{age // pd.Timedelta(hours=1)} h de retard (maximum {MAX_DATA_AGE_HOURS} h). "
+            "Le collecteur est-il arrêté ? Aucune prévision écrite."
+        )
+
+
+def run(now: pd.Timestamp | None = None) -> int:
     """Prévoit et enregistre ; renvoie le nombre de prédictions écrites."""
+    now = (now if now is not None else pd.Timestamp.now(tz="UTC")).floor("h")
     settings = load_settings()
     mlflow.set_tracking_uri(settings.tracking_uri)
 
@@ -37,10 +58,11 @@ def run() -> int:
     last = latest_hour(settings.database_url)
     if last is None:
         raise SystemExit("analytics.energy_hourly est vide : rien à prévoir.")
+    check_fresh(last, now)
 
     history = load_hourly(settings.database_url, start=last - timedelta(hours=HISTORY_HOURS))
     # L'heure en cours est incomplète (agrégat temps réel) : on prévoit à partir de la précédente
-    history = history[history["hour"] < pd.Timestamp.now(tz="UTC").floor("h")]
+    history = history[history["hour"] < now]
 
     frame = add_features(extend_future(to_hourly_grid(mask_unreliable_hours(history))))
     future = frame[frame["is_future"]]
