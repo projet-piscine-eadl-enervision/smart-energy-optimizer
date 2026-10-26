@@ -1,0 +1,56 @@
+# Tests des règles d'alerte : promtool test rules alerts.test.yml (depuis ce dossier)
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  # Dernière mesure reçue à t=0, puis plus rien : l'alerte sonne après 10 min d'ancienneté + 5 min de for
+  - interval: 1m
+    input_series:
+      - series: etl_latest_reading_timestamp_seconds{job="etl", instance="etl:8000"}
+        values: "0+0x30"
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: EtlSansNouvelleMesure
+        exp_alerts: []
+      - eval_time: 16m
+        alertname: EtlSansNouvelleMesure
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: etl
+              instance: etl:8000
+            exp_annotations:
+              summary: "Aucune nouvelle mesure depuis plus de 10 minutes"
+              description: "Dernière mesure reçue il y a 16m 0s. Vérifier le collecteur et l'API Mock."
+
+  # Base vide (collecteur arrêté, cas de la production) : métrique absente, aucune alerte
+  - interval: 1m
+    input_series:
+      - series: etl_metrics_up{job="etl", instance="etl:8000"}
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: EtlSansNouvelleMesure
+        exp_alerts: []
+
+  # Cible injoignable plus de 2 minutes
+  - interval: 1m
+    input_series:
+      - series: up{job="api", instance="api:8000"}
+        values: "1 1 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: CibleInjoignable
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: CibleInjoignable
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: api
+              instance: api:8000
+            exp_annotations:
+              summary: "api ne répond plus à Prometheus"
+              description: "La cible api:8000 (job api) n'est plus collectée depuis 2 minutes."
