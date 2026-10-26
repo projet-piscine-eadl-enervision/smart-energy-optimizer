@@ -6,6 +6,7 @@ date de moins de `--max-age` secondes (trois intervalles par défaut), 1 sinon.
 import argparse
 import os
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -13,7 +14,13 @@ DEFAULT_INTERVAL_SECONDS = 60.0
 
 
 def heartbeat_file() -> Path:
-    return Path(os.getenv("HEARTBEAT_FILE", "/tmp/collector.heartbeat"))
+    """Fichier du signal de vivacité : HEARTBEAT_FILE, sinon dans le dossier temporaire du système.
+
+    Dans le conteneur, ce dossier est propre au conteneur et le collecteur tourne sous
+    l'utilisateur `app` ; le fichier ne contient qu'un horodatage, relu par la sonde.
+    """
+    configured = os.getenv("HEARTBEAT_FILE")
+    return Path(configured) if configured else Path(tempfile.gettempdir()) / "collector.heartbeat"
 
 
 def interval_seconds() -> float:
