@@ -73,6 +73,36 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Collecteur des mesures courantes du mock. Profil à part : sans lui, chaque poste interrogerait le
+  # mock partagé toutes les minutes. docker compose --profile collector up -d collector
+  collector:
+    profiles: [collector]
+    build: ./etl
+    container_name: enervision-collector
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dev}@db:5432/${POSTGRES_DB:-enervision}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-60}
+    command: python -m pipeline poll-current
+    volumes:
+      - ./etl:/app
+    # La sonde du Dockerfile interroge le port 8000, que ce service n'ouvre pas : on contrôle le dernier
+    # tour réussi (trois intervalles au plus). start_period couvre le premier tour.
+    healthcheck:
+      test: ["CMD", "python", "-m", "pipeline.heartbeat"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
   frontend:
     build:
       context: ./frontend

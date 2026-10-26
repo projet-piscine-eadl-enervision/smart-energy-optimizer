@@ -54,7 +54,7 @@ POSTGRES_PASSWORD=...
 MOCK_API_URL=http://10.43.43.80:8000
 MOCK_API_USERNAME=-
 MOCK_API_PASSWORD=-
-# Active les services etl et frontend :
+# Active les services etl et frontend (ajouter ,collector pour collecter les mesures du mock) :
 COMPOSE_PROFILES=apps
 # IP ou nom sous lesquels le frontend est joint (indispensable avec le profil apps) :
 NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
@@ -75,6 +75,7 @@ NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
   cd /opt/enervision && docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env \
     run --rm etl python -m pipeline load-ref      # attendu : « 7 sites loaded in ref.site »
   ```
+- Collecte des mesures : ajouter `collector` à `COMPOSE_PROFILES` (`apps,collector`), puis attendre la mise à jour automatique. `docker ps` montre `collector` en `healthy` après environ 90 secondes (`unhealthy` : aucun tour réussi depuis trois minutes, mock injoignable ou base arrêtée). Les tours se lisent avec `docker compose logs --tail 5 collector` (staging : mêmes options `-f` et `--env-file` que ci-dessus).
 
 ## Mise en place sur la VM (une seule fois)
 
