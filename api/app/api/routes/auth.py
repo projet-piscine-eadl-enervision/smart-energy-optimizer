@@ -16,10 +16,10 @@ from app.models.user import User
 from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserRead
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserRead, summary="Account creation", status_code=status.HTTP_201_CREATED)
 async def register(payload: UserCreate, db: DbSession):
     existing = await db.scalar(select(User).where(User.email == payload.email))
     if existing:
@@ -35,7 +35,7 @@ async def register(payload: UserCreate, db: DbSession):
     return user
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Token, summary="Login page")
 async def login(
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DbSession,
@@ -55,7 +55,7 @@ async def login(
     return Token(access_token=token)
 
 
-@router.get("/me", response_model=UserRead)
+@router.get("/me", response_model=UserRead, summary="User profile")
 async def me(current_user: CurrentUser):
     """Route protégée : renvoie le profil du porteur du jeton."""
     return current_user

@@ -12,10 +12,10 @@ from fastapi import APIRouter, Query
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.energy import ConsumptionPoint
 
-router = APIRouter(prefix="/history", tags=["history"])
+router = APIRouter(prefix="/history", tags=["History"])
 
 
-@router.get("", response_model=list[ConsumptionPoint])
+@router.get("", response_model=list[ConsumptionPoint], summary="Consumption history")
 async def get_history(
     current_user: CurrentUser,
     db: DbSession,

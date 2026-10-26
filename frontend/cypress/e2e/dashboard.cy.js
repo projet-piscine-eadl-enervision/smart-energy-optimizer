@@ -1,11 +1,22 @@
 describe('Tableau de bord', () => {
+  const expectChartRendered = (sectionTitle) => {
+    cy.contains('section', sectionTitle)
+      .find('canvas')
+      .should('have.length', 1)
+      .and(($c) => {
+        const el = $c[0];
+        expect(el.width, 'largeur du canvas').to.be.greaterThan(0);
+        expect(el.height, 'hauteur du canvas').to.be.greaterThan(0);
+      });
+  };
+
   it("affiche l'utilisateur et les trois blocs de données", () => {
     cy.intercept('GET', '/api/predictions').as('predictions');
     cy.intercept('GET', '/api/history*').as('history');
     cy.intercept('GET', '/api/recommendations').as('recommendations');
 
     cy.loginAsNewUser('/').then((email) => {
-      cy.contains('header', 'EnerVision');
+      cy.contains('header', 'Smart Energy Optimizer');
       cy.contains('header', email);
       cy.contains('header', 'user');
     });
@@ -15,13 +26,12 @@ describe('Tableau de bord', () => {
     cy.wait(['@predictions', '@recommendations']);
 
     cy.contains('Chargement…').should('not.exist');
-    cy.contains('section', 'Prédictions de pics').find('tbody tr').should('have.length.greaterThan', 0);
+    expectChartRendered('Prédictions de la consommation');
+    expectChartRendered('Historique (24 h)');
     cy.contains('section', 'Recommandations').find('li').should('have.length.greaterThan', 0);
-    cy.contains('section', 'Historique (24 h)').find('tbody tr').should('have.length.greaterThan', 0);
   });
 
-  it("affiche les valeurs renvoyées par l'API", () => {
-    // Réponses fixées : le test ne dépend pas des données d'exemple de l'API
+  it("affiche les recommandations renvoyées par l'API et alimente les graphiques", () => {
     cy.intercept('GET', '/api/predictions', [
       { timestamp: '2026-10-26T18:00:00Z', predicted_kw: 4.26, confidence: 0.9 },
     ]);
@@ -40,17 +50,14 @@ describe('Tableau de bord', () => {
 
     cy.loginAsNewUser('/');
 
-    cy.contains('section', 'Prédictions de pics').within(() => {
-      cy.get('tbody tr').should('have.length', 1);
-      cy.contains('4.3 kW');
-      cy.contains('90%');
-    });
+    expectChartRendered('Prédictions de la consommation');
+    expectChartRendered('Historique (24 h)');
     cy.contains('section', 'Recommandations').within(() => {
+      cy.get('li').should('have.length', 1);
       cy.contains('Décaler la filtration');
       cy.contains('Lancez la filtration avant 17h.');
       cy.contains('Économie estimée : 1.8 kW');
     });
-    cy.contains('section', 'Historique (24 h)').find('tbody tr').should('have.length', 2);
   });
 
   it("affiche un message d'erreur si une route de données échoue", () => {
@@ -59,7 +66,10 @@ describe('Tableau de bord', () => {
     cy.loginAsNewUser('/');
 
     cy.contains("Impossible de charger les données depuis l'API.");
-    cy.contains('h2', 'Prédictions de pics').should('not.exist');
+    // En erreur, le template n'affiche plus aucune section
+    cy.contains('h2', 'Prédictions de la consommation').should('not.exist');
+    cy.contains('h2', 'Historique (24 h)').should('not.exist');
+    cy.contains('h2', 'Recommandations').should('not.exist');
     // Une erreur 500 ne déconnecte pas : seule une 401 le fait
     cy.location('pathname').should('eq', '/');
   });

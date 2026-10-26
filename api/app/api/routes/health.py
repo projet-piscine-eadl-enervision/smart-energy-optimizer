@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.core.config import settings
 
-router = APIRouter(prefix="/health", tags=["health"])
+router = APIRouter(prefix="/health", tags=["Health"])
 
 MOCK_API_URL = (settings.MOCK_API_URL or "http://10.43.43.80:8000").rstrip("/")
 MOCK_API_CREDENTIALS = (settings.MOCK_API_USERNAME, settings.MOCK_API_PASSWORD)
@@ -14,7 +14,7 @@ MOCK_API_CREDENTIALS = (settings.MOCK_API_USERNAME, settings.MOCK_API_PASSWORD)
 MOCK_API_AUTH = MOCK_API_CREDENTIALS if all(MOCK_API_CREDENTIALS) else None
 
 
-@router.get("")
+@router.get("", summary="Service health check")
 async def health():
     return {
         "status": "healthy",
@@ -24,7 +24,7 @@ async def health():
     }
 
 
-@router.get("/mock")
+@router.get("/mock", summary="Mock service health check")
 async def health_mock():
     try:
         async with httpx2.AsyncClient(timeout=5.0, auth=MOCK_API_AUTH) as client:

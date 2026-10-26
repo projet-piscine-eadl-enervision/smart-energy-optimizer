@@ -4,21 +4,31 @@ Assemble les routes et verrouille le CORS sur le front Angular. Le schéma de la
 pas créé ici : il vient des migrations de db/migrations (dbmate), appliquées avant le
 démarrage de l'API.
 """
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import auth, health, history, predictions, recommendations
 from app.core.config import settings
 
-# En production, ni la documentation interactive ni le schéma OpenAPI ne sont exposés
-NO_DOCS = {"docs_url": None, "redoc_url": None, "openapi_url": None}
+STATIC_DIR = Path(__file__).parent / "static"
+FAVICON_URL = "/static/logoSmartEnergyOptimizer.ico"
 
 
 def create_app() -> FastAPI:
+    is_production = settings.APP_ENV == "production"
+
+    # Les pages /docs et /redoc par défaut sont toujours désactivées : en production,
+    # elles ne sont pas exposées, ailleurs elles sont redéfinies plus bas avec le favicon.
     application = FastAPI(
-        title="enervision-api",
-        description=f"Environnement : {settings.APP_ENV}",
-        **(NO_DOCS if settings.APP_ENV == "production" else {}),
+        title="Smart Energy Optimizer API",
+        description=f"Environment : {settings.APP_ENV}",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None if is_production else "/openapi.json",
     )
 
     # CORS verrouillé sur l'origine du front — pas de "*" en présence de cookies/JWT
@@ -29,6 +39,25 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    if not is_production:
+        application.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+        @application.get("/docs", include_in_schema=False)
+        async def swagger_ui():
+            return get_swagger_ui_html(
+                openapi_url=application.openapi_url,
+                title=f"{application.title} - Swagger UI",
+                swagger_favicon_url=FAVICON_URL,
+            )
+
+        @application.get("/redoc", include_in_schema=False)
+        async def redoc():
+            return get_redoc_html(
+                openapi_url=application.openapi_url,
+                title=f"{application.title} - ReDoc",
+                redoc_favicon_url=FAVICON_URL,
+            )
 
     application.include_router(health.router)
     application.include_router(auth.router)
