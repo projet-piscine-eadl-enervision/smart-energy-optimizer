@@ -4,10 +4,9 @@ Usage, depuis etl/ :
     python -m pipeline clean-history [--input CSV] [--metadata JSON] [--output PARQUET]
 """
 import argparse
+import base64
 import json
 import logging
-import base64
-
 from pathlib import Path
 
 import pandas as pd
