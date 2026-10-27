@@ -55,6 +55,11 @@ title = "Infrastructure"
 section = "Architecture et modules"
 
 [[page]]
+source = "monitoring/README.md"
+title = "Supervision"
+section = "Architecture et modules"
+
+[[page]]
 source = "docs/analyse-api-mock.md"
 title = "Analyse API Mock"
 section = "Données"

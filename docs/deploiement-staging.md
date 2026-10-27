@@ -62,6 +62,8 @@ NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
 # APP_ENV=staging
 # Pour figer un commit précis (retour arrière d'urgence, voir mise-en-production.md) :
 # IMAGE_TAG=sha-<commit complet>
+# Supervision : ajouter ,monitoring à COMPOSE_PROFILES, et :
+# GRAFANA_ADMIN_PASSWORD=...
 ```
 
 - `POSTGRES_PASSWORD` : un mot de passe généré sur la VM (`openssl rand -base64 24 | tr -d '/+='`), différent de celui du développement.
@@ -91,6 +93,7 @@ NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
 
   Relancer écrit 0 ligne. Si `find` ne trouve rien, le fichier n'a pas été poussé dans DVC (`dvc push`), ou se copie depuis un poste avec `scp`.
 - Collecte des mesures : ajouter `collector` à `COMPOSE_PROFILES` (`apps,collector`), puis attendre la mise à jour automatique. `docker ps` montre `collector` en `healthy` après environ 90 secondes (`unhealthy` : aucun tour réussi depuis trois minutes, mock injoignable ou base arrêtée). Les tours se lisent avec `docker compose logs --tail 5 collector` (staging : mêmes options `-f` et `--env-file` que ci-dessus).
+- Supervision (Prometheus, Grafana et les exporteurs de `docker-compose.monitoring.yml`) : ajouter `monitoring` à `COMPOSE_PROFILES` (`apps,collector,monitoring`) et une ligne `GRAFANA_ADMIN_PASSWORD`, générée comme `POSTGRES_PASSWORD` (`openssl rand -base64 24 | tr -d '/+='`). `update-staging.sh` ajoute alors ce compose à ses commandes, et la mise à jour suivante lance la supervision ; retirer le mot l'arrête. Prometheus et Grafana n'écoutent que sur `127.0.0.1` de la VM : y accéder par un tunnel, `ssh -L 3000:127.0.0.1:3000 -L 9090:127.0.0.1:9090 root@10.43.43.50`, puis http://localhost:3000 (utilisateur `admin`). Pour les commandes `docker compose` à la main, ajouter `-f docker-compose.monitoring.yml`. Détails, alertes et dashboards : [`monitoring/README.md`](../monitoring/README.md).
 
 ## Mise en place sur la VM (une seule fois)
 
@@ -172,6 +175,7 @@ docker compose -f /opt/enervision/docker-compose.staging.yml --env-file /etc/ene
 |---|---|
 | `denied` ou `unauthorized` dans le journal | jeton GHCR expiré ou révoqué : refaire le `docker login` |
 | `manquant dans staging.env` | variable absente ou vide dans `/etc/enervision/staging.env` |
+| `GRAFANA_ADMIN_PASSWORD manquant` | `monitoring` est dans `COMPOSE_PROFILES` mais pas le mot de passe de Grafana : ajouter la ligne, ou retirer `monitoring` |
 | `manifest unknown` | l'image du tag demandé n'est pas (encore) publiée : vérifier la CI et son job `publish` |
 | La release dit que le staging n'a rien annoncé | jeton de la VM absent ou expiré, ou passage du minuteur pas encore fait : voir « Annonce du staging à GitHub » |
 | L'ancienne version tourne encore | CI ou publication non terminée, ou minuteur arrêté |

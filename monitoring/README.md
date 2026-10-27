@@ -75,11 +75,12 @@ de groupe de sécurité n'est nécessaire.
 
   puis http://localhost:3000.
 
-> **Pas encore déployée automatiquement.** `infra/scripts/update-staging.sh` et
-> `.github/workflows/deploy-production.yml` ne lancent que `docker-compose.staging.yml`, avec
-> `--remove-orphans` : des conteneurs de supervision démarrés à la main sous le même projet seraient
-> supprimés à la mise à jour suivante. Le déploiement de la stack sur les serveurs se fait en ajoutant
-> `docker-compose.monitoring.yml` à ces deux commandes.
+> **Activation.** Staging : `monitoring` dans le `COMPOSE_PROFILES` de `staging.env`, avec
+> `GRAFANA_ADMIN_PASSWORD` ; `infra/scripts/update-staging.sh` ajoute alors ce compose à ses commandes
+> (voir `docs/deploiement-staging.md`). Production : pas encore branchée,
+> `.github/workflows/deploy-production.yml` ne lance que `docker-compose.staging.yml`. Ne pas démarrer
+> la supervision à la main sur un serveur : les deux déploiements utilisent `--remove-orphans` et
+> suppriment au passage suivant les conteneurs qu'ils ne connaissent pas.
 
 ## Alertes
 
