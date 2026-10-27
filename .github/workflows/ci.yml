@@ -151,7 +151,7 @@ jobs:
       - name: Préparer la couverture pour Sonar
         if: hashFiles(format('{0}/coverage.xml', matrix.component)) != ''
         run: python3 ../infra/scripts/prefix-coverage.py coverage.xml "${{ matrix.component }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: hashFiles(format('{0}/coverage.xml', matrix.component)) != ''
         with:
           name: coverage-${{ matrix.component }}
@@ -185,7 +185,7 @@ jobs:
         if: hashFiles('frontend/coverage/enervision/lcov.info') != ''
         # Sonar lit les chemins depuis la racine du dépôt : src/app/app.ts devient frontend/src/app/app.ts
         run: sed -i 's#^SF:#SF:frontend/#' coverage/enervision/lcov.info
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: hashFiles('frontend/coverage/enervision/lcov.info') != ''
         with:
           name: coverage-frontend
@@ -226,7 +226,7 @@ jobs:
         run: |
           chmod -R a+w frontend/cypress
           docker compose --profile e2e run --rm e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-screenshots
@@ -264,7 +264,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.10.5
           terraform_wrapper: false
@@ -386,7 +386,7 @@ jobs:
         if: env.SONAR_TOKEN != ''
         with:
           fetch-depth: 0 # Sonar attribue les lignes nouvelles à partir de l'historique
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: env.SONAR_TOKEN != ''
         with:
           pattern: coverage-*
