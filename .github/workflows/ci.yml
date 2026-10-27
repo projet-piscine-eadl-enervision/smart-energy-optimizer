@@ -200,6 +200,8 @@ jobs:
     if: needs.changes.outputs.frontend == 'true' || contains(needs.changes.outputs.python, '"api"')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.e2e.yml
     steps:
       - uses: actions/checkout@v7
       - name: Configurer la pile

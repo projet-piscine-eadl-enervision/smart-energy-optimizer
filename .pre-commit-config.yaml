@@ -37,7 +37,9 @@ repos:
       # Aucun commit direct sur main : tout passe par une pull request.
       - id: no-commit-to-branch
         args: [--branch, main]
+      # --unsafe : accepte les étiquettes propres à Compose (!reset, !override), syntaxe vérifiée quand même
       - id: check-yaml
+        args: [--unsafe]
       - id: check-merge-conflict
       # Aucun secret dans Git.
       - id: detect-private-key
