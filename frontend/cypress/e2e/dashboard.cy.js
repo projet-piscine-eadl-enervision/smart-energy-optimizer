@@ -10,10 +10,11 @@ describe('Tableau de bord', () => {
       });
   };
 
-  it("affiche l'utilisateur et les trois blocs de données", () => {
-    cy.intercept('GET', '/api/predictions').as('predictions');
+  it("affiche l'utilisateur et les trois blocs de données, lus dans l'API réelle", () => {
+    // Aucune réponse simulée : la base du test est vide, chaque bloc montre donc son état vide
+    cy.intercept('GET', '/api/predictions*').as('predictions');
     cy.intercept('GET', '/api/history*').as('history');
-    cy.intercept('GET', '/api/recommendations').as('recommendations');
+    cy.intercept('GET', '/api/recommendations*').as('recommendations');
 
     cy.loginAsNewUser('/').then((email) => {
       cy.contains('header', 'Smart Energy Optimizer');
@@ -26,25 +27,34 @@ describe('Tableau de bord', () => {
     cy.wait(['@predictions', '@recommendations']);
 
     cy.contains('Chargement…').should('not.exist');
-    expectChartRendered('Prédictions de la consommation');
-    expectChartRendered('Historique (24 h)');
-    cy.contains('section', 'Recommandations').find('li').should('have.length.greaterThan', 0);
+    cy.contains('section', 'Prédictions de la consommation').contains('Aucune prévision disponible');
+    cy.contains('section', 'Historique (24 h)').contains('Aucune mesure sur cette période.');
+    cy.contains('section', 'Recommandations').contains('Aucune recommandation pour le moment.');
   });
 
   it("affiche les recommandations renvoyées par l'API et alimente les graphiques", () => {
-    cy.intercept('GET', '/api/predictions', [
-      { timestamp: '2026-10-26T18:00:00Z', predicted_kw: 4.26, confidence: 0.9 },
+    cy.intercept('GET', '/api/predictions*', [
+      {
+        timestamp: '2026-10-26T18:00:00Z',
+        site_id: 'ALL',
+        predicted_kw: 4.26,
+        is_peak: null,
+        model_version: '1',
+      },
     ]);
     cy.intercept('GET', '/api/history*', [
       { timestamp: '2026-10-26T08:00:00Z', consumption_kw: 2.5 },
       { timestamp: '2026-10-26T09:00:00Z', consumption_kw: 3.1 },
     ]);
-    cy.intercept('GET', '/api/recommendations', [
+    cy.intercept('GET', '/api/recommendations*', [
       {
         id: 1,
         title: 'Décaler la filtration',
         message: 'Lancez la filtration avant 17h.',
         estimated_saving_kw: 1.8,
+        site_id: 'SITE001',
+        target_time: '2026-10-26T18:00:00Z',
+        alert_type: 'threshold',
       },
     ]);
 
@@ -61,7 +71,7 @@ describe('Tableau de bord', () => {
   });
 
   it("affiche un message d'erreur si une route de données échoue", () => {
-    cy.intercept('GET', '/api/predictions', { statusCode: 500, body: {} });
+    cy.intercept('GET', '/api/predictions*', { statusCode: 500, body: {} });
 
     cy.loginAsNewUser('/');
 

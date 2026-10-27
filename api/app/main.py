@@ -12,7 +12,15 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.api.routes import auth, health, history, predictions, recommendations
+from app.api.routes import (
+    alerts,
+    auth,
+    health,
+    history,
+    predictions,
+    recommendations,
+    sites,
+)
 from app.core.config import settings
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -65,10 +73,13 @@ def create_app() -> FastAPI:
     application.include_router(predictions.router)
     application.include_router(history.router)
     application.include_router(recommendations.router)
+    application.include_router(alerts.router)
+    application.include_router(sites.router)
 
     # /metrics : requêtes, latence et codes de retour, pour Prometheus. Jamais exposée au public :
     # le proxy du frontend la refuse, Prometheus lit l'API en direct sur le réseau Docker.
     Instrumentator(excluded_handlers=["/health.*", "/metrics"]).instrument(application).expose(application)
+
     return application
 
 

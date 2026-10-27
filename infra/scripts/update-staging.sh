@@ -46,6 +46,7 @@ main() {
 
   [ -f "$COMPOSE_FILE_STAGING" ] || { echo "$COMPOSE_FILE_STAGING absent à la racine" >&2; exit 1; }
 
+
   # Supervision (Prometheus, Grafana, exporteurs) : activée par « monitoring » dans COMPOSE_PROFILES de
   # staging.env, avec GRAFANA_ADMIN_PASSWORD. Sans ce mot, le staging tourne comme avant, et
   # --remove-orphans retire les conteneurs de supervision d'un lancement précédent.
@@ -55,8 +56,11 @@ main() {
     compose+=(-f "$COMPOSE_FILE_MONITORING")
   fi
 
-  "${compose[@]}" pull --ignore-buildable --quiet
+  # Profil ml-job : l'image ml n'est lancée que par les minuteurs, il faut la tirer aussi. Ajouté aux
+  # profils de staging.env, pas à leur place (un --profile en ligne de commande les remplacerait).
+  COMPOSE_PROFILES="${profiles:+$profiles,}ml-job" "${compose[@]}" pull --ignore-buildable --quiet
   "${compose[@]}" up -d --remove-orphans
+
 
   # Annonce à GitHub que le staging est à jour (déploiement « staging » pour le commit qui tourne).
   # Ne fait jamais échouer la mise à jour : sans jeton ou sans réseau, le script le dit et s'arrête.

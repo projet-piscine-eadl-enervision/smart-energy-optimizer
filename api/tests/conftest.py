@@ -22,6 +22,19 @@ from app.main import app
 from app.models.user import Role, User
 
 
+class FakeResult:
+    """Résultat d'execute() : itérable, et first() comme un vrai résultat SQLAlchemy."""
+
+    def __init__(self, rows: list):
+        self.rows = rows
+
+    def __iter__(self):
+        return iter(self.rows)
+
+    def first(self):
+        return self.rows[0] if self.rows else None
+
+
 class FakeSession:
     """Remplace AsyncSession : stocke les utilisateurs dans un dictionnaire."""
 
@@ -40,7 +53,7 @@ class FakeSession:
 
     async def execute(self, statement, params=None):
         self.executed.append((str(statement), params or {}))
-        return iter(self.rows)
+        return FakeResult(self.rows)
 
     def add(self, user: User):
         # Valeurs que la base remplirait elle-même à l'insertion

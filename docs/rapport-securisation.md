@@ -18,7 +18,7 @@ api/app/main.py:31:        openapi_url=None if is_production else "/openapi.json
 api/app/main.py:37:        allow_origins=[settings.FRONTEND_ORIGIN],
 ```
 
-Le fichier d'environnement de la production fixe `APP_ENV=production` (relevé du 26/10 sur l'instance par Session Manager, ligne `APP_ENV` seule), ce qui ferme `/docs`, `/redoc` et `/openapi.json`. Les accès sans jeton, avec un jeton invalide, ou avec un mot de passe trop long (plus de 72 octets, refusé en 422 au lieu d'une erreur 500) sont couverts par `api/tests/test_auth.py`. La CI de `main` exécute 63 tests de l'API, couverture 99 %.
+Le fichier d'environnement de la production fixe `APP_ENV=production` (relevé du 26/10 sur l'instance par Session Manager, ligne `APP_ENV` seule), ce qui ferme `/docs`, `/redoc` et `/openapi.json`. Les accès sans jeton, avec un jeton invalide, ou avec un mot de passe trop long (plus de 72 octets, refusé en 422 au lieu d'une erreur 500) sont couverts par `api/tests/test_auth.py`.
 
 Limites : `/auth/register` est ouvert à tous et `/auth/login` n'a pas de limite d'essais.
 

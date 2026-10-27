@@ -62,7 +62,7 @@ Sur le fichier actuel, pour la consommation : 119 807 mesurées, 353 retrouvées
 
 ## Collecter les mesures courantes
 
-`python -m pipeline poll-current` interroge le mock toutes les 60 s (`--interval` ou `POLL_INTERVAL_SECONDS`) : `/current` de chaque site, `/sensors/status` et `/alerts`. Chaque réponse est enregistrée telle quelle dans `raw.api_response`, puis transformée en `core.energy_reading` (`time` = heure de réception, `mock_time` = heure du mock), `core.sensor_status` (une ligne par panne, relue en base à chaque tour) et `core.alert` (`origin = 'api'`). Si `ref.site` est vide, le collecteur la charge d'abord. Un appel en échec n'arrête pas la boucle ; `SIGTERM` l'arrête proprement. `--once` fait un seul tour, pour un essai.
+`python -m pipeline poll-current` interroge le mock toutes les 60 s (`--interval` ou `POLL_INTERVAL_SECONDS`) : `/current` de chaque site, `/sensors/status` et `/alerts`. Chaque réponse est enregistrée telle quelle dans `raw.api_response`, puis transformée en `core.energy_reading` (`time` = heure de réception, `mock_time` = heure du mock), `core.sensor_status` (une ligne par panne, relue en base à chaque tour) et `core.alert` (`origin = 'api'`, `last_seen_at` = dernière réception, que l'API lit pour l'état des alertes). Si `ref.site` est vide, le collecteur la charge d'abord. Un appel en échec n'arrête pas la boucle ; `SIGTERM` l'arrête proprement. `--once` fait un seul tour, pour un essai.
 
 Un tour réussi écrit l'heure dans `/tmp/collector.heartbeat` ; `python -m pipeline.heartbeat` répond 0 si elle date de moins de trois intervalles (sonde du conteneur).
 
@@ -91,7 +91,7 @@ docker ps                                                 # collector : healthy 
 docker compose logs -f collector                          # une ligne par tour
 ```
 
-Sur le staging, ajouter `collector` à `COMPOSE_PROFILES` dans `/etc/enervision/staging.env` (`COMPOSE_PROFILES=apps,collector`) ; la mise à jour automatique le démarre. Le conteneur passe `unhealthy` si aucun tour n'a réussi depuis trois intervalles (mock injoignable, base arrêtée). La production ne collecte pas tant que `collector` n'est pas dans le `COMPOSE_PROFILES` de `production.env`.
+Sur le staging, ajouter `collector` à `COMPOSE_PROFILES` dans `/etc/enervision/staging.env` (`COMPOSE_PROFILES=apps,collector`) ; la mise à jour automatique le démarre. Le conteneur passe `unhealthy` si aucun tour n'a réussi depuis trois intervalles (mock injoignable, base arrêtée). La production collecte aussi (`COMPOSE_PROFILES=apps,collector,mlflow` dans `production.env`) ; première mise en service : `backfill`, voir `docs/mise-en-production.md`.
 
 ## Ajouter un traitement
 

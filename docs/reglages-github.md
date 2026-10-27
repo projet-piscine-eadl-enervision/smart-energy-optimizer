@@ -21,7 +21,7 @@ Les réglages se modifient dans *Settings* du dépôt, par un administrateur. Ap
 Un *ruleset* actif sur `main`, plus la protection de branche classique :
 
 - **toute modification passe par une PR** ; une approbation au moins, donnée par une autre personne que l'auteur ; les conversations de revue doivent être résolues ; l'approbation n'est pas retirée par un nouveau push ;
-- **un seul contrôle obligatoire : `ci-ok`**, qui résume tous les autres (tests, Trivy, Sonar, migrations, titre de PR, nom de branche, messages de commit) ; la branche doit être **à jour avec `main`** avant le merge ;
+- **un seul contrôle obligatoire : `ci-ok`**, qui résume tous les autres (tests, Cypress, Trivy, Sonar, migrations, titre de PR, nom de branche, messages de commit) ; la branche doit être **à jour avec `main`** avant le merge ;
 - pas de force push, pas de suppression de `main`, merge en squash seulement ;
 - les administrateurs sont soumis à la règle ; seule l'application GitHub `enervision-release` peut la contourner, par PR.
 

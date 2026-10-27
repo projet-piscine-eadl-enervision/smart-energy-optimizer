@@ -73,8 +73,8 @@ services:
         condition: service_completed_successfully
 
   # Collecteur des mesures courantes du mock. Profil à part, à activer par environnement :
-  # COMPOSE_PROFILES=apps,collector dans /etc/enervision/staging.env (et dans production.env le jour où
-  # la production doit collecter).
+  # COMPOSE_PROFILES=apps,collector dans /etc/enervision/staging.env et apps,collector,mlflow dans
+  # production.env.
   collector:
     profiles: [collector]
     image: ${IMAGE_PREFIX:-ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer}/etl:${IMAGE_TAG:-main}

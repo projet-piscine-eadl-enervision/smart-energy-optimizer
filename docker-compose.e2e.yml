@@ -1,0 +1,8 @@
+# Surcharge de la CI (job e2e) : le front est l image de production, comme en staging. Le serveur de
+# développement, lancé à froid sans cache .angular, répond « new version of the pre-bundle » à chaque
+# requête et n est jamais prêt. Usage : COMPOSE_FILE=docker-compose.yml:docker-compose.e2e.yml
+services:
+  frontend:
+    build:
+      target: prod
+    volumes: !reset []

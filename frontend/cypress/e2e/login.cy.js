@@ -65,7 +65,7 @@ describe('Connexion', () => {
 
   it('déconnecte et revient à la page de connexion', () => {
     cy.loginAsNewUser('/');
-    cy.contains('h2', 'Prédictions de pics');
+    cy.contains('h2', 'Prédictions de la consommation');
 
     cy.contains('button', 'Déconnexion').click();
 

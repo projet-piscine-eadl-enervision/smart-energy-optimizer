@@ -1,0 +1,58 @@
+<div class="mb-6 flex flex-wrap items-center gap-4">
+  <app-site-select [value]="siteId()" (changed)="selectSite($event)" />
+  <div class="flex items-center gap-1 text-sm">
+    @for (s of statuses; track s.value) {
+      <button
+        type="button"
+        (click)="selectStatus(s.value)"
+        class="rounded px-3 py-1"
+        [class]="status() === s.value ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-200'"
+      >
+        {{ s.label }}
+      </button>
+    }
+  </div>
+  <button type="button" (click)="load()" class="text-sm text-emerald-700 hover:underline">
+    Actualiser
+  </button>
+</div>
+
+<section class="rounded-xl bg-white p-6 shadow">
+  <h2 class="mb-3 text-lg font-semibold text-slate-800">Alertes</h2>
+  @if (loading()) {
+    <p class="text-slate-500">Chargement…</p>
+  } @else if (error()) {
+    <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
+  } @else if (alerts().length === 0) {
+    <p class="text-sm text-slate-500">Aucune alerte.</p>
+  } @else {
+    <ul class="space-y-3">
+      @for (a of alerts(); track a.alert_id) {
+        <li class="rounded border border-slate-200 p-3" [class.opacity-60]="a.status === 'resolved'">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded px-2 py-0.5 text-xs font-medium" [class]="severityClass(a.severity)">
+              {{ a.severity }}
+            </span>
+            <span class="font-medium text-slate-800">{{ a.alert_label }}</span>
+            <span class="text-sm text-slate-500">{{ a.site_id }} · {{ a.site_name }}</span>
+            @if (a.status === 'resolved') {
+              <span class="text-xs text-slate-500">résolue</span>
+            }
+          </div>
+          @if (a.message) {
+            <p class="mt-1 text-sm text-slate-600">{{ a.message }}</p>
+          }
+          <p class="mt-1 text-xs text-slate-500">
+            {{ a.timestamp | date: 'dd/MM HH:mm' }}
+            @if (a.value !== null) {
+              · valeur {{ a.value | number: '1.1-1' }}
+              @if (a.threshold !== null) {
+                (seuil {{ a.threshold | number: '1.1-1' }})
+              }
+            }
+          </p>
+        </li>
+      }
+    </ul>
+  }
+</section>

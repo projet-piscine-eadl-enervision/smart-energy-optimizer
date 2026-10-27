@@ -66,6 +66,26 @@ async def test_tours_fill_the_tables_without_duplicates(conn, mock_api):
 
 
 @pytest.mark.anyio
+async def test_alert_records_its_last_reception(conn, mock_api):
+    mock_api(handler({**ALERT, "site_id": "SITE999", "alert_id": "ALR-TEST-3"}))
+    known = poll_current.Known(["SITE999"], {"outage"}, {"critical"})
+
+    await poll_current.tour(conn, known)
+    conn.execute(
+        "UPDATE core.alert SET last_seen_at = now() - interval '1 hour', resolved_at = now()"
+        " WHERE alert_id = 'ALR-TEST-3'"
+    )
+    await poll_current.tour(conn, known)
+
+    # Revue au tour suivant : réception rafraîchie et résolution annulée, sans doublon
+    row = conn.execute(
+        "SELECT count(*) OVER (), last_seen_at > now() - interval '1 minute', resolved_at"
+        " FROM core.alert WHERE alert_id = 'ALR-TEST-3'"
+    ).fetchone()
+    assert row == (1, True, None)
+
+
+@pytest.mark.anyio
 async def test_unknown_alert_type_does_not_cancel_the_tour(conn, mock_api):
     mock_api(handler({**ALERT, "site_id": "SITE999", "alert_id": "ALR-TEST-2", "type": "spaceport"}))
     known = poll_current.Known(["SITE999"], {"outage"}, {"critical"})

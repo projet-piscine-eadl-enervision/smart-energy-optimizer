@@ -7,7 +7,14 @@ from fastapi import HTTPException
 from app.api.deps import require_role
 from app.models.user import Role, User
 
-ROUTES_PROTEGEES = ["/predictions", "/predictions/peaks", "/history", "/recommendations"]
+ROUTES_PROTEGEES = [
+    "/predictions",
+    "/predictions/peaks",
+    "/history",
+    "/recommendations",
+    "/alerts",
+    "/sites",
+]
 
 
 @pytest.mark.parametrize("route", ROUTES_PROTEGEES)

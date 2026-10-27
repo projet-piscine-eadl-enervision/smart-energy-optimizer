@@ -194,6 +194,51 @@ jobs:
         if: hashFiles('frontend/package-lock.json') != ''
         run: npm run build --if-present
 
+  # Tests de bout en bout : Cypress contre la vraie pile (base migrée, API, front), comme en local.
+  # Seules les données externes manquent : aucune collecte, les écrans montrent leurs états vides.
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || contains(needs.changes.outputs.python, '"api"')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.e2e.yml
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configurer la pile
+        run: |
+          {
+            echo "MOCK_API_URL=http://mock.invalid"
+            echo "SECRET_KEY=$(openssl rand -hex 32)"
+          } > .env
+      - name: Démarrer la pile
+        run: docker compose up -d --build api frontend
+      - name: Attendre le front et l'API
+        run: |
+          for _ in $(seq 1 90); do
+            curl -fsS http://localhost:4000/api/health >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          docker compose logs --tail 80
+          exit 1
+      - name: Scénarios Cypress
+        # Cypress tourne en utilisateur node (uid 1000) : le dossier doit être inscriptible pour les captures
+        run: |
+          chmod -R a+w frontend/cypress
+          docker compose --profile e2e run --rm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: frontend/cypress/screenshots
+          if-no-files-found: ignore
+      - name: Journaux de la pile
+        if: failure()
+        run: docker compose logs --tail 80
+      - name: Arrêter la pile
+        if: always()
+        run: docker compose down -v
+
   security:
     runs-on: ubuntu-24.04
     permissions:
@@ -355,7 +400,7 @@ jobs:
   # seul ce job est à exiger, quels que soient les composants présents.
   ci-ok:
     if: always()
-    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, security, terraform, migrations, sonar, monitoring]
+    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, e2e, security, terraform, migrations, sonar, monitoring]
     runs-on: ubuntu-24.04
     steps:
       - name: Vérifier les résultats

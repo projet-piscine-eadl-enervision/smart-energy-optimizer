@@ -1,0 +1,52 @@
+<section class="rounded-xl bg-white p-6 shadow">
+  <h2 class="mb-3 text-lg font-semibold text-slate-800">Sites</h2>
+  @if (loading()) {
+    <p class="text-slate-500">Chargement…</p>
+  } @else if (error()) {
+    <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
+  } @else if (sites().length === 0) {
+    <p class="text-sm text-slate-500">Aucun site.</p>
+  } @else {
+    <table class="w-full text-left text-sm">
+      <thead class="text-slate-500">
+        <tr>
+          <th class="py-2">Site</th>
+          <th>Type</th>
+          <th>Lieu</th>
+          <th class="text-right">Capacité (kW)</th>
+          <th class="text-right">Dernière mesure (kW)</th>
+          <th class="text-right">Âge</th>
+          <th class="pl-4">Qualité</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of sites(); track s.site_id) {
+          <tr class="border-t border-slate-200">
+            <td class="py-2">
+              <a [routerLink]="['/sites', s.site_id]" class="font-medium text-emerald-700 hover:underline">
+                {{ s.site_id }}
+              </a>
+              <span class="ml-1 text-slate-500">{{ s.site_name }}</span>
+            </td>
+            <td>{{ s.site_type }}</td>
+            <td>{{ s.location ?? '–' }}</td>
+            <td class="text-right">{{ s.capacity_kw | number: '1.0-0' }}</td>
+            <td class="text-right">
+              {{ s.last_consumption_kw === null ? '–' : (s.last_consumption_kw | number: '1.1-1') }}
+            </td>
+            <td class="text-right">{{ age(s.last_reading_age_minutes) }}</td>
+            <td class="pl-4">
+              @if (s.last_quality) {
+                <span class="rounded px-2 py-0.5 text-xs" [class]="qualityClass(s.last_quality)">
+                  {{ s.last_quality }}
+                </span>
+              } @else {
+                –
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</section>
