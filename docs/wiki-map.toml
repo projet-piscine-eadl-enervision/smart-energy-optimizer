@@ -121,27 +121,27 @@ section = "Rapport collectif"
 
 [[page]]
 source = "docs/rapport-collectif/contexte-et-objectifs.md"
-title = "Contexte et objectifs"
+title = "Introduction du rapport"
 section = "Rapport collectif"
 
 [[page]]
 source = "docs/rapport-collectif/organisation.md"
-title = "Organisation et coordination"
+title = "Organisation et rôles"
 section = "Rapport collectif"
 
 [[page]]
 source = "docs/rapport-collectif/methode.md"
-title = "Méthode de travail"
+title = "Méthodologie"
 section = "Rapport collectif"
 
 [[page]]
 source = "docs/rapport-collectif/planning-et-risques.md"
-title = "Planning et risques"
+title = "Planning jalons et risques"
 section = "Rapport collectif"
 
 [[page]]
 source = "docs/rapport-collectif/indicateurs.md"
-title = "Indicateurs de suivi"
+title = "Annexe indicateurs"
 section = "Rapport collectif"
 
 [[page]]
@@ -150,8 +150,18 @@ title = "Contribution DevOps"
 section = "Rapport collectif"
 
 [[page]]
+source = "docs/rapport-collectif/devops/competences.md"
+title = "Compétences DevOps"
+section = "Rapport collectif"
+
+[[page]]
 source = "docs/rapport-collectif/cloud/README.md"
 title = "Contribution Cloud"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/cloud/competences.md"
+title = "Compétences Cloud"
 section = "Rapport collectif"
 
 [[page]]
@@ -160,8 +170,18 @@ title = "Contribution Produit et interface"
 section = "Rapport collectif"
 
 [[page]]
+source = "docs/rapport-collectif/produit-et-interface/competences.md"
+title = "Compétences Produit et interface"
+section = "Rapport collectif"
+
+[[page]]
 source = "docs/rapport-collectif/donnees/README.md"
 title = "Contribution Données"
+section = "Rapport collectif"
+
+[[page]]
+source = "docs/rapport-collectif/donnees/competences.md"
+title = "Compétences Données"
 section = "Rapport collectif"
 
 [[page]]
@@ -170,18 +190,28 @@ title = "Contribution Tests"
 section = "Rapport collectif"
 
 [[page]]
+source = "docs/rapport-collectif/tests/competences.md"
+title = "Compétences Tests"
+section = "Rapport collectif"
+
+[[page]]
 source = "docs/rapport-collectif/backend-et-ml/README.md"
 title = "Contribution Backend et ML"
 section = "Rapport collectif"
 
 [[page]]
+source = "docs/rapport-collectif/backend-et-ml/competences.md"
+title = "Compétences Backend et ML"
+section = "Rapport collectif"
+
+[[page]]
 source = "docs/rapport-collectif/compte-rendu.md"
-title = "Compte rendu honnête"
+title = "Compte rendu des activités"
 section = "Rapport collectif"
 
 [[page]]
 source = "docs/rapport-collectif/incidents-et-competences.md"
-title = "Incidents et compétences"
+title = "Annexe incidents et compétences"
 section = "Rapport collectif"
 
 [[page]]

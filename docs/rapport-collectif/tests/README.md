@@ -1,41 +1,19 @@
-# Tests
+# 5.6 Tests
 
-*En cours. Ticket #170.*
+*En cours. Ticket #170. Une page : ce qui est livré, les problèmes résolus, ce qui ne l'est pas et pourquoi, les outils. Le détail par compétence est dans [Compétences Tests](competences.md).*
 
-Cette page présente la contribution du rôle et la relie aux compétences de la grille d'auto-évaluation. Pour chaque compétence : ce qui a été fait, avec une preuve du dépôt (PR, fichier ou sortie de commande), les problèmes résolus et la limite connue. La rédaction est neutre et centrée sur les choix techniques et leur évolution.
+## Livré
 
-## Rôle tenu
+*À rédiger.*
 
-*À compléter : le rôle défini au début du projet, son périmètre et la façon dont il a évolué.*
+## Problèmes résolus
 
-## C8 Stratégie de tests
+*À rédiger.*
 
-**La grille attend** : une stratégie de tests définie, idéalement des tests écrits avant le code.
+## Non livré, et pourquoi
 
-**Pistes**
+*À rédiger.*
 
-- Ce qui est testé à chaque niveau (unitaire, intégration, bout en bout) et pourquoi.
-- L'ordre entre tests et code quand il a été respecté, et la couverture mesurée.
-- Ce qui n'est pas couvert, et la suite prévue.
+## Outils
 
-**Preuves possibles** : les dossiers de tests de chaque module, la couverture dans la CI, `frontend/cypress`.
-
-*À compléter.*
-
-## C17 Tests automatisés
-
-**La grille attend** : des tests fonctionnels et non fonctionnels dans le pipeline.
-
-**Pistes**
-
-- Les tests qui tournent à chaque PR et ce qu'ils bloquent.
-- Les contrôles non fonctionnels : couverture, migrations rejouées deux fois, sondes de santé.
-- Les tests d'intégration sur une base migrée.
-
-**Preuves possibles** : `.github/workflows/ci.yml`, `docs/qualite-et-securite-ci.md`, les journaux de la CI.
-
-*À compléter.*
-
-## Limites et évolutions envisagées
-
-*À compléter : ce qui n'est pas fait, pourquoi, et la suite prévue.*
+*À rédiger.*

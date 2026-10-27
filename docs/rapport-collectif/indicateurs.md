@@ -1,3 +1,3 @@
-# 5. Suivi d'indicateurs : baseline et mesures
+# Annexe A. Suivi d'indicateurs
 
-*En cours. À couvrir : Les indicateurs choisis (avancement, tests, couverture, délais de livraison, etc.), leur valeur de départ (baseline), leur suivi documenté.*
+*En cours. À couvrir : les indicateurs choisis (avancement, tests, couverture, délais de livraison), leur valeur de départ (baseline) et leur suivi.*

@@ -1,3 +1,3 @@
-# 3. Méthode : Kanban, backlog, tickets, dailies
+# 2. Méthodologie
 
-*En cours. À couvrir : La méthode retenue et pourquoi, le backlog et les tickets, les dailies, les règles de travail (branches courtes, revue obligatoire, commits conventionnels).*
+*En cours. À couvrir : la méthode retenue (Kanban) et pourquoi, le backlog, les tickets et des exemples de user stories, les règles de travail (branches courtes, revue obligatoire, commits conventionnels).*

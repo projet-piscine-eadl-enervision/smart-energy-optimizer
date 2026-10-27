@@ -1,3 +1,3 @@
-# 1. Contexte et objectifs
+# Introduction : contexte et objectifs
 
-*En cours. À couvrir : La mission (plateforme cloud-native de collecte, prévision de pics et recommandations), le client visé, le périmètre du MVP, l'équipe et la durée du projet.*
+*En cours. Une demi-page : la mission (plateforme de collecte, prévision de pics et recommandations), le périmètre du MVP, l'équipe et la durée du projet.*
