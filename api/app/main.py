@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, health, history, predictions, recommendations
+from app.api.routes import alerts, auth, health, history, predictions, recommendations, sites
 from app.core.config import settings
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -64,6 +64,8 @@ def create_app() -> FastAPI:
     application.include_router(predictions.router)
     application.include_router(history.router)
     application.include_router(recommendations.router)
+    application.include_router(alerts.router)
+    application.include_router(sites.router)
     return application
 
 
