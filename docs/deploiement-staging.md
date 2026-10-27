@@ -159,6 +159,21 @@ Mise en place du jeton, une fois :
 
 Le jeton expire : sans renouvellement, l'annonce s'arrête sans bruit et la release sera refusée faute de déploiement `staging`. Le renouveler avant l'échéance en refaisant les étapes 1 et 2. Messages du journal : `jeton absent` (fichier manquant), `déploiement refusé` ou `réponse inattendue` (jeton expiré, permissions insuffisantes ou dépôt mal désigné, le corps de la réponse de GitHub est affiché).
 
+### Prévision horaire du module ML
+
+Le staging relance la prévision toutes les heures, à `hh:05` : `infra/scripts/predict-ml.timer` lance `predict-ml.service`, qui exécute `docker compose … run --rm ml python -m enervision_ml.predict`. La prévision écrit `ml.prediction`, puis recalcule les recommandations. Elle exige un modèle champion (entraînement fait), MLflow actif (`mlflow` dans `COMPOSE_PROFILES`) et des mesures de moins de 3 heures ; sinon elle s'arrête avec un message, et le journal du service l'indique. La production n'a pas de module ML.
+
+Installation, une seule fois, en `root` sur la VM de staging :
+
+```bash
+cp /opt/enervision/infra/scripts/predict-ml.service /opt/enervision/infra/scripts/predict-ml.timer /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now predict-ml.timer
+systemctl list-timers predict-ml.timer                 # prochain passage
+journalctl -u predict-ml.service -n 20 --no-pager      # dernier passage
+```
+
+Le minuteur de mise à jour du staging (toutes les 2 minutes) lance `up -d --remove-orphans` : il ne supprime pas un conteneur `run --rm` en cours (vérifié avec Docker Compose 5.6). Sur la VM, `docker compose version` donne la version installée ; si elle diffère, contrôler avec `journalctl -u predict-ml.service` après deux passages que la prévision n'est pas interrompue.
+
 ## Suivi et dépannage
 
 ```bash

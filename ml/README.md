@@ -29,7 +29,7 @@ docker compose run --rm ml python -m enervision_ml.predict
 
 Résultats dans le MLflow de développement : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
 
-La prédiction toutes les heures viendra avec le service ML (planificateur intégré et `POST /predictions/run`). Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
+La prévision se relance à la main ou, sur le staging, toutes les heures à `hh:05` par un minuteur systemd (`predict-ml.timer`, voir `docs/deploiement-staging.md`). Après avoir écrit les prévisions, elle recalcule les recommandations (`app.refresh_recommendations()`) ; si ce calcul échoue, les prévisions restent écrites mais la commande se termine en erreur. Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
 
 ### Données attendues de l'ETL
 

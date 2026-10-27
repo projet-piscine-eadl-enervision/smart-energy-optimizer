@@ -315,7 +315,7 @@ Les outils de lint et de test (`ruff`, `pytest`, `pytest-cov`) sont dans `requir
 ### Module ML
 - Se connecte à la BDD TimescaleDB
 - Création d'un modèle, entraînement avec données BDD TimescaleDB
-- Enregistre les runs et les modèles dans MLflow (service `mlflow`), où l'API récupère le modèle `champion`
+- Enregistre les runs et les modèles dans MLflow (service `mlflow`) et écrit ses prévisions dans `ml.prediction`, que l'API lit (route `/predictions`)
 ## Licence
 
 Code sous licence MIT (voir [`LICENSE`](LICENSE)). Le jeu de données du sujet et l'API Mock appartiennent à l'école : ils ne sont pas couverts par cette licence.

@@ -83,13 +83,14 @@ Les routes n'ont pas de préfixe `/api` : c'est le préfixe du proxy du front (`
 | `POST` | `/auth/register` | public | Inscription (email + mot de passe de 8 caractères et de 72 octets au plus) |
 | `POST` | `/auth/login` | public | Connexion, renvoie un jeton JWT |
 | `GET` | `/auth/me` | connecté | Profil de l'utilisateur courant |
-| `GET` | `/predictions` | connecté | Prédictions de pics de consommation |
-| `GET` | `/history?days=7` | connecté | Historique de consommation (1 à 90 jours) |
-| `GET` | `/recommendations` | connecté | Recommandations d'optimisation |
+| `GET` | `/predictions?hours=24&site_id=SITE001` | connecté | Consommation prévue heure par heure, lue dans `ml.prediction` : un site, ou le total des sites sans `site_id` (`ALL`) ; `is_peak` signale un pic du site (1,25 fois sa consommation moyenne), vide pour le total ; liste vide sans prévision à venir |
+| `GET` | `/predictions/peaks?hours=24&site_id=SITE001` | connecté | Heures prévues au-dessus du seuil de pic de leur site, avec ce seuil et le dépassement (`excess_kw`) ; pour tous les sites sans `site_id` ; liste vide sans pic prévu |
+| `GET` | `/history?days=7&site_id=SITE001` | connecté | Consommation par heure, lue dans `analytics.energy_hourly` (1 à 90 jours) : un site, ou la somme des sites sans `site_id`. L'heure en cours et les heures dont plus de la moitié des mesures manquent sont écartées ; pour le total, une heure où un site manque l'est aussi |
+| `GET` | `/recommendations?hours=24&site_id=SITE001&limit=50` | connecté | Conseils lus dans `app.recommendation` : alertes des dernières 24 h et pics prévus dans les `hours` prochaines heures. L'économie estimée (`estimated_saving_kw`) est la part décalable du dépassement d'un pic prévu, vide pour une alerte |
 | `GET` | `/health` | public | État, environnement et version déployée (utilisé par le staging et la release) |
 | `GET` | `/health/mock` | public | Vérifie que l'API Mock répond (502/503 sinon) |
 
-> Les routes `predictions`, `history` et `recommendations` renvoient pour l'instant des **données d'exemple** (voir les `TODO`).
+> Les routes de données lisent la base : `/history` l'agrégat horaire, `/predictions` et `/predictions/peaks` les prévisions du module ML, `/recommendations` les conseils que la base déduit des pics prévus et des alertes (`app.refresh_recommendations()`, appelée après chaque prévision).
 
 ### Tester dans Swagger
 
