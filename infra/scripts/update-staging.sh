@@ -45,7 +45,8 @@ main() {
 
   [ -f "$COMPOSE_FILE_STAGING" ] || { echo "$COMPOSE_FILE_STAGING absent à la racine" >&2; exit 1; }
 
-  docker compose -f "$COMPOSE_FILE_STAGING" --env-file "$ENV_FILE" pull --ignore-buildable --quiet
+  # --profile ml-job : l image ml n’est lancée que par les minuteurs, il faut la tirer aussi
+  docker compose -f "$COMPOSE_FILE_STAGING" --env-file "$ENV_FILE" --profile ml-job pull --ignore-buildable --quiet
   docker compose -f "$COMPOSE_FILE_STAGING" --env-file "$ENV_FILE" up -d --remove-orphans
 
   # Annonce à GitHub que le staging est à jour (déploiement « staging » pour le commit qui tourne).
