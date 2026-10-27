@@ -36,6 +36,7 @@ services:
     build: ./api
     container_name: enervision-api
     restart: unless-stopped
+    # Fournit MOCK_API_URL, obligatoire (plus de valeur par défaut dans le code) : voir .env.example
     env_file:
       - path: .env
         required: false
@@ -57,6 +58,7 @@ services:
     build: ./etl
     container_name: enervision-etl
     restart: unless-stopped
+    # Fournit MOCK_API_URL, obligatoire (plus de valeur par défaut dans le code) : voir .env.example
     env_file:
       - path: .env
         required: false
@@ -80,6 +82,7 @@ services:
     build: ./etl
     container_name: enervision-collector
     restart: unless-stopped
+    # Fournit MOCK_API_URL, obligatoire (plus de valeur par défaut dans le code) : voir .env.example
     env_file:
       - path: .env
         required: false
@@ -111,6 +114,10 @@ services:
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-4000}:4000"
+    environment:
+      # Adresse de l'API pour le proxy /api/ (frontend/src/api-proxy.ts), obligatoire.
+      # HTTP sur le réseau Docker interne, jamais exposé.
+      API_UPSTREAM: http://api:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules

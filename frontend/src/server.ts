@@ -6,7 +6,7 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
-import { apiProxy } from './api-proxy';
+import { apiProxy, getApiUpstream } from './api-proxy';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -44,6 +44,8 @@ app.use((req, res, next) => {
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
  */
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
+  // Arrêt immédiat, avec un message clair, si API_UPSTREAM manque ou est invalide.
+  getApiUpstream();
   const port = process.env['PORT'] || 4000;
   app.listen(port, (error) => {
     if (error) {

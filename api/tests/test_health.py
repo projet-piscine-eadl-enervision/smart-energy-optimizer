@@ -52,3 +52,10 @@ def test_health_mock_en_erreur(client, mock_api):
     response = client.get("/health/mock")
     assert response.status_code == 502
     assert "500" in response.json()["detail"]
+
+
+def test_health_mock_missing_url(client, monkeypatch):
+    monkeypatch.setattr(health, "MOCK_API_URL", "")
+    response = client.get("/health/mock")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "MOCK_API_URL non configurée"

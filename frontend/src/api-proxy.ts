@@ -1,13 +1,23 @@
 import type { Request, Response } from 'express';
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
+import { buildUpstreamUrl, parseApiUpstream } from './api-upstream';
 
 /**
  * Le front appelle l'API par un chemin relatif (/api/...) : ce serveur transmet la requête à
  * l'adresse donnée par API_UPSTREAM, lue au lancement. Aucune adresse d'environnement n'est dans
- * le code ni dans l'image, ce qui permet de promouvoir la même image du staging à la production.
+ * le code, ce qui permet de promouvoir la même image du staging à la production.
+ *
+ * Lue au premier besoin et non au chargement du module : le build (pré-rendu) charge aussi ce code,
+ * sans API_UPSTREAM. Au lancement du serveur, server.ts appelle getApiUpstream() pour échouer tout
+ * de suite, avec un message clair, si la variable manque.
  */
-const API_UPSTREAM = (process.env['API_UPSTREAM'] ?? 'http://api:8000').replace(/\/+$/, '');
+let apiUpstream: URL | undefined;
+
+export function getApiUpstream(): URL {
+  apiUpstream ??= parseApiUpstream(process.env['API_UPSTREAM']);
+  return apiUpstream;
+}
 
 // En-têtes propres à une connexion, jamais transmis. content-length et content-encoding sont aussi
 // retirés : fetch a déjà décompressé le corps, qui est renvoyé en flux.
@@ -26,6 +36,21 @@ const HOP_BY_HOP = new Set([
 ]);
 
 export async function apiProxy(req: Request, res: Response): Promise<void> {
+  let upstreamUrl: URL | null;
+  try {
+    // Monté sous /api, Express a déjà retiré ce préfixe de req.url.
+    upstreamUrl = buildUpstreamUrl(req.url, getApiUpstream());
+  } catch (error) {
+    console.error('Proxy API mal configuré :', error);
+    res.status(500).json({ detail: 'Proxy API mal configuré' });
+    return;
+  }
+  // Chemin qui ferait sortir la requête de l'hôte de l'API : refusé sans appeler l'amont.
+  if (!upstreamUrl) {
+    res.status(400).json({ detail: 'Chemin invalide' });
+    return;
+  }
+
   const headers = new Headers();
   for (const [name, value] of Object.entries(req.headers)) {
     if (value === undefined || HOP_BY_HOP.has(name)) continue;
@@ -46,8 +71,7 @@ export async function apiProxy(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    // Monté sous /api, Express a déjà retiré ce préfixe de req.url.
-    const upstream = await fetch(`${API_UPSTREAM}${req.url}`, init);
+    const upstream = await fetch(upstreamUrl, init);
 
     res.status(upstream.status);
     upstream.headers.forEach((value, name) => {
@@ -64,7 +88,7 @@ export async function apiProxy(req: Request, res: Response): Promise<void> {
       res.end();
     }
   } catch (error) {
-    console.error(`API injoignable (${API_UPSTREAM}) :`, error);
+    console.error(`API injoignable (${upstreamUrl.origin}) :`, error);
     if (!res.headersSent) res.status(502).json({ detail: 'API injoignable' });
   }
 }
