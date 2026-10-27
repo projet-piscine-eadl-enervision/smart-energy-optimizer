@@ -4,6 +4,7 @@ Assemble les routes et verrouille le CORS sur le front Angular. Le schéma de la
 pas créé ici : il vient des migrations de db/migrations (dbmate), appliquées avant le
 démarrage de l'API.
 """
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -11,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.routes import (
     alerts,
@@ -23,11 +25,23 @@ from app.api.routes import (
 )
 from app.core.config import settings
 
+
+def configure_logging() -> None:
+    """Logs de l'application (logger app.*) sur la sortie d'erreur, comme ceux d'uvicorn."""
+    app_logger = logging.getLogger("app")
+    if not app_logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+        app_logger.addHandler(handler)
+    app_logger.setLevel(logging.INFO)
+
+
 STATIC_DIR = Path(__file__).parent / "static"
 FAVICON_URL = "/static/logoSmartEnergyOptimizer.ico"
 
 
 def create_app() -> FastAPI:
+    configure_logging()
     is_production = settings.APP_ENV == "production"
 
     # Les pages /docs et /redoc par défaut sont toujours désactivées : en production,
@@ -75,6 +89,13 @@ def create_app() -> FastAPI:
     application.include_router(recommendations.router)
     application.include_router(alerts.router)
     application.include_router(sites.router)
+
+    # IP réelle du client derrière le proxy du frontend : X-Forwarded-For n'est lu que si la connexion vient
+    # d'un proxy de TRUSTED_PROXY_IPS, et seule la partie ajoutée par ces proxys est retenue (adresse la
+    # plus à droite qui n'est pas un proxy de confiance). Sans réglage, l'en-tête est ignoré.
+    trusted_proxies = [ip.strip() for ip in settings.TRUSTED_PROXY_IPS.split(",") if ip.strip()]
+    if trusted_proxies:
+        application.add_middleware(ProxyHeadersMiddleware, trusted_hosts=trusted_proxies)
 
     # /metrics : requêtes, latence et codes de retour, pour Prometheus. Jamais exposée au public :
     # le proxy du frontend la refuse, Prometheus lit l'API en direct sur le réseau Docker.

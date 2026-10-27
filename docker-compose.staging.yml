@@ -49,6 +49,8 @@ services:
       MOCK_API_URL: ${MOCK_API_URL:?MOCK_API_URL manquant dans staging.env ou production.env}
       MOCK_API_USERNAME: ${MOCK_API_USERNAME:?MOCK_API_USERNAME manquant dans staging.env ou production.env}
       MOCK_API_PASSWORD: ${MOCK_API_PASSWORD:?MOCK_API_PASSWORD manquant dans staging.env ou production.env}
+      # Seul proxy dont l'API croit X-Forwarded-For : le frontend (adresse fixée dans son service)
+      TRUSTED_PROXY_IPS: 172.29.42.200
     depends_on:
       db:
         condition: service_healthy
@@ -159,7 +161,20 @@ services:
       - api
     ports:
       - "4000:4000"
+    networks:
+      default:
+        ipv4_address: 172.29.42.200
 
 volumes:
   db_data:
   mlflow_data:
+
+# Réseau fixé pour que l'API reconnaisse le proxy du frontend : le frontend a une adresse fixe, hors de la
+# plage attribuée aux autres conteneurs (ip_range), et lui seul peut transmettre l'IP du client par
+# X-Forwarded-For (TRUSTED_PROXY_IPS de l'API). Sur une base existante : docker compose down, puis up.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.42.0/24
+          ip_range: 172.29.42.0/25

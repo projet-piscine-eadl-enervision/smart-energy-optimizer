@@ -35,6 +35,12 @@ const HOP_BY_HOP = new Set([
   'content-encoding',
 ]);
 
+/** IP de la connexion, sans le préfixe IPv6 des adresses IPv4 (::ffff:203.0.113.7 devient 203.0.113.7). */
+export function clientAddress(req: Request): string | undefined {
+  const address = req.socket?.remoteAddress;
+  return address?.startsWith('::ffff:') ? address.slice('::ffff:'.length) : address;
+}
+
 export async function apiProxy(req: Request, res: Response): Promise<void> {
   let upstreamUrl: URL | null;
   try {
@@ -55,6 +61,13 @@ export async function apiProxy(req: Request, res: Response): Promise<void> {
   for (const [name, value] of Object.entries(req.headers)) {
     if (value === undefined || HOP_BY_HOP.has(name)) continue;
     headers.set(name, Array.isArray(value) ? value.join(', ') : value);
+  }
+  // Adresse réelle du client, ajoutée à droite de l'en-tête reçu : l'API ne retient que la partie ajoutée
+  // par ce proxy de confiance (TRUSTED_PROXY_IPS), une valeur forgée par le navigateur reste à gauche.
+  const clientIp = clientAddress(req);
+  if (clientIp) {
+    const received = headers.get('x-forwarded-for');
+    headers.set('x-forwarded-for', received ? `${received}, ${clientIp}` : clientIp);
   }
   headers.set('x-forwarded-host', req.headers.host ?? '');
   headers.set('x-forwarded-proto', req.protocol);

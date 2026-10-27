@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.login_throttle import LoginThrottle, SqlFailureStore
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import Role, User
@@ -17,6 +18,14 @@ from app.models.user import Role, User
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def get_login_throttle(db: DbSession) -> LoginThrottle:
+    """Compteurs d'échecs de /auth/login, en base (partagés entre instances de l'API)."""
+    return LoginThrottle(SqlFailureStore(db))
+
+
+LoginThrottleDep = Annotated[LoginThrottle, Depends(get_login_throttle)]
 
 
 async def get_current_user(

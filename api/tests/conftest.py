@@ -6,7 +6,7 @@ Les tests ne demandent ni base de données ni réseau :
 - le TestClient est utilisé sans bloc `with`, donc le lifespan (create_all sur la base) ne tourne pas.
 """
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 # À faire avant d'importer app.* : Settings() est instancié à l'import de app.core.config
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
@@ -16,6 +16,8 @@ os.environ.setdefault("MOCK_API_URL", "https://mock.test")
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.deps import get_login_throttle
+from app.core.login_throttle import LoginThrottle
 from app.core.security import create_access_token, hash_password
 from app.db.session import get_db
 from app.main import app
@@ -70,17 +72,66 @@ class FakeSession:
         pass
 
 
+class MemoryFailureStore:
+    """Remplace app.login_failure : mêmes opérations que SqlFailureStore, en mémoire."""
+
+    def __init__(self):
+        self.failures: list[tuple[str, str, datetime]] = []  # (ip, email_key, date)
+
+    def _recent(self, match, since, limit):
+        dates = sorted((at for *keys, at in self.failures if match(*keys) and at > since), reverse=True)
+        return dates[:limit]
+
+    async def recent_ip_failures(self, ip, since, limit):
+        return self._recent(lambda i, _k: i == ip, since, limit)
+
+    async def recent_email_failures(self, key, since, limit):
+        return self._recent(lambda _i, k: k == key, since, limit)
+
+    async def add_failure(self, ip, key, at, purge_before):
+        self.failures = [f for f in self.failures if f[2] >= purge_before]
+        self.failures.append((ip, key, at))
+
+    async def clear_email(self, key):
+        # Comme en base : l'échec reste compté pour l'IP, il n'est plus lié à l'e-mail
+        self.failures = [(ip, None if k == key else k, at) for ip, k, at in self.failures]
+
+
+class Clock:
+    """Heure contrôlée par le test : clock.advance(seconds=...) fait avancer le temps."""
+
+    def __init__(self):
+        self.current = datetime(2026, 10, 27, 12, 0, tzinfo=UTC)
+
+    def __call__(self):
+        return self.current
+
+    def advance(self, **delta):
+        self.current += timedelta(**delta)
+
+
 @pytest.fixture
 def db():
     return FakeSession()
 
 
 @pytest.fixture
-def client(db):
+def clock():
+    return Clock()
+
+
+@pytest.fixture
+def failure_store():
+    return MemoryFailureStore()
+
+
+@pytest.fixture
+def client(db, failure_store, clock):
     async def override_get_db():
         yield db
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_login_throttle] = lambda: LoginThrottle(failure_store, now=clock)
     yield TestClient(app)
     app.dependency_overrides.clear()
 
