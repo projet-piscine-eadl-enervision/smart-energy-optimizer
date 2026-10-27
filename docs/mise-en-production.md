@@ -84,7 +84,9 @@ Après l'approbation, le workflow vérifie que les images du tag existent, sauve
 
 Pour activer la production, la liste ordonnée des opérations (Terraform, `production.env`, variables GitHub) est dans `infra/terraform/aws/README.md`.
 
-Le collecteur de l'ETL (profil `collector`) ne tourne pas en production tant que `collector` n'est pas dans le `COMPOSE_PROFILES` de `/etc/enervision/production.env` ; c'est une décision d'équipe, il interroge le mock public toutes les minutes.
+Le collecteur de l'ETL (profil `collector`) interroge le mock public toutes les minutes ; MLflow (profil `mlflow`) suit les modèles. Ils sont actifs en production par `COMPOSE_PROFILES=apps,collector,mlflow` dans `/etc/enervision/production.env`. Première mise en service de la production, une fois : `run --rm etl python -m pipeline backfill` (historique), puis `run --rm ml` (entraînement) et `run --rm ml python -m enervision_ml.predict` (première prévision), avec `IMAGE_TAG` de la version déployée.
+
+Prévision horaire : installer une fois, en `root` sur l'instance (par Session Manager), `infra/scripts/predict-ml-production.service` et `.timer` dans `/etc/systemd/system/`, puis `systemctl daemon-reload && systemctl enable --now predict-ml-production.timer`. Le service lit le tag de la version déployée dans `/opt/enervision`. Contrôle : `systemctl list-timers predict-ml-production.timer` et `journalctl -u predict-ml-production.service -n 20`.
 
 ## Retour arrière
 

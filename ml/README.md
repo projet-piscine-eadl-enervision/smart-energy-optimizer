@@ -59,7 +59,7 @@ MLflow n'a pas d'authentification : sur la VM, il écoute sur `127.0.0.1:5000` e
 |---|---|
 | Développement (`docker compose` local) | `http://localhost:5000` |
 | Staging (VM, avec le tunnel) | `http://localhost:5001` |
-| Production | aucune, MLflow n'y est pas déployé |
+| Production | aucune adresse publique : MLflow écoute sur `127.0.0.1:5000` de l'instance, accès par redirection de port Session Manager |
 
 Pour ouvrir celui du staging, lancer **depuis le poste** (pas depuis la VM) `ssh -L 5001:127.0.0.1:5000 root@<VM>`, laisser la fenêtre ouverte, puis aller sur http://localhost:5001. Le port 5000 est celui du MLflow de développement : si le compose local tourne, c'est lui qui répond, et on voit une autre base, sans l'expérience `enervision` du staging.
 

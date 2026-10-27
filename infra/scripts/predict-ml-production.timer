@@ -1,0 +1,10 @@
+[Unit]
+Description=Prévision du module ML toutes les heures (production EnerVision)
+
+[Timer]
+# 5 minutes après l'heure pleine : l'agrégat horaire de l'heure écoulée est complet
+OnCalendar=*-*-* *:05:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
