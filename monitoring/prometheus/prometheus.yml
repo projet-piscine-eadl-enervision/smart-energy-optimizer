@@ -3,6 +3,16 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  # Environnement (dev, staging, production) rappelé dans chaque notification ; APP_ENV est passée
+  # au conteneur par docker-compose.monitoring.yml
+  external_labels:
+    environment: ${APP_ENV}
+
+# Notifications envoyées par Alertmanager (monitoring/alertmanager/alertmanager.yml)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
 
 # Règles d'alerte (testées par alerts.test.yml)
 rule_files:
@@ -13,6 +23,11 @@ scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets: ["localhost:9090"]
+
+  # Alertmanager : si lui tombe, CibleInjoignable reste visible dans Prometheus et Grafana
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
 
   # Hôte (EC2 ou VM) : CPU, mémoire, disque, réseau
   - job_name: node

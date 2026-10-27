@@ -18,11 +18,18 @@ Dans `/etc/enervision/staging.env`, en root :
 ```bash
 COMPOSE_PROFILES=apps,collector,monitoring     # garder les profils déjà présents, ajouter monitoring
 GRAFANA_ADMIN_PASSWORD=...                     # openssl rand -base64 24 | tr -d '/+='
+TEAMS_WEBHOOK_URL=https://...                  # alertes dans Teams, voir monitoring/README.md
 ```
 
 Le minuteur `update-staging.timer` lance la supervision à son passage suivant (2 minutes au plus).
 Ne pas la démarrer à la main : `update-staging.sh` utilise `--remove-orphans` et supprimerait au
 passage suivant les conteneurs qu'il ne connaît pas. Détails : [`deploiement-staging.md`](deploiement-staging.md).
+
+Les alertes arrivent dans le canal Teams dont le workflow a fourni `TEAMS_WEBHOOK_URL`, préfixées par
+`[staging]` (création du workflow et test : « Notifications Teams » de
+[`monitoring/README.md`](../monitoring/README.md)). Si Alertmanager tournait déjà quand l'URL a été
+ajoutée ou changée, le recréer :
+`docker compose -f docker-compose.staging.yml -f docker-compose.monitoring.yml --env-file /etc/enervision/staging.env up -d --force-recreate alertmanager`.
 
 Grafana ne lit `GRAFANA_ADMIN_PASSWORD` qu'à son premier démarrage (volume `grafana_data` vide). Si la
 ligne a été ajoutée ou changée après coup, réaligner le mot de passe sur celui de `staging.env`, sur la
@@ -100,16 +107,6 @@ puis `ssh -N enervision-staging-monitoring`.
 
 ## Et la production ?
 
-Même stack, sur l'instance AWS, activée par `monitoring` dans `COMPOSE_PROFILES` de
-`/etc/enervision/production.env` (avec `GRAFANA_ADMIN_PASSWORD`) et appliquée au déploiement suivant.
-L'instance n'a pas de SSH : la session passe par une redirection de port Session Manager, depuis un
-poste configuré ([`aws-poste-developpeur.md`](aws-poste-developpeur.md)) :
-
-```bash
-aws ssm start-session \
-  --target "$(terraform -chdir=infra/terraform/aws output -raw instance_id)" \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters '{"portNumber":["3000"],"localPortNumber":["3002"]}'
-```
-
-puis http://localhost:3002 (port local différent de celui du staging, pour pouvoir ouvrir les deux).
+Même stack, sur l'instance AWS, sans SSH : la session passe par une redirection de port Session
+Manager. Activation, accès à Grafana et Prometheus et dépannage :
+[`supervision-production.md`](supervision-production.md).

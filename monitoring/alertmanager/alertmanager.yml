@@ -1,0 +1,31 @@
+# Envoi des alertes de Prometheus (monitoring/prometheus/alerts.yml) dans un canal Teams.
+# Le webhook est celui d'un workflow Teams « Envoyer des alertes webhook à un canal » ; son URL est
+# lue dans un fichier monté par docker-compose.monitoring.yml depuis TEAMS_WEBHOOK_URL.
+# Test : amtool check-config alertmanager.yml (depuis ce dossier)
+route:
+  receiver: teams
+  # Une notification par alerte et par environnement, regroupée si plusieurs cibles tombent ensemble
+  group_by: [alertname, environment]
+  group_wait: 30s
+  group_interval: 5m
+  # Rappel tant que l'alerte n'est pas résolue
+  repeat_interval: 4h
+
+# Une alerte critical masque le warning de même nom sur la même cible (DisquePlein / DisquePresquePlein)
+inhibit_rules:
+  - source_matchers: [severity = critical]
+    target_matchers: [severity = warning]
+    equal: [environment, instance]
+
+receivers:
+  - name: teams
+    msteamsv2_configs:
+      - webhook_url_file: /run/alertmanager/teams_webhook_url
+        send_resolved: true
+        title: >-
+          {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }}
+          [{{ .CommonLabels.environment }}] {{ .CommonLabels.alertname }}
+          ({{ .CommonLabels.severity }}){{ if eq .Status "resolved" }} : résolue{{ end }}
+        text: >-
+          {{ range .Alerts }}- {{ .Annotations.summary }} : {{ .Annotations.description }}
+          {{ end }}
