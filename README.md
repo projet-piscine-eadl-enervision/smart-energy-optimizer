@@ -262,7 +262,14 @@ La production tourne sur AWS (Paris) et est accessible en HTTPS : https://dvrgiz
 
 ## Qualité et sécurité de la CI
 
-Chaque PR passe par `ruff`, `pytest`, le build du frontend, le contrôle des migrations, Trivy (dépendances, secrets, Terraform) et SonarQube Cloud (porte de qualité : 80 % de couverture sur le code neuf). Où lire les résultats et que faire quand un contrôle échoue : [`docs/qualite-et-securite-ci.md`](docs/qualite-et-securite-ci.md). Les tests de la CI se lancent aussi en local : `pytest --cov` dans `api/`, `etl/` ou `ml/`, `npm test -- --coverage` dans `frontend/`.
+Chaque PR passe par `ruff`, `pytest`, le build du frontend, le contrôle des migrations, Trivy (dépendances, secrets, Terraform) et SonarQube Cloud (porte de qualité : 80 % de couverture sur le code neuf). Où lire les résultats et que faire quand un contrôle échoue : [`docs/qualite-et-securite-ci.md`](docs/qualite-et-securite-ci.md). Les tests de la CI se lancent aussi en local, en une commande, depuis WSL :
+
+```bash
+./infra/scripts/test-all.sh               # ruff, tests et couverture de api, etl, ml et frontend
+./infra/scripts/test-all.sh etl frontend  # seulement certains modules
+```
+
+Le script s'arrête à la première erreur et finit par un récapitulatif (résultat et couverture par module). Le premier lancement crée un environnement Python par module dans `.venv-tests/` (quelques minutes), les suivants le réutilisent tant que les `requirements*.txt` ne changent pas. Le frontend est testé avec Node 24 s'il est installé dans WSL, sinon dans le conteneur `frontend`. Les tests qui touchent la base sont ignorés sans `DATABASE_URL` ; les détails sont en tête du script.
 
 ## Dépendances Python 
 Chaque module Python (`api/`, `etl/`, `ml/`) a deux fichiers :
