@@ -229,3 +229,27 @@ def test_prediction_fails_visibly_when_recommendations_fail(pipeline, monkeypatc
 
     with pytest.raises(SystemExit, match="Prédictions écrites, mais recommandations non recalculées"):
         predict.run(now=now)
+
+
+def test_training_notes_its_trigger_in_mlflow(pipeline):
+    training.main(["--trigger", "schedule"])
+    training.main([])
+
+    client = MlflowClient()
+    triggers = [
+        client.get_run(client.get_model_version(MODEL_NAME, version).run_id).data.tags["trigger"]
+        for version in ("1", "2")
+    ]
+    assert triggers == ["schedule", "manual"]
+
+
+def test_training_logs_the_run_and_the_version_but_never_the_database_url(pipeline, caplog):
+    caplog.set_level("INFO")
+    training.main([])
+
+    client = MlflowClient()
+    run_id = client.get_model_version(MODEL_NAME, "1").run_id
+    messages = " ".join(r.getMessage() for r in caplog.records)
+    assert f"run_id={run_id}" in messages
+    assert "version=1" in messages
+    assert "postgresql://" not in messages

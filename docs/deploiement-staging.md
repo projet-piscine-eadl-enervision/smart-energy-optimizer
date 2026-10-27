@@ -174,6 +174,48 @@ journalctl -u predict-ml.service -n 20 --no-pager      # dernier passage
 
 Le minuteur de mise à jour du staging (toutes les 2 minutes) lance `up -d --remove-orphans` : il ne supprime pas un conteneur `run --rm` en cours (vérifié avec Docker Compose 5.6). Sur la VM, `docker compose version` donne la version installée ; si elle diffère, contrôler avec `journalctl -u predict-ml.service` après deux passages que la prévision n'est pas interrompue.
 
+### Surveillance et entraînement hebdomadaire du module ML
+
+Deux autres minuteurs, installés comme le précédent :
+- `monitor-ml.timer`, chaque jour à 06:30, contrôle le champion (dérive de la consommation, erreur face à la mesure, mesures manquantes, âge de la dernière prévision). Les résultats sont dans `ml.drift_metric` (vues `ml.model_health` et `ml.model_status`) et dans MLflow (expérience `enervision-monitoring`). Une alerte donne le code de sortie 2 : `systemctl status monitor-ml.service` apparaît en échec.
+- `train-ml.timer`, chaque lundi à 03:30, entraîne un candidat (`--trigger schedule`, noté dans MLflow). Il n'est promu champion que s'il bat le champion sur la même validation.
+
+```bash
+cp /opt/enervision/infra/scripts/{monitor,train}-ml.{service,timer} /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now monitor-ml.timer train-ml.timer
+systemctl list-timers 'monitor-ml*' 'train-ml*'
+journalctl -u monitor-ml.service -n 20 --no-pager
+```
+
+### Vérifier le module ML sur la VM
+
+En `root`, une fois les trois minuteurs installés :
+
+```bash
+cd /opt/enervision && docker compose version
+systemctl list-timers 'predict-ml*' 'monitor-ml*' 'train-ml*'     # trois lignes, NEXT renseigné
+systemctl start predict-ml.service && journalctl -u predict-ml.service -n 20 --no-pager
+systemctl start monitor-ml.service; journalctl -u monitor-ml.service -n 30 --no-pager   # « insufficient » est normal les premiers jours
+systemctl is-failed predict-ml.service train-ml.service            # « inactive » attendu
+```
+
+La base (service `db`, utilisateur et base `enervision` par défaut) :
+
+```bash
+C="docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env"
+$C exec -T db psql -U enervision -d enervision -c "SELECT count(*) FROM ml.prediction" -c "SELECT * FROM ml.model_status" -c "SELECT count(*) FROM app.recommendation"
+```
+
+L'API, avec un compte existant (chaque ligne doit afficher `200`) :
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/login -d "username=<email>&password=<mot de passe>" | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+for r in "predictions?hours=24" "predictions/peaks" "history?days=1" "recommendations"; do
+  curl -s -o /dev/null -w "$r %{http_code}\n" -H "Authorization: Bearer $TOKEN" "http://localhost:8000/$r"; done
+```
+
+Après deux passages des minuteurs : `LAST` renseigné dans `list-timers`, aucun service en échec (`systemctl is-failed`), et le journal du lundi (`journalctl -u train-ml.service`) indique si le champion est conservé ou remplacé.
+
 ## Suivi et dépannage
 
 ```bash

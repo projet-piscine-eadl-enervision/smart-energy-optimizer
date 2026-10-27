@@ -15,7 +15,7 @@ Documents liés : [déploiement du staging](deploiement-staging.md), [mise en pr
 | Administration | le poste | SSH depuis le réseau de l'école | AWS Session Manager (pas de SSH) |
 | `APP_ENV` | `dev` | `staging` | `production` |
 | Mock utilisé | interne ou public, au choix | interne | public (l'instance n'atteint pas le réseau de l'école) |
-| État | opérationnel | opérationnel : `db`, `api`, `etl` et `frontend` (`ml` sans service) | opérationnel : le site est en ligne |
+| État | opérationnel | opérationnel : `db`, `api`, `etl` et `frontend` (`ml` lancé par trois minuteurs systemd) | opérationnel : le site est en ligne |
 
 ## 2. URLs
 

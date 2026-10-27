@@ -6,6 +6,7 @@ Lancement manuel :
 """
 
 import argparse
+import logging
 from pathlib import Path
 
 import mlflow
@@ -35,6 +36,7 @@ from enervision_ml.features import (
     mask_unreliable_hours,
     to_hourly_grid,
 )
+from enervision_ml.logs import configure
 from enervision_ml.models import (
     MODELS,
     ConsumptionModel,
@@ -45,11 +47,19 @@ from enervision_ml.models import (
 MODEL_INPUT_COLUMNS = ["site_id", *FEATURE_COLUMNS]
 
 
+log = logging.getLogger(__name__)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Entraîne un challenger.")
     parser.add_argument("--model", choices=sorted(MODELS), default="site_profile")
+    parser.add_argument(
+        "--trigger", choices=["manual", "schedule"], default="manual",
+        help="origine de l'entraînement, notée dans MLflow (le minuteur hebdomadaire passe schedule)",
+    )
     args = parser.parse_args(argv)
 
+    configure()
     settings = load_settings()
     mlflow.set_tracking_uri(settings.tracking_uri)
     mlflow.set_experiment(EXPERIMENT)
@@ -79,6 +89,7 @@ def main(argv: list[str] | None = None) -> None:
     validation_output = model.predict(None, validation_input)
 
     with mlflow.start_run(run_name=estimator.name) as run:
+        mlflow.set_tag("trigger", args.trigger)
         mlflow.log_params(
             {
                 "model": estimator.name,
@@ -155,6 +166,8 @@ def main(argv: list[str] | None = None) -> None:
         model.thresholds,
     )
 
+    log.info("entraînement terminé run_id=%s version=%s modèle=%s déclencheur=%s décision=%s",
+             run.info.run_id, version, estimator.name, args.trigger, decision)
     print(f"Run {run.info.run_id} : {MODEL_NAME} v{version} ({estimator.name})")
     print(f"  validation : nMAE {validation_metrics['nmae']:.3f}, MAE {validation_metrics['mae']:.1f} kW")
     print(f"  test       : nMAE {test_metrics['nmae']:.3f}, MAE {test_metrics['mae']:.1f} kW")
