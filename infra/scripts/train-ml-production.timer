@@ -1,0 +1,10 @@
+[Unit]
+Description=Entraînement du modèle ML chaque lundi (production EnerVision)
+
+[Timer]
+# Loin de la prévision horaire (hh:05) et de la surveillance (06:30)
+OnCalendar=Mon *-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

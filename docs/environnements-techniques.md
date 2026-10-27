@@ -134,6 +134,6 @@ Aucun secret n'est versionné. Les procédures de renouvellement des jetons sont
 ## 8. Limites connues
 
 - Entre CloudFront et l'instance de production, le trafic est en HTTP, et l'adresse du site est celle de CloudFront : pas de nom de domaine ni de certificat à nous.
-- Le module `ml` n'a pas de service permanent (tâche à la demande ; prévision horaire par un minuteur systemd à installer, voir la mise en production) et MLflow, sans authentification, n'est joignable que depuis l'hôte (`127.0.0.1`). L'entraînement n'est pas planifié : il se relance à la main (`run --rm ml`).
+- Le module `ml` n'a pas de service permanent (tâche à la demande, lancée par des minuteurs systemd installés à la main : prévision horaire, surveillance quotidienne, entraînement hebdomadaire) et MLflow, sans authentification, n'est joignable que depuis l'hôte (`127.0.0.1`).
 - Le rafraîchissement de `analytics.energy_hourly` par le rattrapage exige d'être propriétaire de l'agrégat : l'ETL se connecte donc avec le compte propriétaire de la base, pas avec le rôle `enervision_etl`.
 - L'accès SSH de `root` et par mot de passe sur la VM de staging n'est pas encore restreint ; la production n'a pas de SSH.

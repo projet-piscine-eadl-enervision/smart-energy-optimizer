@@ -1,0 +1,12 @@
+[Unit]
+Description=Surveillance du modèle ML (production EnerVision)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/enervision
+Environment=IMAGE_PREFIX=ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer COMPOSE_PROJECT_NAME=enervision
+# Code de sortie 2 : au moins une alerte de dérive (le service apparaît en échec, voir ml.model_health).
+# Le tag des images est celui de la version déployée (checkout du workflow de déploiement)
+ExecStart=/bin/bash -c 'IMAGE_TAG=$(git describe --tags --exact-match) exec docker compose -f docker-compose.staging.yml --env-file /etc/enervision/production.env run --rm ml python -m enervision_ml.monitor'
