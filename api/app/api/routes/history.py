@@ -1,7 +1,8 @@
 """Historique de consommation, lu dans analytics.energy_hourly (agrégat horaire TimescaleDB).
 
 Un point par heure. L'heure en cours est exclue (l'agrégat la calcule en direct, elle est incomplète),
-ainsi que les heures dont plus de la moitié des mesures manquent (même règle que le module ML).
+ainsi que les heures sans assez de mesures valides : au plus la moitié manque, ou au moins 10 sont
+valides (le collecteur en direct perd beaucoup de relevés, mais une dizaine suffit pour une moyenne).
 Sans site, c'est la somme des sites : une heure où un site manque est écartée plutôt que de creuser la
 courbe.
 """
@@ -13,13 +14,13 @@ from app.schemas.energy import ConsumptionPoint
 
 router = APIRouter(prefix="/history", tags=["History"])
 
-# Heures complètes des :days derniers jours, fiables (la moitié des mesures au plus manque)
+# Heures complètes des :days derniers jours, fiables (au plus la moitié manque, ou 10 mesures valides)
 RELIABLE = """
 FROM analytics.energy_hourly
 WHERE hour >= date_trunc('hour', now()) - make_interval(days => :days)
   AND hour <  date_trunc('hour', now())
   AND avg_consumption_kw IS NOT NULL
-  AND nb_missing <= 0.5 * nb_readings
+  AND (nb_missing <= 0.5 * nb_readings OR nb_readings - nb_missing >= 10)
 """
 
 BY_SITE_SQL = text(
