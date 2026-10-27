@@ -33,7 +33,7 @@ def test_jeton_illisible():
 
 
 def test_jeton_signe_avec_une_autre_cle():
-    token = jwt.encode({"sub": "42"}, "autre-cle", algorithm=settings.ALGORITHM)
+    token = jwt.encode({"sub": "42"}, "autre-cle-qui-devrait-pas-marcher-non-plus", algorithm=settings.ALGORITHM)
     assert security.decode_access_token(token) is None
 
 
