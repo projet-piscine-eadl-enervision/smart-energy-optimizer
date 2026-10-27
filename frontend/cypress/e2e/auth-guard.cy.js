@@ -18,7 +18,7 @@ describe('Accès protégé par le garde', () => {
     cy.loginAsNewUser('/login');
 
     cy.location('pathname').should('eq', '/');
-    cy.contains('h2', 'Prédictions de pics');
+    cy.contains('h2', 'Prédictions de la consommation');
   });
 
   it('déconnecte quand le jeton est refusé par l\'API', () => {
