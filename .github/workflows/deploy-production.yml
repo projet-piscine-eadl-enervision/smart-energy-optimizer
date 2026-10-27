@@ -180,6 +180,9 @@ jobs:
           # production.env (droits 600, créé à la main sur l'instance) contient POSTGRES_PASSWORD,
           # SECRET_KEY, MOCK_API_*, APP_ENV=production, NG_ALLOWED_HOSTS (nom CloudFront du site)
           # et, si besoin, COMPOSE_PROFILES.
+          # Supervision (Prometheus, Grafana, exporteurs) : activée par « monitoring » dans COMPOSE_PROFILES
+          # de production.env, avec GRAFANA_ADMIN_PASSWORD, comme au staging (update-staging.sh). Sans ce
+          # mot, --remove-orphans retire les conteneurs de supervision d'un déploiement précédent.
           # Avant de changer de version, la base est sauvegardée (les 5 dernières sauvegardes sont
           # gardées) : revenir au code précédent ne défait pas les données déjà écrites.
           script=$(cat <<EOF
@@ -189,6 +192,12 @@ jobs:
           git checkout --force --quiet "$TAG"
           export IMAGE_TAG="$TAG" IMAGE_PREFIX="$IMAGE_PREFIX" COMPOSE_PROJECT_NAME=enervision
           compose="docker compose -f docker-compose.staging.yml --env-file /etc/enervision/production.env"
+          profiles=\$(sed -n 's/^[[:space:]]*COMPOSE_PROFILES=//p' /etc/enervision/production.env | tail -n 1 | tr -d "\"' \r")
+          if [[ ",\$profiles," == *,monitoring,* ]]; then
+            grep -q '^[[:space:]]*GRAFANA_ADMIN_PASSWORD=.' /etc/enervision/production.env \
+              || { echo "monitoring est dans COMPOSE_PROFILES mais GRAFANA_ADMIN_PASSWORD manque dans production.env" >&2; exit 1; }
+            compose="\$compose -f docker-compose.monitoring.yml"
+          fi
           mkdir -p /var/backups/enervision
           if \$compose ps --status running --quiet db | grep -q .; then
             \$compose exec -T db sh -c 'pg_dump -U "\$POSTGRES_USER" "\$POSTGRES_DB"' \
