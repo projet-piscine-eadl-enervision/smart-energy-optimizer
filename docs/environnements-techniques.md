@@ -76,8 +76,8 @@ La page `/docs` du mock reste la référence pour les paramètres et les formats
 | `etl` | traitement des données : nettoyage de l'historique, chargement des sites en base (`load-ref`), collecte des mesures courantes (`poll-current`), rattrapage de l'historique (`backfill`), chargement de l'historique nettoyé (`load-history`), `/health` seule (pas de route métier) | `.../etl` | port 8001 (santé) | profil `apps`, sans port publié |
 | `collector` | collecteur : interroge le mock toutes les minutes, écrit mesures, pannes de capteur et alertes en base ; santé = dernier tour réussi | `.../etl` (même image) | profil `collector`, à la demande : `docker compose --profile collector up -d collector` | profil `collector` : à activer par `COMPOSE_PROFILES=apps,collector` ; absent de la production tant que `production.env` ne l'ajoute pas |
 | `frontend` | Angular 22 (Node 24) | `.../frontend` | serveur de développement (cible `dev`), port 4000 | profil `apps` : build de production servi par le serveur SSR Node, port 4000 |
-| `ml` | entraînement des modèles (tâche ponctuelle) | `.../ml` | profil `ml`, à la demande : `docker compose run --rm ml` | image publiée, aucun service |
-| `mlflow` | suivi des expériences et registre des modèles (`ghcr.io/mlflow/mlflow:v3.17.2`, image officielle) | non | port 5000 | non déployé (les comptes de service `mlflow` et `monitoring` existent sur la VM de staging) |
+| `ml` | entraînement des modèles (tâche ponctuelle) | `.../ml` | profil `ml`, à la demande : `docker compose run --rm ml` | image publiée, profil `ml-job` (jamais dans `COMPOSE_PROFILES`), tâche à la demande |
+| `mlflow` | suivi des expériences et registre des modèles (`ghcr.io/mlflow/mlflow:v3.17.2`, image officielle) | non | port 5000 | staging : profil `mlflow`, lié à `127.0.0.1:5000` de la VM, accès par tunnel SSH, sans authentification ; production : non déployé |
 
 Préfixe des images : `ghcr.io/projet-piscine-eadl-enervision/smart-energy-optimizer`, soit `ghcr.io/<organisation>/<nom du dépôt>` : les workflows le calculent depuis le nom du dépôt. Si le dépôt est renommé, les images changent de préfixe et le compose de staging doit suivre (ou `IMAGE_PREFIX` dans `staging.env`).
 
@@ -134,6 +134,6 @@ Aucun secret n'est versionné. Les procédures de renouvellement des jetons sont
 ## 8. Limites connues
 
 - Entre CloudFront et l'instance de production, le trafic est en HTTP, et l'adresse du site est celle de CloudFront : pas de nom de domaine ni de certificat à nous.
-- Le module `ml` n'a pas de service déployé, et MLflow n'existe que sur les postes.
+- Le module `ml` n'a pas de service permanent (tâche à la demande) et MLflow n'est déployé que sur le staging, sans authentification ; ni l'un ni l'autre n'est en production.
 - Le rafraîchissement de `analytics.energy_hourly` par le rattrapage exige d'être propriétaire de l'agrégat : l'ETL se connecte donc avec le compte propriétaire de la base, pas avec le rôle `enervision_etl`.
 - L'accès SSH de `root` et par mot de passe sur la VM de staging n'est pas encore restreint ; la production n'a pas de SSH.
