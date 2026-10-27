@@ -4,6 +4,7 @@ données factices à la place de analytics.energy_hourly."""
 from datetime import UTC, datetime, time
 
 import pandas as pd
+import psycopg
 import pytest
 from mlflow import MlflowClient
 
@@ -71,6 +72,7 @@ def test_prediction_with_champion(pipeline, monkeypatch):
         predict, "load_hourly", lambda url, start=None, end=None: pipeline[pipeline["hour"] >= start]
     )
     monkeypatch.setattr(predict, "save_predictions", fake_save)
+    monkeypatch.setattr(predict, "refresh_recommendations", lambda url: 0)
 
     count = predict.run(now=pipeline["hour"].max() + pd.Timedelta(hours=1))
 
@@ -194,3 +196,60 @@ def test_training_prints_no_link_in_production(pipeline, monkeypatch, capsys):
     training.main(["--model", "site_profile"])
 
     assert "lien MLflow" not in capsys.readouterr().out
+
+
+def prepare_prediction(pipeline, monkeypatch):
+    training.main([])
+    monkeypatch.setattr(predict, "latest_hour", lambda url: pipeline["hour"].max())
+    monkeypatch.setattr(
+        predict, "load_hourly", lambda url, start=None, end=None: pipeline[pipeline["hour"] >= start]
+    )
+    monkeypatch.setattr(predict, "save_predictions", lambda url, predictions, version: len(predictions))
+    return pipeline["hour"].max() + pd.Timedelta(hours=1)
+
+
+def test_prediction_refreshes_recommendations_after_saving(pipeline, monkeypatch, capsys):
+    now = prepare_prediction(pipeline, monkeypatch)
+    calls = []
+    monkeypatch.setattr(predict, "refresh_recommendations", lambda url: calls.append(url) or 3)
+
+    predict.run(now=now)
+
+    assert calls == ["postgresql://non-utilisee"]
+    assert "3 recommandation(s) créée(s)" in capsys.readouterr().out
+
+
+def test_prediction_fails_visibly_when_recommendations_fail(pipeline, monkeypatch):
+    now = prepare_prediction(pipeline, monkeypatch)
+
+    def failing(url):
+        raise psycopg.OperationalError("base injoignable")
+
+    monkeypatch.setattr(predict, "refresh_recommendations", failing)
+
+    with pytest.raises(SystemExit, match="Prédictions écrites, mais recommandations non recalculées"):
+        predict.run(now=now)
+
+
+def test_training_notes_its_trigger_in_mlflow(pipeline):
+    training.main(["--trigger", "schedule"])
+    training.main([])
+
+    client = MlflowClient()
+    triggers = [
+        client.get_run(client.get_model_version(MODEL_NAME, version).run_id).data.tags["trigger"]
+        for version in ("1", "2")
+    ]
+    assert triggers == ["schedule", "manual"]
+
+
+def test_training_logs_the_run_and_the_version_but_never_the_database_url(pipeline, caplog):
+    caplog.set_level("INFO")
+    training.main([])
+
+    client = MlflowClient()
+    run_id = client.get_model_version(MODEL_NAME, "1").run_id
+    messages = " ".join(r.getMessage() for r in caplog.records)
+    assert f"run_id={run_id}" in messages
+    assert "version=1" in messages
+    assert "postgresql://" not in messages

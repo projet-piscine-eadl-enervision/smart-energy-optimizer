@@ -28,7 +28,7 @@ else
       etl/*) etl=true ;;
       ml/*) ml=true ;;
       frontend/*) frontend=true ;;
-      db/*) db=true; etl=true; ml=true ;; # les tests d'intégration de l'ETL et du ML tournent sur le schéma de db/
+      db/*) db=true; api=true; etl=true; ml=true ;; # les tests d'intégration de l'API, de l'ETL et du ML tournent sur le schéma de db/
       infra/terraform/*) terraform=true ;;
       monitoring/*) monitoring=true ;;
       .github/*|infra/scripts/*|docker-compose*.yml|.pre-commit-config.yaml|.commitlintrc.yml) everything=true ;;

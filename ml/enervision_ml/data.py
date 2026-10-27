@@ -93,6 +93,18 @@ def latest_hour(database_url: str) -> datetime | None:
         return conn.execute("SELECT max(hour) FROM analytics.energy_hourly").fetchone()[0]
 
 
+REFRESH_RECOMMENDATIONS = "SELECT app.refresh_recommendations()"
+
+
+def refresh_recommendations(database_url: str) -> int:
+    """Recalcule les recommandations (pics prévus et alertes récentes) ; renvoie le nombre de lignes créées.
+
+    Fonction SQL exécutée avec les droits de la base : le rôle ML n'écrit pas dans le schéma app.
+    """
+    with psycopg.connect(database_url) as conn:
+        return conn.execute(REFRESH_RECOMMENDATIONS).fetchone()[0]
+
+
 def save_predictions(database_url: str, predictions: pd.DataFrame, model_version: str) -> int:
     """Écrit les prédictions ; relancer sur les mêmes heures met à jour au lieu de dupliquer."""
     rows = [
@@ -125,3 +137,81 @@ def save_model_run(
             UPSERT_PEAK_THRESHOLD,
             [(version, site_id, float(value)) for site_id, value in thresholds.items()],
         )
+
+
+BASELINE_QUERY = """
+SELECT site_id, month, day_type, hour, avg_kw::float AS avg_kw, stddev_kw::float AS stddev_kw
+FROM analytics.site_baseline
+"""
+
+CHAMPION_QUERY = "SELECT model_version FROM ml.model_run WHERE is_champion"
+VALIDATION_NMAE_QUERY = "SELECT value FROM ml.model_metric WHERE model_version = %s AND metric = 'val_nmae'"
+
+DAILY_QUALITY_QUERY = """
+SELECT day, site_id, nmae::float AS nmae
+FROM ml.prediction_quality_daily
+WHERE model_version = %s AND day >= now() - make_interval(days => %s) AND nmae IS NOT NULL
+"""
+
+AGE_QUERY = "SELECT site_id, extract(epoch FROM age)::float / 3600 AS age_hours FROM ml.prediction_freshness"
+
+UPSERT_DRIFT_METRIC = """
+INSERT INTO ml.drift_metric (checked_at, model_version, site_id, metric, value, threshold, status)
+VALUES (%(checked_at)s, %(model_version)s, %(site_id)s, %(metric)s, %(value)s, %(threshold)s, %(status)s)
+ON CONFLICT (checked_at, model_version, site_id, metric)
+DO UPDATE SET value = EXCLUDED.value, threshold = EXCLUDED.threshold, status = EXCLUDED.status
+"""
+
+
+def load_baseline(database_url: str) -> pd.DataFrame:
+    """Consommation habituelle de chaque site par mois, type de jour et heure (UTC)."""
+    with psycopg.connect(database_url) as conn:
+        rows = conn.execute(BASELINE_QUERY).fetchall()
+    return pd.DataFrame(rows, columns=["site_id", "month", "day_type", "hour", "avg_kw", "stddev_kw"])
+
+
+def champion_version(database_url: str) -> str | None:
+    with psycopg.connect(database_url) as conn:
+        row = conn.execute(CHAMPION_QUERY).fetchone()
+    return None if row is None else row[0]
+
+
+def validation_nmae(database_url: str, version: str) -> float | None:
+    with psycopg.connect(database_url) as conn:
+        row = conn.execute(VALIDATION_NMAE_QUERY, (version,)).fetchone()
+    return None if row is None else float(row[0])
+
+
+def load_daily_quality(database_url: str, version: str, days: int) -> pd.DataFrame:
+    """Erreur relative par jour et par site de la version, sur les derniers jours."""
+    with psycopg.connect(database_url) as conn:
+        rows = conn.execute(DAILY_QUALITY_QUERY, (version, days)).fetchall()
+    return pd.DataFrame(rows, columns=["day", "site_id", "nmae"])
+
+
+def load_prediction_ages(database_url: str) -> dict[str, float]:
+    """Âge, en heures, de la dernière prévision écrite pour chaque site."""
+    with psycopg.connect(database_url) as conn:
+        return {site: age for site, age in conn.execute(AGE_QUERY).fetchall()}
+
+
+def save_drift_metrics(database_url: str, rows: list[dict]) -> int:
+    """Écrit les mesures de surveillance ; rejouable pour un même instant de contrôle."""
+    with psycopg.connect(database_url) as conn, conn.cursor() as cur:
+        cur.executemany(UPSERT_DRIFT_METRIC, rows)
+    return len(rows)
+
+
+LABELED_HISTORY_QUERY = """
+SELECT site_id, time, consumption_kw::float AS consumption_kw, anomaly_type
+FROM ml.history_labeled
+WHERE consumption_kw IS NOT NULL
+ORDER BY site_id, time
+"""
+
+
+def load_labeled_history(database_url: str) -> pd.DataFrame:
+    """Historique 2023-2024 nettoyé avec ses anomalies étiquetées (chargé par l'ETL, vide avant)."""
+    with psycopg.connect(database_url) as conn:
+        rows = conn.execute(LABELED_HISTORY_QUERY).fetchall()
+    return pd.DataFrame(rows, columns=["site_id", "time", "consumption_kw", "anomaly_type"])

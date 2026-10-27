@@ -128,8 +128,8 @@ jobs:
           pip install -r requirements.txt
           # Outils de lint et de test figés dans requirements-dev.txt ; sans ce fichier (module qui n'en a pas encore), versions du jour
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; else pip install ruff pytest pytest-cov; fi
-      - name: Base TimescaleDB migrée (tests d'intégration de l'ETL et du ML)
-        if: matrix.component == 'etl' || matrix.component == 'ml'
+      - name: Base TimescaleDB migrée (tests d'intégration de l'API, de l'ETL et du ML)
+        if: matrix.component == 'api' || matrix.component == 'etl' || matrix.component == 'ml'
         # Sans DATABASE_URL, les tests qui touchent la base sont ignorés. La base démarre deux fois (initialisation
         # puis service) : on attend les deux messages « ready » avant d'appliquer les migrations de db/.
         working-directory: .

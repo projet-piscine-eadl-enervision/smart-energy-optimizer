@@ -43,6 +43,30 @@ MIN_TRAIN_DAYS = 365
 # Au-delà, les mesures sont trop anciennes pour prévoir : le collecteur est sans doute arrêté
 MAX_DATA_AGE_HOURS = 3
 
+# Surveillance du modèle en service (monitor.py). Les entrées du modèle sont calendaires (site, mois,
+# type de jour, heure) : elles ne peuvent pas dériver. On surveille la consommation elle-même (dérive des
+# données), l'erreur face à la mesure (dérive du concept), la qualité des mesures et la fraîcheur.
+DRIFT_WINDOW_DAYS = 7  # fenêtre récente
+DRIFT_MIN_HOURS = 72  # en dessous, trop peu d'heures fiables pour conclure : « insufficient »
+# Écart moyen relatif à la consommation habituelle du site (analytics.site_baseline). Le bruit du mock
+# est de 3 % à 10 % par mesure et s'annule sur une semaine : 10 % d'écart moyen est un vrai changement de niveau
+DRIFT_BIAS_MAX = 0.10
+# Part des heures à plus de DRIFT_OUTLIER_Z écarts types de l'habitude du site : 0,3 % attendus
+# si les données sont stables, on alerte à 5 %
+DRIFT_OUTLIER_Z = 3
+DRIFT_OUTLIER_SHARE_MAX = 0.05
+# Part des mesures sans consommation sur la fenêtre : 2 % à 3 % dans le jeu fourni (pannes de capteur)
+MISSING_SHARE_MAX = 0.20
+# Erreur récente (nMAE par jour, face à la mesure) rapportée à l'erreur de validation du champion
+CONCEPT_NMAE_RATIO_MAX = 1.5
+CONCEPT_MIN_DAYS = 3
+# Évaluation de la détection d'anomalies contre l'historique étiqueté (anomaly_eval.py) : écart au profil du
+# site supérieur à 3 écarts types et à 15 % (constat 9 de docs/analyse-api-mock.md)
+ANOMALY_Z = 3
+ANOMALY_MIN_DEVIATION = 0.15
+# Âge de la dernière prévision : elle tourne toutes les heures, plus de deux heures signale une panne
+PREDICTION_AGE_MAX_HOURS = 2.0
+
 
 @dataclass(frozen=True)
 class Settings:

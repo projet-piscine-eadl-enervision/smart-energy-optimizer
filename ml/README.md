@@ -29,7 +29,7 @@ docker compose run --rm ml python -m enervision_ml.predict
 
 Résultats dans le MLflow de développement : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
 
-La prédiction toutes les heures viendra avec le service ML (planificateur intégré et `POST /predictions/run`). Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
+La prévision se relance à la main ou, sur le staging, toutes les heures à `hh:05` par un minuteur systemd (`predict-ml.timer`, voir `docs/deploiement-staging.md`). Après avoir écrit les prévisions, elle recalcule les recommandations (`app.refresh_recommendations()`) ; si ce calcul échoue, les prévisions restent écrites mais la commande se termine en erreur. Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
 
 ### Données attendues de l'ETL
 
@@ -178,6 +178,36 @@ ml/
 ├── data/                    # CSV du sujet, ignoré par Git
 └── tests/                   # MLflow en SQLite temporaire ; base seulement pour test_data_db.py
 ```
+
+## Mode de service
+
+Le modèle est servi **par lots** : toutes les heures, `predict` écrit les 24 prochaines heures dans `ml.prediction`, et l'API les lit. Il n'y a pas de point d'accès qui calcule à la demande. Le modèle ne dépend que du calendrier (site, mois, type de jour, heure) : une prévision est la même quel que soit le moment où on la demande, et la base est déjà la source de l'API, des vues de suivi et de Grafana. Le module ML n'est déployé que sur le staging : la production n'en a pas.
+
+Routes de l'API qui exposent le module (détail dans `api/README.md` et dans `/docs` du staging) : `/predictions` (consommation prévue, un site ou le total), `/predictions/peaks` (heures au-dessus du seuil de pic du site), `/recommendations` (conseils déduits des pics prévus et des alertes). Les prévisions d'une heure sont réécrites à chaque passage : la dernière écriture fait foi. La prévision refuse de tourner si la dernière mesure a plus de 3 heures.
+
+## Piloter le modèle
+
+Ce qui tourne tout seul sur le staging (minuteurs systemd, voir `docs/deploiement-staging.md`) : la prévision chaque heure (`hh:05`), la surveillance chaque jour (06:30) et l'entraînement chaque lundi (03:30). L'entraînement hebdomadaire ne remplace le champion que si le candidat le bat sur la même validation : le champion est réévalué sur la validation du jour, pas sur ses anciens chiffres.
+
+La surveillance (`python -m enervision_ml.monitor`) écrit dans `ml.drift_metric` ; les vues `ml.model_health` (dernier contrôle de chaque site et indicateur) et `ml.model_status` (état d'ensemble : `ok`, `alert`, `insufficient`) se lisent en SQL ou dans Grafana, et les courbes dans MLflow (expérience `enervision-monitoring`). Les entrées du modèle sont calendaires : elles ne peuvent pas dériver. Ce qui est contrôlé, avec ses seuils (`config.py`) :
+
+- **`level_bias`**, dérive des données : écart moyen relatif, sur 7 jours, à la consommation habituelle du site (`analytics.site_baseline`). Alerte au-delà de 10 %. Mesure : un changement de niveau de la consommation.
+- **`outlier_share`** : part des heures à plus de 3 écarts types de l'habitude du site. Alerte au-delà de 5 % (0,3 % attendus).
+- **`missing_share`** : part des mesures sans consommation. Alerte au-delà de 20 % (2 % à 3 % dans le jeu fourni).
+- **`nmae_ratio`**, dérive du concept : erreur relative récente face à la mesure réelle, rapportée à l'erreur de validation du champion. Alerte au-delà de 1,5, avec au moins 3 jours.
+- **`prediction_age_hours`** : âge de la dernière prévision. Alerte au-delà de 2 heures (le minuteur horaire est en panne).
+
+`insufficient` veut dire qu'il manque des données pour conclure (moins de 72 heures fiables, moins de 3 jours d'erreur mesurée), pas que tout va bien.
+
+Quoi faire d'une alerte : `level_bias` ou `outlier_share` après un changement connu du site, relancer un entraînement (`run --rm ml`, ou attendre le lundi) ; `nmae_ratio` élevé, comparer le champion et le dernier candidat dans MLflow (vue *Compare*) ; `missing_share` ou `prediction_age_hours`, vérifier d'abord le collecteur et les minuteurs (`systemctl list-timers`, `journalctl -u predict-ml.service`).
+
+Impact et automatisation en exploitation : `ml.operation_kpi` (sur 7 jours, par site : erreur relative, dépassement évité en kWh, économie en euros face à la mesure réelle) et `ml.forecast_coverage` (part des 24 prochaines heures qui ont une prévision). Les hypothèses du processus simulé (10 % de la consommation d'un pic décalable, tarif de 0,15 euro par kWh) sont dans `config.py`. Ajustements décidés à partir des mesures : définition du pic par un rapport à la consommation moyenne du site et non par un quantile (les sites plats verraient du bruit pris pour des pics) ; fin du jeu d'entraînement figée à minuit UTC (deux entraînements du même jour donnent les mêmes chiffres).
+
+Journal : `journalctl -u predict-ml.service` (et `monitor-ml`, `train-ml`). Chaque ligne porte la version du modèle, et le run MLflow pour l'entraînement ; l'adresse de la base n'y figure jamais.
+
+## Historique étiqueté
+
+Le jeu fourni (2023-2024) contient des anomalies étiquetées (pic, chute, coupure, plateau) : une vérité terrain pour juger la détection de pics. `python -m enervision_ml.anomaly_eval` lit `ml.history_labeled` et compare deux détecteurs aux étiquettes : l'écart au profil du site (3 écarts types et 15 %) et la règle de pic du service (`PEAK_RATIO` fois la moyenne du site). Rappel par type d'anomalie, précision et fausses alertes vont dans MLflow (expérience `enervision-monitoring`). La table est chargée par le traitement `load-history` de l'ETL ; tant qu'elle est vide, la commande le dit.
 
 ## Tests
 

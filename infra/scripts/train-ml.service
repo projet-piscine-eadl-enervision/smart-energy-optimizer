@@ -1,0 +1,10 @@
+[Unit]
+Description=Entraînement hebdomadaire du modèle ML (staging EnerVision)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/enervision
+# Le candidat n'est promu champion que s'il bat le champion sur la même validation
+ExecStart=/usr/bin/docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env run --rm ml python -m enervision_ml.training --trigger schedule

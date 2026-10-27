@@ -4,10 +4,12 @@ Lancement manuel : docker compose run --rm ml python -m enervision_ml.predict
 (le lancement toutes les heures viendra avec le service ML)
 """
 
+import logging
 from datetime import timedelta
 
 import mlflow
 import pandas as pd
+import psycopg
 from mlflow import MlflowClient
 
 from enervision_ml import registry
@@ -17,7 +19,12 @@ from enervision_ml.config import (
     MODEL_NAME,
     load_settings,
 )
-from enervision_ml.data import latest_hour, load_hourly, save_predictions
+from enervision_ml.data import (
+    latest_hour,
+    load_hourly,
+    refresh_recommendations,
+    save_predictions,
+)
 from enervision_ml.features import (
     FEATURE_COLUMNS,
     add_features,
@@ -25,6 +32,9 @@ from enervision_ml.features import (
     mask_unreliable_hours,
     to_hourly_grid,
 )
+from enervision_ml.logs import configure
+
+log = logging.getLogger(__name__)
 
 # Historique chargé : lag_168 de la dernière heure prévue, plus une marge. Inutile au profil
 # (calendrier seul), mais le service ne doit pas dépendre du modèle qui est champion
@@ -48,6 +58,7 @@ def check_fresh(last: pd.Timestamp, now: pd.Timestamp) -> None:
 
 def run(now: pd.Timestamp | None = None) -> int:
     """Prévoit et enregistre ; renvoie le nombre de prédictions écrites."""
+    configure()
     now = (now if now is not None else pd.Timestamp.now(tz="UTC")).floor("h")
     settings = load_settings()
     mlflow.set_tracking_uri(settings.tracking_uri)
@@ -79,12 +90,20 @@ def run(now: pd.Timestamp | None = None) -> int:
     ).dropna(subset=["predicted_kw"])
     skipped = len(future) - len(predictions)
     if skipped:
+        log.warning("%d heure(s) sans prévision : historique insuffisant", skipped)
         print(f"{skipped} heure(s) sans prévision : historique insuffisant")
 
     # ml.prediction.model_version est du texte ; MLflow donne un entier
     version = str(champion.version)
     count = save_predictions(settings.database_url, predictions, version)
+    log.info("prévisions écrites version=%s nombre=%d", version, count)
     print(f"{count} prédictions écrites ({MODEL_NAME} v{version})")
+    try:
+        created = refresh_recommendations(settings.database_url)
+    except psycopg.Error as exc:
+        # Les prévisions sont déjà enregistrées ; l'échec reste visible (code de sortie non nul)
+        raise SystemExit(f"Prédictions écrites, mais recommandations non recalculées : {exc}") from exc
+    print(f"{created} recommandation(s) créée(s)")
     return count
 
 

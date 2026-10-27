@@ -1,0 +1,10 @@
+[Unit]
+Description=Surveillance du modèle ML (staging EnerVision)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/enervision
+# Code de sortie 2 : au moins une alerte de dérive (le service apparaît en échec, voir ml.model_health)
+ExecStart=/usr/bin/docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env run --rm ml python -m enervision_ml.monitor

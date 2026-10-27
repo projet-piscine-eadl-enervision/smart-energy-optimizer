@@ -27,6 +27,8 @@ class FakeSession:
 
     def __init__(self):
         self.users: dict[int, User] = {}
+        self.rows: list = []  # lignes renvoyées par execute()
+        self.executed: list[tuple[str, dict]] = []  # requêtes reçues, pour les vérifier
 
     async def get(self, model, user_id):
         return self.users.get(user_id)
@@ -35,6 +37,10 @@ class FakeSession:
         # Les routes ne font qu'un select(User).where(User.email == ...) : on récupère l'email
         email = next(iter(statement.compile().params.values()))
         return next((u for u in self.users.values() if u.email == email), None)
+
+    async def execute(self, statement, params=None):
+        self.executed.append((str(statement), params or {}))
+        return iter(self.rows)
 
     def add(self, user: User):
         # Valeurs que la base remplirait elle-même à l'insertion
