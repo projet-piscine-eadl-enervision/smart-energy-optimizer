@@ -100,7 +100,7 @@ Le flux de données : le mock alimente l'ETL (collecte en continu, rattrapage de
 | `IMAGE_TAG` | tag des images à déployer | sans objet | `main` par défaut ; une ligne `IMAGE_TAG=` fige le staging (retour arrière) | tag de version `vX.Y.Z`, passé par le workflow de déploiement |
 | `NG_ALLOWED_HOSTS` | hôtes acceptés par le frontend | `localhost,127.0.0.1` | IP de la VM | nom CloudFront du site |
 | `API_UPSTREAM` | adresse de l'API à laquelle le frontend transmet `/api/` | `http://api:8000` | `http://api:8000` | `http://api:8000` |
-| `MLFLOW_PUBLIC_URL` | adresse d'MLflow à ouvrir depuis le poste, affichée à la fin de l'entraînement | `http://localhost:5000` (défini par le compose) | `http://localhost:5001` (tunnel SSH, défaut du compose) | sans objet (MLflow non déployé : aucun lien affiché) |
+| `MLFLOW_PUBLIC_URL` | adresse d'MLflow à ouvrir depuis le poste, affichée à la fin de l'entraînement | `http://localhost:5000` (défini par le compose) | `http://localhost:5001` (tunnel SSH, défaut du compose) | sans objet (aucun lien affiché : MLflow n'a pas d'adresse publique) |
 | `GIT_TITLE`, `GIT_SHA` | titre et sha du commit de l'image | `dev` | passés par la CI à la construction | idem staging |
 
 ## 6. Savoir ce qui est déployé

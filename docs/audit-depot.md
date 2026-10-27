@@ -14,7 +14,7 @@ Aucun.
 
 - **Les rôles de la base ne sont pas utilisés** (#145). `api`, `etl`, le collecteur et `ml` se connectent avec `${POSTGRES_USER}`, le super-utilisateur (`docker-compose.staging.yml:47,65,83,137`). Les rôles `enervision_api`, `enervision_etl` et `enervision_ml` existent sans droit de connexion ; les droits de `enervision_ml` sont testés par `SET ROLE`. Créer les comptes de connexion et les donner aux services. Le rafraîchissement de `analytics.energy_hourly` demande un rôle propriétaire de cet agrégat.
 - **Purge de `raw` non écrite.** Le schéma l'autorise (clé étrangère `ON DELETE SET NULL`, droit `DELETE` de l'ETL sur `raw`), mais aucune tâche ne purge : `raw` grossit d'environ 13 000 réponses par jour avec le collecteur.
-- **État des alertes non calculé.** `last_seen_at` et `resolved_at` existent, rien ne les remplit : toutes les alertes paraissent actives.
+- **État des alertes** (corrigé le 27/10). L'ETL enregistre la dernière réception (`last_seen_at`) et l'API déduit l'état de la fraîcheur : les identifiants du mock changent à chaque appel, une alerte n'est donc jamais « résolue » par disparition. `resolved_at` reste inutilisé.
 - **Pas de monitoring ni d'alerte** (#150). Seules les sondes de santé existent : aucune alerte si le minuteur du staging ou le collecteur s'arrête. La release refuse seulement un commit que le staging n'a pas annoncé.
 - **Pas de scan DAST ni de test de charge** (#149).
 - **`/health` publie le titre du commit et le sha**, y compris en production (le workflow de déploiement s'en sert). À assumer ou à réduire.
@@ -58,8 +58,8 @@ Aucun.
 ## Assumé ou écarté
 
 - **Port 8000 du staging publié** : la recette lit le sha sur `:8000/health`, la VM n'est joignable que depuis le réseau de l'école.
-- **MLflow du staging sans authentification** : lié à `127.0.0.1` de la VM, accès par tunnel SSH.
-- **Collecteur absent de la production** : il interroge le mock public chaque minute ; à activer dans le `COMPOSE_PROFILES` de `production.env` sur décision d'équipe.
+- **MLflow sans authentification** (staging et, depuis le 27/10, production) : lié à `127.0.0.1` de la machine, accès par tunnel SSH (staging) ou redirection de port Session Manager (production).
+- **Collecteur de la production** : activé le 27/10 (`COMPOSE_PROFILES=apps,collector,mlflow`) ; il interroge le mock public chaque minute.
 - **`docker-compose.staging.yml` gardé tel quel** : `deploy-production.yml` le nomme en dur, un retour vers un ancien tag échouerait après un renommage.
 - **Production : auto-approbation** : les relecteurs de l'environnement `production` (six personnes) peuvent approuver leur propre déploiement (`prevent_self_review` désactivé). Choix d'équipe.
 - **Bucket S3 sans versionnement et avec `force_destroy`** : le projet dure deux semaines, tout est coupé ensuite. En SSE-S3 et non KMS : coût et gestion de clé injustifiés.

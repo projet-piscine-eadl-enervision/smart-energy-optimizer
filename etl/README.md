@@ -91,7 +91,7 @@ docker ps                                                 # collector : healthy 
 docker compose logs -f collector                          # une ligne par tour
 ```
 
-Sur le staging, ajouter `collector` à `COMPOSE_PROFILES` dans `/etc/enervision/staging.env` (`COMPOSE_PROFILES=apps,collector`) ; la mise à jour automatique le démarre. Le conteneur passe `unhealthy` si aucun tour n'a réussi depuis trois intervalles (mock injoignable, base arrêtée). La production ne collecte pas tant que `collector` n'est pas dans le `COMPOSE_PROFILES` de `production.env`.
+Sur le staging, ajouter `collector` à `COMPOSE_PROFILES` dans `/etc/enervision/staging.env` (`COMPOSE_PROFILES=apps,collector`) ; la mise à jour automatique le démarre. Le conteneur passe `unhealthy` si aucun tour n'a réussi depuis trois intervalles (mock injoignable, base arrêtée). La production collecte aussi (`COMPOSE_PROFILES=apps,collector,mlflow` dans `production.env`) ; première mise en service : `backfill`, voir `docs/mise-en-production.md`.
 
 ## Ajouter un traitement
 

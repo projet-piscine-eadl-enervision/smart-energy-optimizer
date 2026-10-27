@@ -29,7 +29,7 @@ docker compose run --rm ml python -m enervision_ml.predict
 
 Résultats dans le MLflow de développement : http://localhost:5000 (expérience `enervision`, modèle `enervision-consumption`).
 
-La prévision se relance à la main ou, sur le staging, toutes les heures à `hh:05` par un minuteur systemd (`predict-ml.timer`, voir `docs/deploiement-staging.md`). Après avoir écrit les prévisions, elle recalcule les recommandations (`app.refresh_recommendations()`) ; si ce calcul échoue, les prévisions restent écrites mais la commande se termine en erreur. Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
+La prévision se relance à la main ou, sur le staging et la production, toutes les heures à `hh:05` par un minuteur systemd (`predict-ml.timer` et `predict-ml-production.timer`, voir `docs/deploiement-staging.md` et `docs/mise-en-production.md`). Après avoir écrit les prévisions, elle recalcule les recommandations (`app.refresh_recommendations()`) ; si ce calcul échoue, les prévisions restent écrites mais la commande se termine en erreur. Elle refuse d'écrire si la dernière mesure a plus de 3 heures (collecteur arrêté) : les prévisions porteraient sur des heures passées.
 
 ### Données attendues de l'ETL
 
@@ -66,6 +66,10 @@ Pour ouvrir celui du staging, lancer **depuis le poste** (pas depuis la VM) `ssh
 L'entraînement affiche en dernière ligne `lien MLflow : …`, déjà construit pour l'environnement avec la variable `MLFLOW_PUBLIC_URL` des fichiers compose (sans elle, l'adresse de suivi du module), et rien en production (`APP_ENV=production`). Les deux lignes `View run` de MLflow qui le précèdent montrent l'adresse du réseau Docker (`http://mlflow:5000/…`) : elle ne s'ouvre pas depuis le poste.
 
 Le module utilise le compte propriétaire de la base, comme l'ETL, en attendant les comptes par module (ticket #145). Sans historique chargé, `run --rm ml` s'arrête sur « Historique insuffisant » et `predict` sur « Aucun modèle champion » : les connexions à la base et à MLflow fonctionnent.
+
+### En production
+
+Même enchaînement que sur le staging, avec `production.env`, `COMPOSE_PROFILES=apps,collector,mlflow` et le tag de la version déployée (`IMAGE_TAG`). Les trois minuteurs ont des variantes `-production` dans `infra/scripts/`. Première mise en service, installation des minuteurs et contrôles : `docs/mise-en-production.md`.
 
 ### Données en local (développement)
 

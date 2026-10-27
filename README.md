@@ -248,7 +248,7 @@ Les jeux de données de `etl/` sont suivis avec DVC, pas avec Git. Mise en place
 
 ## Staging
 
-Le staging est déployé automatiquement sur la VM de l'école : à chaque merge sur `main` dont la CI est verte, une image Docker par module ayant un `Dockerfile` est publiée sur GHCR, puis la VM tire les images toutes les 2 minutes, relance les conteneurs et annonce à GitHub (onglet *Deployments*) que le staging est à jour. La base, l'API, l'ETL et le frontend y tournent ; `ml` n'a pas de service sur le staging. Les migrations de la base y sont appliquées à chaque déploiement, par une image `db` du même tag.
+Le staging est déployé automatiquement sur la VM de l'école : à chaque merge sur `main` dont la CI est verte, une image Docker par module ayant un `Dockerfile` est publiée sur GHCR, puis la VM tire les images toutes les 2 minutes, relance les conteneurs et annonce à GitHub (onglet *Deployments*) que le staging est à jour. La base, l'API, l'ETL et le frontend y tournent ; `ml` n'a pas de service permanent : trois minuteurs systemd (prévision horaire, surveillance, entraînement) le lancent, installés à la main. Les migrations de la base y sont appliquées à chaque déploiement, par une image `db` du même tag.
 
 - API du staging : http://10.43.43.50:8000/docs (réseau de l'école)
 - Frontend du staging : http://10.43.43.50:4000
@@ -258,7 +258,7 @@ Le détail (principe, mise en place de la VM, jeton GHCR, dépannage) est dans [
 
 ## Production
 
-La production tourne sur AWS (Paris) et est accessible en HTTPS : https://dvrgizboitg9p.cloudfront.net (page de connexion : `/login`, santé et version déployée : `/api/health`). Seul le frontend est exposé, il transmet `/api/` à l'API. Elle est mise à jour par une release lancée à la main après la recette du staging, avec une approbation dans GitHub : [`docs/mise-en-production.md`](docs/mise-en-production.md). Environnements, URLs et variables : [`docs/environnements-techniques.md`](docs/environnements-techniques.md) ; infrastructure : [`infra/README.md`](infra/README.md).
+La production tourne sur AWS (Paris) et est accessible en HTTPS : https://dvrgizboitg9p.cloudfront.net (page de connexion : `/login`, santé et version déployée : `/api/health`). Seul le frontend est exposé, il transmet `/api/` à l'API. Elle collecte les mesures du mock (collecteur), garde l'historique et le registre des modèles (MLflow, sans adresse publique) et recalcule la prévision toutes les heures. Elle est mise à jour par une release lancée à la main après la recette du staging, avec une approbation dans GitHub : [`docs/mise-en-production.md`](docs/mise-en-production.md). Environnements, URLs et variables : [`docs/environnements-techniques.md`](docs/environnements-techniques.md) ; infrastructure : [`infra/README.md`](infra/README.md).
 
 ## Qualité et sécurité de la CI
 
@@ -308,7 +308,9 @@ Les outils de lint et de test (`ruff`, `pytest`, `pytest-cov`) sont dans `requir
 
 ### Module Frontend
 - Se connecte à l'API
-- Affiche avec dashboard prédictions, historiques des données, recommandations
+- Se connecte à l'API (proxy `/api` du serveur du front)
+- Tableau de bord : prévisions avec pics, historique (24 h, 7 ou 30 jours) et recommandations, pour le total des sites ou un site
+- Pics prévus (heure, seuil, dépassement), alertes (badge mis à jour toutes les 30 s), sites (dernière mesure, consommation par heure, jour, semaine ou mois, qualité des relevés)
 
 ### Module Infra
 
@@ -316,6 +318,7 @@ Les outils de lint et de test (`ruff`, `pytest`, `pytest-cov`) sont dans `requir
 - Se connecte à la BDD TimescaleDB
 - Création d'un modèle, entraînement avec données BDD TimescaleDB
 - Enregistre les runs et les modèles dans MLflow (service `mlflow`) et écrit ses prévisions dans `ml.prediction`, que l'API lit (route `/predictions`)
+- Prévision horaire, surveillance quotidienne et entraînement hebdomadaire par des minuteurs systemd (staging et production)
 ## Licence
 
 Code sous licence MIT (voir [`LICENSE`](LICENSE)). Le jeu de données du sujet et l'API Mock appartiennent à l'école : ils ne sont pas couverts par cette licence.

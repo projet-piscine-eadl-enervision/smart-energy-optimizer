@@ -64,7 +64,7 @@ Relire, c'est vérifier que le code répond au ticket, qu'il est testé, lisible
 
 **Promotion.** On construit une fois et on promeut le même artefact, sans le reconstruire : le merge sur `main` met à jour le staging, le staging annonce à GitHub le commit qu'il fait tourner, la release (lancée à la main) vérifie cette annonce, ajoute le tag de version à l'image déjà recettée et déploie la production avec cette image, après approbation. La procédure complète (recette, release, approbation, retour arrière) est dans [`docs/mise-en-production.md`](docs/mise-en-production.md).
 
-**Modèles ML.** Dans MLflow, un modèle entraîné devient `challenger`. Il est promu `champion` (alias utilisé par `/predict` en production) seulement s'il bat le champion actuel sur les métriques de validation. La promotion est tracée dans le registre et mentionnée dans la PR ou le rapport de décision.
+**Modèles ML.** Dans MLflow, un modèle entraîné devient `challenger`. Il est promu `champion` (alias lu par `enervision_ml.predict`) seulement s'il bat le champion actuel sur les métriques de validation. La promotion est tracée dans le registre et mentionnée dans la PR ou le rapport de décision.
 
 ## Workflows : runners et actions
 
