@@ -77,6 +77,19 @@ NG_ALLOWED_HOSTS=localhost,127.0.0.1,10.43.43.50
   ```
 - Historique : une fois les sites chargés, `run --rm etl python -m pipeline backfill` (mêmes options que ci-dessus) charge les mesures du mock du 2023-01-01 à maintenant, par pas d'une heure : environ une minute, 233 940 lignes (33 420 par site). Relancer est sans danger.
 - Module ML : ajouter `mlflow` à `COMPOSE_PROFILES`, puis `docker compose … run --rm ml` pour entraîner et `run --rm ml python -m enervision_ml.predict` pour prévoir (détails dans `ml/README.md`). Le service `ml` n'est jamais dans `COMPOSE_PROFILES`. MLflow écoute sur `127.0.0.1:5000` de la VM, sans authentification : s'y connecter par un tunnel SSH (voir `ml/README.md`).
+- Historique nettoyé (anomalies étiquetées) : le fichier parquet n'est pas dans l'image, il vient du stockage DVC de la VM. Une fois les sites chargés :
+
+  ```bash
+  cd /opt/enervision && C="docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env"
+  H=$(awk '/energy_consumption_cleaned.parquet/{f=1} f && /md5:/{print $2; exit}' etl/dvc.lock)
+  F=$(find /var/lib/enervision/dvc -type f -name "${H:2}" | head -1); echo "$F"   # doit afficher un chemin
+  cp "$F" /tmp/history.parquet && chmod 644 /tmp/history.parquet
+  $C run --rm -v /tmp/history.parquet:/data/history.parquet:ro \
+    etl python -m pipeline load-history /data/history.parquet     # attendu : « 122647 rows written in ml.history_labeled, 0 rejected »
+  rm /tmp/history.parquet
+  ```
+
+  Relancer écrit 0 ligne. Si `find` ne trouve rien, le fichier n'a pas été poussé dans DVC (`dvc push`), ou se copie depuis un poste avec `scp`.
 - Collecte des mesures : ajouter `collector` à `COMPOSE_PROFILES` (`apps,collector`), puis attendre la mise à jour automatique. `docker ps` montre `collector` en `healthy` après environ 90 secondes (`unhealthy` : aucun tour réussi depuis trois minutes, mock injoignable ou base arrêtée). Les tours se lisent avec `docker compose logs --tail 5 collector` (staging : mêmes options `-f` et `--env-file` que ci-dessus).
 
 ## Mise en place sur la VM (une seule fois)

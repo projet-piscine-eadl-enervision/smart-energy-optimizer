@@ -47,7 +47,7 @@ Pile complète : `docker compose up -d` à la racine, puis `docker ps` doit mont
 - `pipeline/db.py`, `pipeline/runs.py`, `pipeline/raw.py` : connexion à la base (`DATABASE_URL`, autocommit), suivi de chaque traitement dans `etl.run`, réponses brutes dans `raw.api_response`.
 - `pipeline/sensors.py`, `pipeline/heartbeat.py` : épisodes de panne de capteur (`core.sensor_status`) et signal de vivacité du collecteur.
 - `pipeline/rows.py` : lignes prêtes à insérer en base (`core.energy_reading` : axe `time`, heure du mock, décimaux).
-- `pipeline/jobs/` : un module par traitement, avec `main(argv)`. Lancement : `python -m pipeline <traitement>` (`clean-history`, `load-ref`, `poll-current`, `backfill`).
+- `pipeline/jobs/` : un module par traitement, avec `main(argv)`. Lancement : `python -m pipeline <traitement>` (`clean-history`, `load-ref`, `poll-current`, `backfill`, `load-history`).
 - `pipeline/provided_files/`, `pipeline/edited_files/` : données suivies par DVC, voir [`docs/donnees-dvc.md`](../docs/donnees-dvc.md).
 
 ## Nettoyage de l'historique
@@ -74,6 +74,12 @@ Un tour réussi écrit l'heure dans `/tmp/collector.heartbeat` ; `python -m pipe
 docker compose run --rm etl python -m pipeline backfill --start 2026-10-01     # essai sur une période courte
 docker compose run --rm etl python -m pipeline backfill                         # tout l'historique
 ```
+
+## Charger l'historique nettoyé
+
+`python -m pipeline load-history [fichier.parquet]` copie le parquet produit par `clean-history` (par défaut `pipeline/edited_files/energy_consumption_cleaned.parquet`) dans `ml.history_labeled` : consommation nettoyée (`consumption_kw`, en kW moyen sur l'heure) et sa source, température, humidité, rayonnement, et les anomalies étiquetées (`anomaly_type`, `anomaly_severity`). C'est la seule donnée étiquetée du projet, destinée à la détection d'anomalies. Elle reste hors de `core.energy_reading` : mêmes sites et mêmes heures que le rattrapage du mock, mais des niveaux de 0 % à 30 % plus élevés.
+
+Les sites doivent être dans `ref.site` (`load-ref`), sinon le traitement s'arrête en le disant. Les valeurs manquantes sont écrites NULL, jamais NaN. Un type d'anomalie, une gravité ou une source de nettoyage inconnus font rejeter la ligne (comptée dans `etl.run`, `history_load`). Une clé déjà présente est mise à jour seulement si une valeur a changé : relancer le même fichier n'écrit rien, un fichier corrigé ne met à jour que les lignes modifiées. Le fichier n'est pas dans l'image Docker : le monter avec `-v` (voir `docs/deploiement-staging.md`).
 
 ## Collecteur en service
 
