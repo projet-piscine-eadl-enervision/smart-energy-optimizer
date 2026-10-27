@@ -1,0 +1,17 @@
+# Source de données créée au démarrage de Grafana (docker-compose.monitoring.yml).
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    # Identifiant fixe : les dashboards de monitoring/grafana/dashboards y font référence
+    uid: prometheus
+    type: prometheus
+    # Grafana interroge Prometheus côté serveur : le navigateur n'a pas à le joindre
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    # Modifiable seulement dans le dépôt
+    editable: false
+    jsonData:
+      # Même intervalle que scrape_interval de prometheus.yml
+      timeInterval: 15s

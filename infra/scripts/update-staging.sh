@@ -11,6 +11,7 @@ main() {
   ENV_FILE="${ENV_FILE:-/etc/enervision/staging.env}"
   LOCK_FILE="${LOCK_FILE:-/var/lock/update-staging.lock}"
   COMPOSE_FILE_STAGING="docker-compose.staging.yml"
+  COMPOSE_FILE_MONITORING="docker-compose.monitoring.yml"
   export COMPOSE_PROJECT_NAME=enervision
 
   exec 9>"$LOCK_FILE"
@@ -45,9 +46,21 @@ main() {
 
   [ -f "$COMPOSE_FILE_STAGING" ] || { echo "$COMPOSE_FILE_STAGING absent à la racine" >&2; exit 1; }
 
-  # --profile ml-job : l image ml n’est lancée que par les minuteurs, il faut la tirer aussi
-  docker compose -f "$COMPOSE_FILE_STAGING" --env-file "$ENV_FILE" --profile ml-job pull --ignore-buildable --quiet
-  docker compose -f "$COMPOSE_FILE_STAGING" --env-file "$ENV_FILE" up -d --remove-orphans
+
+  # Supervision (Prometheus, Grafana, exporteurs) : activée par « monitoring » dans COMPOSE_PROFILES de
+  # staging.env, avec GRAFANA_ADMIN_PASSWORD. Sans ce mot, le staging tourne comme avant, et
+  # --remove-orphans retire les conteneurs de supervision d'un lancement précédent.
+  compose=(docker compose -f "$COMPOSE_FILE_STAGING" --env-file "$ENV_FILE")
+  profiles=$(sed -n 's/^[[:space:]]*COMPOSE_PROFILES=//p' "$ENV_FILE" | tail -n 1 | tr -d "\"' \r")
+  if [[ ",$profiles," == *,monitoring,* ]]; then
+    compose+=(-f "$COMPOSE_FILE_MONITORING")
+  fi
+
+  # Profil ml-job : l'image ml n'est lancée que par les minuteurs, il faut la tirer aussi. Ajouté aux
+  # profils de staging.env, pas à leur place (un --profile en ligne de commande les remplacerait).
+  COMPOSE_PROFILES="${profiles:+$profiles,}ml-job" "${compose[@]}" pull --ignore-buildable --quiet
+  "${compose[@]}" up -d --remove-orphans
+
 
   # Annonce à GitHub que le staging est à jour (déploiement « staging » pour le commit qui tourne).
   # Ne fait jamais échouer la mise à jour : sans jeton ou sans réseau, le script le dit et s'arrête.

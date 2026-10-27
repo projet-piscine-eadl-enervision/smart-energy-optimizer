@@ -1,0 +1,119 @@
+# Règles d'alerte évaluées par Prometheus (rule_files de prometheus.yml). Sans Alertmanager, les alertes
+# s'affichent dans Prometheus (/alerts) et dans Grafana (Alerting), sans notification envoyée.
+# Gravité : critical = service rendu indisponible ; warning = à regarder avant que ça le devienne.
+# Test : promtool test rules alerts.test.yml (depuis ce dossier)
+groups:
+  - name: disponibilite
+    rules:
+      - alert: CibleInjoignable
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} ne répond plus à Prometheus"
+          description: "La cible {{ $labels.instance }} (job {{ $labels.job }}) n'est plus collectée depuis 2 minutes."
+
+      - alert: SondeHttpEnEchec
+        expr: probe_success == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} ne répond pas en 2xx"
+          description: "La sonde HTTP de {{ $labels.instance }} échoue depuis 2 minutes."
+
+      - alert: BaseInjoignable
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL injoignable"
+          description: "postgres-exporter n'arrive plus à se connecter à la base depuis 1 minute."
+
+  - name: hote
+    rules:
+      - alert: DisquePresquePlein
+        expr: 1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"} > 0.80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disque {{ $labels.mountpoint }} rempli à plus de 80 %"
+          description: "Occupation : {{ $value | humanizePercentage }}."
+
+      - alert: DisquePlein
+        expr: 1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"} > 0.90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disque {{ $labels.mountpoint }} rempli à plus de 90 %"
+          description: "Occupation : {{ $value | humanizePercentage }}. La base et Prometheus risquent de s'arrêter."
+
+      - alert: MemoireSaturee
+        expr: 1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes > 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mémoire de l'hôte utilisée à plus de 90 %"
+          description: "Utilisation : {{ $value | humanizePercentage }}."
+
+      - alert: CpuSature
+        expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) > 0.90
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU de l'hôte occupé à plus de 90 %"
+          description: "Utilisation moyenne : {{ $value | humanizePercentage }} depuis 15 minutes."
+
+  - name: application
+    rules:
+      - alert: ApiTropDErreurs
+        expr: sum(rate(http_requests_total{job="api", status="5xx"}[5m])) / sum(rate(http_requests_total{job="api"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Plus de 5 % d'erreurs 5xx sur l'API"
+          description: "Part des réponses 5xx sur 5 minutes : {{ $value | humanizePercentage }}."
+
+      - alert: ApiLente
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_highr_seconds_bucket{job="api"}[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API lente : 95e centile au-dessus d'1 s"
+          description: "95 % des requêtes répondent en moins de {{ $value | humanizeDuration }}."
+
+      # Ne sonne que si la base contient des mesures : sans collecteur (production par défaut), la table
+      # est vide, la métrique est absente et l'alerte reste muette.
+      - alert: EtlSansNouvelleMesure
+        expr: time() - etl_latest_reading_timestamp_seconds > 600
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Aucune nouvelle mesure depuis plus de 10 minutes"
+          description: "Dernière mesure reçue il y a {{ $value | humanizeDuration }}. Vérifier le collecteur et l'API Mock."
+
+      - alert: EtlDerniereExecutionEnEchec
+        expr: etl_last_run_timestamp_seconds{status="failed"}
+        labels:
+          severity: warning
+        annotations:
+          summary: "Dernière exécution {{ $labels.run_type }} en échec"
+          description: "Voir error_message dans la table etl.run."
+
+      - alert: EtlBaseIllisible
+        expr: etl_metrics_up == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "L'ETL n'arrive plus à lire la base"
+          description: "Les métriques de l'ETL (etl.run, core.energy_reading) ne sont plus calculées."

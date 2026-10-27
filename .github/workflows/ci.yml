@@ -80,6 +80,7 @@ jobs:
       frontend: ${{ steps.modules.outputs.frontend }}
       migrations: ${{ steps.modules.outputs.migrations }}
       terraform: ${{ steps.modules.outputs.terraform }}
+      monitoring: ${{ steps.modules.outputs.monitoring }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -276,6 +277,42 @@ jobs:
           terraform init -backend=false -input=false
           terraform validate
 
+  # Supervision : configuration de Prometheus et du blackbox, règles d'alerte et leurs tests, dashboards
+  # Grafana et compose de supervision. Les images sont celles de docker-compose.monitoring.yml, pour
+  # valider avec les versions déployées.
+  monitoring:
+    needs: changes
+    if: needs.changes.outputs.monitoring == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      # Le compose de supervision s'ajoute à celui du staging (postgres-exporter dépend de db) ;
+      # valeurs factices pour les variables obligatoires
+      COMPOSE_FILE: docker-compose.staging.yml:docker-compose.monitoring.yml
+      GRAFANA_ADMIN_PASSWORD: ci
+      POSTGRES_PASSWORD: ci
+      SECRET_KEY: ci
+      MOCK_API_URL: ci
+      MOCK_API_USERNAME: ci
+      MOCK_API_PASSWORD: ci
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compose de supervision
+        run: docker compose config --quiet
+      - name: Prometheus (promtool check config, test rules)
+        run: |
+          image=$(docker compose config --images | grep '^prom/prometheus:')
+          docker run --rm -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus \
+            --entrypoint promtool "$image" check config prometheus.yml
+          docker run --rm -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus \
+            --entrypoint promtool "$image" test rules alerts.test.yml
+      - name: Blackbox (config.check)
+        run: |
+          image=$(docker compose config --images | grep '^prom/blackbox-exporter:')
+          docker run --rm -v "$PWD/monitoring/blackbox:/etc/blackbox:ro" "$image" \
+            --config.file=/etc/blackbox/blackbox.yml --config.check
+      - name: Dashboards Grafana (JSON lisible, uid unique, source prometheus)
+        run: python3 infra/scripts/check-dashboards.py monitoring/grafana/dashboards
+
   migrations:
     needs: changes
     if: needs.changes.outputs.migrations == 'true'
@@ -363,7 +400,7 @@ jobs:
   # seul ce job est à exiger, quels que soient les composants présents.
   ci-ok:
     if: always()
-    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, e2e, security, terraform, migrations, sonar]
+    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, e2e, security, terraform, migrations, sonar, monitoring]
     runs-on: ubuntu-24.04
     steps:
       - name: Vérifier les résultats

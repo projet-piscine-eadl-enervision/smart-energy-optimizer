@@ -14,6 +14,12 @@ const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 /**
+ * /api/metrics n'est pas transmise : les métriques sont réservées à Prometheus, qui lit l'API sur le
+ * réseau interne. Répondre 404 ne révèle pas que la route existe.
+ */
+app.use('/api/metrics', (_req, res) => void res.status(404).end());
+
+/**
  * Transmet /api/... à l'API de l'environnement (variable API_UPSTREAM).
  */
 app.use('/api', apiProxy);

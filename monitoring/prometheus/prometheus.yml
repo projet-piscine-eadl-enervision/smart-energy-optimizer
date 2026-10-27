@@ -1,0 +1,88 @@
+# Cibles interrogées par Prometheus (docker-compose.monitoring.yml). Les noms sont ceux des services
+# Docker : la même configuration sert en dev, en staging et en production.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Règles d'alerte (testées par alerts.test.yml)
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # Prometheus lui-même
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Hôte (EC2 ou VM) : CPU, mémoire, disque, réseau
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Conteneurs
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    metric_relabel_configs:
+      # Labels courts utilisés par le dashboard : service (nom du service compose) et container
+      - source_labels: [container_label_com_docker_compose_service]
+        target_label: service
+      - source_labels: [name]
+        target_label: container
+      # Seules les séries des conteneurs Docker sont gardées (pas les cgroups système) ;
+      # les métriques machine_* n'ont pas de service et passent
+      - source_labels: [__name__, service]
+        regex: "container_.*;"
+        action: drop
+      # Les labels Docker bruts ne servent plus et multiplient les séries
+      - regex: container_label_.*
+        action: labeldrop
+
+  # API : requêtes, latence et codes de retour (route /metrics, fermée au public par le frontend)
+  - job_name: api
+    static_configs:
+      - targets: ["api:8000"]
+
+  # ETL : dernières exécutions et fraîcheur des mesures, lues dans la base (etl/metrics.py)
+  - job_name: etl
+    static_configs:
+      - targets: ["etl:8000"]
+
+  # Base PostgreSQL
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  # Sondes HTTP : le blackbox vérifie que chaque URL répond en 2xx et mesure le temps de réponse.
+  # L'URL sondée devient le paramètre ?target= et le label instance.
+  - job_name: blackbox-http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://api:8000/health
+          - http://etl:8000/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # Frontend : module http_frontend (en-tête Host accepté par le serveur Angular)
+  - job_name: blackbox-frontend
+    metrics_path: /probe
+    params:
+      module: [http_frontend]
+    static_configs:
+      - targets:
+          - http://frontend:4000/
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

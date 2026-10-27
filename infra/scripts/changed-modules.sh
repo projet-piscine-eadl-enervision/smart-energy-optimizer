@@ -4,7 +4,7 @@
 # Usage : infra/scripts/changed-modules.sh <commit-de-base> <commit-de-tête>
 # Sortie (une ligne clé=valeur, format de $GITHUB_OUTPUT) :
 #   python=["api","etl"]   modules Python à tester (liste JSON, vide : [])
-#   frontend=true|false    migrations=true|false    terraform=true|false
+#   frontend=true|false    migrations=true|false    terraform=true|false    monitoring=true|false
 #
 # Tout est actif quand la base est absente ou inconnue (première publication d'une branche, commit
 # introuvable) et quand un fichier commun change : workflows, scripts d'infra, compose, hooks.
@@ -14,7 +14,7 @@ set -euo pipefail
 base="${1:-}"
 head="${2:-HEAD}"
 
-api=false etl=false ml=false frontend=false db=false terraform=false
+api=false etl=false ml=false frontend=false db=false terraform=false monitoring=false
 everything=false
 
 if [ -z "$base" ] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
@@ -30,13 +30,14 @@ else
       frontend/*) frontend=true ;;
       db/*) db=true; api=true; etl=true; ml=true ;; # les tests d'intégration de l'API, de l'ETL et du ML tournent sur le schéma de db/
       infra/terraform/*) terraform=true ;;
+      monitoring/*) monitoring=true ;;
       .github/*|infra/scripts/*|docker-compose*.yml|.pre-commit-config.yaml|.commitlintrc.yml) everything=true ;;
     esac
   done <<<"$files"
 fi
 
 if [ "$everything" = true ]; then
-  api=true etl=true ml=true frontend=true db=true terraform=true
+  api=true etl=true ml=true frontend=true db=true terraform=true monitoring=true
 fi
 
 python=()
@@ -48,3 +49,4 @@ echo "python=[$(IFS=,; echo "${python[*]:-}")]"
 echo "frontend=$frontend"
 echo "migrations=$db"
 echo "terraform=$terraform"
+echo "monitoring=$monitoring"

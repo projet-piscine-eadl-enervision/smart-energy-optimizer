@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.routes import (
     alerts,
@@ -74,6 +75,11 @@ def create_app() -> FastAPI:
     application.include_router(recommendations.router)
     application.include_router(alerts.router)
     application.include_router(sites.router)
+
+    # /metrics : requêtes, latence et codes de retour, pour Prometheus. Jamais exposée au public :
+    # le proxy du frontend la refuse, Prometheus lit l'API en direct sur le réseau Docker.
+    Instrumentator(excluded_handlers=["/health.*", "/metrics"]).instrument(application).expose(application)
+
     return application
 
 
