@@ -6,6 +6,8 @@ la moitié des mesures manquent sont écartées. L'énergie d'une heure est la p
 La qualité ne dépend pas du nombre de relevés : le rattrapage écrit une mesure par heure, le collecteur
 une par minute.
 """
+from typing import Annotated
+
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import text
 
@@ -112,7 +114,7 @@ async def get_site_consumption(
     site_id: str,
     current_user: CurrentUser,
     db: DbSession,
-    period: Period = Query(default="day"),
+    period: Annotated[Period, Query()] = "day",
     days: int | None = Query(default=None, ge=1, le=730, description="Fenêtre ; selon la période par défaut"),
 ):
     await require_site(db, site_id)

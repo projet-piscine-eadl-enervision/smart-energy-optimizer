@@ -10,7 +10,7 @@ def site_row(site_id="SITE001", consumption="42.5", quality="good"):
         site_name="Site 1",
         site_type="office",
         location="Nantes",
-        capacity_kw=Decimal("500"),
+        capacity_kw=Decimal(500),
         status="active",
         last_consumption_kw=None if consumption is None else Decimal(consumption),
         last_reading_age_minutes=None if consumption is None else Decimal("1.5"),

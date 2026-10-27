@@ -11,7 +11,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import alerts, auth, health, history, predictions, recommendations, sites
+from app.api.routes import (
+    alerts,
+    auth,
+    health,
+    history,
+    predictions,
+    recommendations,
+    sites,
+)
 from app.core.config import settings
 
 STATIC_DIR = Path(__file__).parent / "static"

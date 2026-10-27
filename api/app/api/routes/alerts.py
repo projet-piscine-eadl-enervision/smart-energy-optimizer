@@ -9,7 +9,7 @@ réponse, elle est remplacée. L'état se déduit de la fraîcheur : une alerte 
 instant sont renvoyées.
 """
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
 from sqlalchemy import text
@@ -81,7 +81,7 @@ async def get_alerts(
     db: DbSession,
     site_id: str | None = Query(default=None, description="Un site ; sans valeur, tous les sites"),
     status: Literal["active", "resolved", "all"] = Query(default="active"),
-    since: datetime | None = Query(default=None, description="Alertes reçues après cet instant (UTC)"),
+    since: Annotated[datetime | None, Query(description="Alertes reçues après cet instant (UTC)")] = None,
     limit: int = Query(default=50, ge=1, le=200),
 ):
     return await fetch_alerts(db, site_id, status, since, limit)

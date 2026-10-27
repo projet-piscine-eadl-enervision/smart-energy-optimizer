@@ -1,79 +1,76 @@
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
-import { EnergyService } from '../../core/energy.service';
-import { PeakHour } from '../../core/models';
+import { answer, apiProviders, Failure } from '../../testing/api';
 import { Peaks } from './peaks';
 
-describe('Peaks', () => {
-  const peak: PeakHour = {
-    timestamp: '2026-10-23T19:00:00Z',
-    site_id: 'SITE003',
-    predicted_kw: 120.5,
-    threshold_kw: 100,
-    excess_kw: 20.5,
-    model_version: '1',
-  };
-  const energyStub = {
-    getPeaks: vi.fn((_hours?: number, _siteId?: string) => of([peak])),
-  };
+const PEAK = {
+  timestamp: '2026-10-23T19:00:00Z',
+  site_id: 'SITE003',
+  predicted_kw: 120.5,
+  threshold_kw: 100,
+  excess_kw: 20.5,
+  model_version: '1',
+};
+const ROUTES = {
+  '/api/sites': [{ site_id: 'SITE001', site_name: 'Site 1' }],
+  '/api/predictions/peaks': [PEAK],
+};
 
-  async function render() {
-    await TestBed.configureTestingModule({
-      imports: [Peaks],
-      providers: [{ provide: EnergyService, useValue: energyStub }],
-    }).compileComponents();
+describe('Peaks', () => {
+  async function render(routes: Record<string, unknown> = ROUTES) {
+    await TestBed.configureTestingModule({ imports: [Peaks], providers: apiProviders() }).compileComponents();
     const fixture = TestBed.createComponent(Peaks);
+    fixture.detectChanges();
+    const requests = answer(routes);
     await fixture.whenStable();
-    return fixture;
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    return { fixture, element, requests };
   }
 
-  beforeEach(() => energyStub.getPeaks.mockClear());
-
   it('liste les pics avec le seuil et le dépassement', async () => {
-    const element: HTMLElement = (await render()).nativeElement;
+    const { element, requests } = await render();
     const row = element.querySelector('tbody tr')!.textContent!;
 
     expect(row).toContain('SITE003');
     expect(row).toContain('120.5');
     expect(row).toContain('100.0');
     expect(row).toContain('20.5');
-    expect(energyStub.getPeaks).toHaveBeenCalledWith(24, undefined);
+    expect(requests).toContain('/api/predictions/peaks?hours=24');
   });
 
   it('affiche un tiret quand le seuil est inconnu', async () => {
-    energyStub.getPeaks.mockReturnValueOnce(
-      of([{ ...peak, threshold_kw: null, excess_kw: null }]),
-    );
-    const element: HTMLElement = (await render()).nativeElement;
+    const { element } = await render({
+      ...ROUTES,
+      '/api/predictions/peaks': [{ ...PEAK, threshold_kw: null, excess_kw: null }],
+    });
 
     expect(element.querySelector('tbody tr')!.textContent).toContain('–');
   });
 
   it("indique l'absence de pic", async () => {
-    energyStub.getPeaks.mockReturnValueOnce(of([]));
-    const element: HTMLElement = (await render()).nativeElement;
+    const { element } = await render({ ...ROUTES, '/api/predictions/peaks': [] });
 
     expect(element.textContent).toContain('Aucun pic prévu');
     expect(element.querySelector('table')).toBeNull();
   });
 
   it("recharge sur l'horizon et le site choisis", async () => {
-    const fixture = await render();
-    const select: HTMLSelectElement = fixture.nativeElement.querySelector('select');
+    const { fixture, element } = await render();
+    const select = element.querySelector('select')!;
     select.value = 'SITE001';
     select.dispatchEvent(new Event('change'));
-    const button = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(
-      (b) => b.textContent?.trim() === '72 h',
-    )!;
-    button.click();
+    Array.from(element.querySelectorAll('button')).find((b) => b.textContent?.trim() === '72 h')!.click();
+    const requests = answer(ROUTES);
     await fixture.whenStable();
 
-    expect(energyStub.getPeaks).toHaveBeenLastCalledWith(72, 'SITE001');
+    expect(requests).toEqual([
+      '/api/predictions/peaks?hours=24&site_id=SITE001',
+      '/api/predictions/peaks?hours=72&site_id=SITE001',
+    ]);
   });
 
   it("affiche un message si l'API échoue", async () => {
-    energyStub.getPeaks.mockReturnValueOnce(throwError(() => new Error('500')));
-    const element: HTMLElement = (await render()).nativeElement;
+    const { element } = await render({ ...ROUTES, '/api/predictions/peaks': new Failure(500) });
 
     expect(element.textContent).toContain("Impossible de charger les pics depuis l'API.");
   });

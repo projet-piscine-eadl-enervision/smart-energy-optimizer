@@ -87,6 +87,10 @@ Les routes n'ont pas de préfixe `/api` : c'est le préfixe du proxy du front (`
 | `GET` | `/predictions/peaks?hours=24&site_id=SITE001` | connecté | Heures prévues au-dessus du seuil de pic de leur site, avec ce seuil et le dépassement (`excess_kw`) ; pour tous les sites sans `site_id` ; liste vide sans pic prévu |
 | `GET` | `/history?days=7&site_id=SITE001` | connecté | Consommation par heure, lue dans `analytics.energy_hourly` (1 à 90 jours) : un site, ou la somme des sites sans `site_id`. L'heure en cours et les heures dont plus de la moitié des mesures manquent sont écartées ; pour le total, une heure où un site manque l'est aussi |
 | `GET` | `/recommendations?hours=24&site_id=SITE001&limit=50` | connecté | Conseils lus dans `app.recommendation` : alertes des dernières 24 h et pics prévus dans les `hours` prochaines heures. L'économie estimée (`estimated_saving_kw`) est la part décalable du dépassement d'un pic prévu, vide pour une alerte |
+| `GET` | `/alerts?status=active&site_id=SITE001&since=…&limit=50` | connecté | Alertes de `core.alert`. `status` : `active` (vue il y a moins de 15 minutes et non résolue), `resolved` ou `all`. `since` : alertes reçues après cet instant, pour le sondage du tableau de bord. Les identifiants du mock changent à chaque appel : l'état se déduit de la fraîcheur, pas de la disparition |
+| `GET` | `/sites` | connecté | Sites avec leur dernière consommation non nulle, son âge (minutes) et la qualité du dernier relevé |
+| `GET` | `/sites/{site_id}/consumption?period=day&days=30` | connecté | Énergie (kWh) et pointe (kW) par `hour`, `day` (Europe/Paris), `week` ou `month` ; fenêtre par défaut de 2, 30, 90 ou 365 jours. Heures peu fiables et jour en cours écartés ; 404 si le site est inconnu |
+| `GET` | `/sites/{site_id}/quality?days=7` | connecté | Relevés par niveau de qualité, part de consommation manquante et pannes de capteur de la période (1 à 30 jours) |
 | `GET` | `/health` | public | État, environnement et version déployée (utilisé par le staging et la release) |
 | `GET` | `/health/mock` | public | Vérifie que l'API Mock répond (502/503 sinon) |
 

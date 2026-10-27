@@ -55,3 +55,53 @@ export interface Recommendation {
   target_time: string;
   alert_type: string;
 }
+
+export type AlertStatus = 'active' | 'resolved';
+
+/** Alerte d'un site ; received_at est le dernier tour de collecte où elle a été vue. */
+export interface Alert {
+  alert_id: string;
+  timestamp: string;
+  received_at: string;
+  site_id: string;
+  site_name: string;
+  severity: string;
+  alert_type: string;
+  alert_label: string;
+  message: string | null;
+  value: number | null;
+  threshold: number | null;
+  origin: 'api' | 'rule';
+  status: AlertStatus;
+}
+
+/** Site avec sa dernière consommation connue (non nulle) et la qualité du dernier relevé. */
+export interface Site {
+  site_id: string;
+  site_name: string;
+  site_type: string;
+  location: string | null;
+  capacity_kw: number;
+  status: string;
+  last_consumption_kw: number | null;
+  last_reading_age_minutes: number | null;
+  last_quality: string | null;
+}
+
+export type Period = 'hour' | 'day' | 'week' | 'month';
+
+/** Consommation d'une période : énergie (kWh) et pointe (kW). */
+export interface SiteConsumptionPoint {
+  timestamp: string;
+  energy_kwh: number;
+  max_kw: number | null;
+}
+
+export interface SiteQuality {
+  site_id: string;
+  days: number;
+  readings: number;
+  missing_ratio: number | null;
+  by_quality: Record<string, number>;
+  sensor_outages: number;
+}

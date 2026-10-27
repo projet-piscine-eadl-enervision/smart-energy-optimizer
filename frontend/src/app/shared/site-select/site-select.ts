@@ -1,5 +1,5 @@
-import { Component, input, output } from '@angular/core';
-import { SITE_IDS } from '../../core/sites';
+import { Component, inject, input, OnInit, output } from '@angular/core';
+import { SitesService } from '../../core/sites.service';
 
 /** Choix d'un site ; la valeur vide désigne le total des sites. */
 @Component({
@@ -13,15 +13,19 @@ import { SITE_IDS } from '../../core/sites';
         (change)="changed.emit($any($event.target).value)"
       >
         <option value="">Tous les sites</option>
-        @for (id of sites; track id) {
-          <option [value]="id">{{ id }}</option>
+        @for (site of sitesService.sites(); track site.site_id) {
+          <option [value]="site.site_id">{{ site.site_id }} · {{ site.site_name }}</option>
         }
       </select>
     </label>
   `,
 })
-export class SiteSelect {
+export class SiteSelect implements OnInit {
+  protected readonly sitesService = inject(SitesService);
   readonly value = input('');
   readonly changed = output<string>();
-  protected readonly sites = SITE_IDS;
+
+  ngOnInit(): void {
+    this.sitesService.loadSites();
+  }
 }
