@@ -217,6 +217,7 @@ requests==2.34.2
     #   mlflow-skinny
 scikit-learn==1.9.1
     # via
+    #   -r ml/requirements.in
     #   mlflow
     #   skops
 scipy==1.18.1

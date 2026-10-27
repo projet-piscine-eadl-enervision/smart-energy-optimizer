@@ -8,8 +8,10 @@ prédiction charge le champion sans savoir quel modèle se trouve derrière.
 import mlflow
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import HistGradientBoostingRegressor
 
 from enervision_ml.config import PEAK_RATIO
+from enervision_ml.features import CALENDAR_COLUMNS
 
 
 class SiteProfile:
@@ -54,7 +56,43 @@ class SeasonalNaive:
         return features["lag_168"].fillna(features["lag_24"]).to_numpy()
 
 
-MODELS = {model.name: model for model in (SiteProfile, SeasonalNaive)}
+class GradientBoosting:
+    """Challenger : gradient boosting d'arbres (HistGradientBoostingRegressor de scikit-learn).
+
+    Même famille qu'XGBoost et LightGBM, sans dépendance de plus (scikit-learn vient avec
+    MLflow). Il voit le site et le calendrier, pas les décalages : ils n'apportent que le
+    bruit de la veille (constat 3). La cible est la consommation rapportée à la moyenne du
+    site, pour que l'erreur pèse autant sur un bureau à 100 kW que sur une usine à 600 kW,
+    comme la nMAE. Il ne peut pas faire beaucoup mieux que SiteProfile, le reste étant du
+    bruit ; il peut le devancer de peu en partageant ce que les mois ont de commun, là où le
+    profil moyenne chaque case (site, mois, type de jour, heure) sur peu de mesures.
+    """
+
+    name = "gradient_boosting"
+
+    def fit(self, df: pd.DataFrame) -> "GradientBoosting":
+        known = df.dropna(subset=["consumption_kw"])
+        self.sites_ = sorted(known["site_id"].unique())
+        self.site_mean_ = known.groupby("site_id")["consumption_kw"].mean()
+        relative = known["consumption_kw"] / known["site_id"].map(self.site_mean_)
+        self.regressor_ = HistGradientBoostingRegressor(
+            categorical_features=[0],  # site_id, encodé par _inputs
+            random_state=0,  # l'arrêt précoce tire une validation au hasard : runs reproductibles
+        ).fit(self._inputs(known), relative)
+        return self
+
+    def _inputs(self, features: pd.DataFrame) -> np.ndarray:
+        # Un site inconnu à l'entraînement devient une valeur manquante
+        site = pd.Index(self.sites_).get_indexer(features["site_id"]).astype(float)
+        site[site < 0] = np.nan
+        return np.column_stack([site, features[CALENDAR_COLUMNS].to_numpy(dtype=float)])
+
+    def predict(self, features: pd.DataFrame) -> np.ndarray:
+        relative = self.regressor_.predict(self._inputs(features))
+        return relative * features["site_id"].map(self.site_mean_).to_numpy(dtype=float)
+
+
+MODELS = {model.name: model for model in (SiteProfile, SeasonalNaive, GradientBoosting)}
 
 
 def peak_thresholds(train: pd.DataFrame, ratio: float = PEAK_RATIO) -> dict[str, float]:
