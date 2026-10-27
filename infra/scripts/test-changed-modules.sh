@@ -38,16 +38,16 @@ monitoring=$monitoring"
   fi
 }
 
-expect "api seul" "api/a" '["api"]' false false false
-expect "etl et ml" "etl/a ml/a" '["etl","ml"]' false false false
-expect "frontend seul" "frontend/a" '[]' true false false
-expect "base de données seule : migrations et tests de l'API, de l'ETL et du ML" "db/a" '["api","etl","ml"]' false true false
-expect "documentation seule" "docs/a" '[]' false false false
-expect "terraform seul" "infra/terraform/a" '[]' false false true
+expect "api seul" "api/a" '["api"]' false false false false
+expect "etl et ml" "etl/a ml/a" '["etl","ml"]' false false false false
+expect "frontend seul" "frontend/a" '[]' true false false false
+expect "base de données seule : migrations et tests de l'API, de l'ETL et du ML" "db/a" '["api","etl","ml"]' false true false false
+expect "documentation seule" "docs/a" '[]' false false false false
+expect "terraform seul" "infra/terraform/a" '[]' false false true false
 expect "monitoring seul" "monitoring/a" '[]' false false false true
-expect "workflow : tout" ".github/workflows/a" '["api","etl","ml"]' true true true
-expect "scripts d'infra : tout" "infra/scripts/a" '["api","etl","ml"]' true true true
-expect "compose : tout" "docker-compose.yml" '["api","etl","ml"]' true true true
+expect "workflow : tout" ".github/workflows/a" '["api","etl","ml"]' true true true true
+expect "scripts d'infra : tout" "infra/scripts/a" '["api","etl","ml"]' true true true true
+expect "compose : tout" "docker-compose.yml" '["api","etl","ml"]' true true true true
 
 # Bases inutilisables : tout est testé
 for bad in "" 0000000000000000000000000000000000000000 deadbeefdeadbeefdeadbeefdeadbeefdeadbeef; do
