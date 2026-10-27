@@ -80,6 +80,11 @@ title = "Déploiement du staging"
 section = "Exploitation"
 
 [[page]]
+source = "docs/supervision-staging.md"
+title = "Supervision du staging"
+section = "Exploitation"
+
+[[page]]
 source = "docs/mise-en-production.md"
 title = "Mise en production"
 section = "Exploitation"
