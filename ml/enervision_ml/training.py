@@ -232,3 +232,7 @@ def promote_if_better(client: MlflowClient, version: str, validation, challenger
         f"v{version} reste challenger : nMAE {challenger_nmae:.3f} "
         f">= {champion_nmae:.3f} (champion v{champion.version})"
     )
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,10 @@
+[Unit]
+Description=Surveillance du modèle ML chaque jour (production EnerVision)
+
+[Timer]
+# Après la prévision de 06:05 et une nuit de mesures complètes
+OnCalendar=*-*-* 06:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

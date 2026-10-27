@@ -20,6 +20,8 @@ Ce dossier décrit **où et comment tourne EnerVision** en dehors des postes de 
 | Lancement | `docker-compose.staging.yml` | le **même** `docker-compose.staging.yml` |
 | Images | `ghcr.io/…/<module>:main` (dernier commit vert de `main`) | `ghcr.io/…/<module>:vX.Y.Z` (version recettée) |
 | Configuration | `/etc/enervision/staging.env` | `/etc/enervision/production.env` |
+| Services actifs (`COMPOSE_PROFILES`) | `apps,collector,mlflow` | `apps,collector,mlflow` |
+| Tâches planifiées (systemd, installées à la main) | prévision horaire, surveillance, entraînement | les mêmes, variantes `-production` |
 | Mise à jour | automatique après chaque merge sur `main`, annoncée à GitHub | release, puis **approbation** dans GitHub |
 | Accès | SSH sur le réseau de l'école | AWS Session Manager (pas de SSH) |
 | URL | http://10.43.43.50:4000 (réseau de l'école) | https://dvrgizboitg9p.cloudfront.net |

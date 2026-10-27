@@ -1,0 +1,60 @@
+<div class="mb-6 flex flex-wrap items-center gap-4">
+  <a routerLink="/sites" class="text-sm text-emerald-700 hover:underline">← Sites</a>
+  <h2 class="text-lg font-semibold text-slate-800">{{ siteId() }}</h2>
+  <div class="flex items-center gap-1 text-sm">
+    @for (p of periods; track p.value) {
+      <button
+        type="button"
+        (click)="selectPeriod(p.value)"
+        class="rounded px-3 py-1"
+        [class]="period() === p.value ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-200'"
+      >
+        {{ p.label }}
+      </button>
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <p class="text-slate-500">Chargement…</p>
+} @else if (error()) {
+  <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
+} @else {
+  <div class="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
+    <section class="rounded-xl bg-white p-6 shadow md:col-span-2">
+      <h3 class="mb-3 text-lg font-semibold text-slate-800">Consommation</h3>
+      @if (points().length === 0) {
+        <p class="text-sm text-slate-500">Aucune mesure sur cette période.</p>
+      } @else {
+        <div class="relative h-72 w-full">
+          <canvas #consumptionChart></canvas>
+        </div>
+      }
+    </section>
+
+    <section class="rounded-xl bg-white p-6 shadow">
+      <h3 class="mb-3 text-lg font-semibold text-slate-800">Qualité des relevés</h3>
+      @if (quality(); as q) {
+        @if (q.readings === 0) {
+          <p class="text-sm text-slate-500">Aucun relevé sur {{ q.days }} jours.</p>
+        } @else {
+          <p class="text-sm text-slate-600">
+            {{ q.readings | number: '1.0-0' }} relevés sur {{ q.days }} jours
+          </p>
+          <p class="text-sm text-slate-600">
+            Consommation manquante : {{ (q.missing_ratio ?? 0) * 100 | number: '1.0-1' }} %
+          </p>
+          <ul class="mt-3 space-y-1 text-sm">
+            @for (entry of qualityEntries(); track entry[0]) {
+              <li class="flex justify-between">
+                <span class="text-slate-600">{{ entry[0] }}</span>
+                <span class="font-medium">{{ entry[1] | number: '1.0-0' }}</span>
+              </li>
+            }
+          </ul>
+          <p class="mt-3 text-sm text-slate-600">Pannes de capteur : {{ q.sensor_outages }}</p>
+        }
+      }
+    </section>
+  </div>
+}

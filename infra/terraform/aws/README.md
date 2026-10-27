@@ -168,7 +168,7 @@ change que si `instance_id` change).
    - créer `/etc/enervision/production.env` (`umask 077`) : `APP_ENV=production`,
      `POSTGRES_PASSWORD` (neuf, lettres et chiffres uniquement), `SECRET_KEY` (32 caractères au
      moins), `MOCK_API_URL` (l'URL publique du mock), `MOCK_API_USERNAME`, `MOCK_API_PASSWORD`,
-     `COMPOSE_PROFILES=apps` et `NG_ALLOWED_HOSTS` (le nom CloudFront du site, sans `https://`) ;
+     `COMPOSE_PROFILES=apps,collector,mlflow` et `NG_ALLOWED_HOSTS` (le nom CloudFront du site, sans `https://`) ;
    - contrôler :
      `docker compose -f docker-compose.staging.yml --env-file /etc/enervision/production.env config >/dev/null`.
 3. **Dans GitHub**, *Settings → Environments → `production`* :
@@ -195,4 +195,4 @@ bucket du state dans la console S3 (*Empty*, puis *Delete* : il est versionné).
 - **Nom de domaine et chiffrement de bout en bout** : aujourd'hui CloudFront en `*.cloudfront.net`
   et HTTP jusqu'à l'instance. Voir *Exposition* plus haut.
 - **Dimensionnement** : `t3.large` à confirmer d'après la consommation réelle.
-- **Service ML et MLflow** : aucun n'est déployé en production.
+- **MLflow sans authentification** : déployé en production (profil `mlflow`), lié à `127.0.0.1` de l'instance, accessible par redirection de port Session Manager. Le module ML tourne par des minuteurs systemd installés à la main (voir `docs/mise-en-production.md`).

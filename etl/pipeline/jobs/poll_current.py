@@ -54,10 +54,11 @@ UPDATE_EPISODE = (
     " WHERE site_id = %(site_id)s AND sensor = %(sensor)s AND started_at = %(started_at)s"
 )
 INSERT_ALERT = """
-INSERT INTO core.alert (alert_id, time, site_id, severity, alert_type, message, value, threshold, origin)
+INSERT INTO core.alert (alert_id, time, site_id, severity, alert_type, message, value, threshold, origin,
+    last_seen_at)
 VALUES (%(alert_id)s, %(time)s, %(site_id)s, %(severity)s, %(alert_type)s, %(message)s, %(value)s,
-    %(threshold)s, %(origin)s)
-ON CONFLICT (alert_id) DO NOTHING
+    %(threshold)s, %(origin)s, now())
+ON CONFLICT (alert_id) DO UPDATE SET last_seen_at = now(), resolved_at = NULL
 """
 
 

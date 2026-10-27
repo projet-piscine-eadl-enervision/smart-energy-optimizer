@@ -14,7 +14,7 @@ Aucun.
 
 - **Les rôles de la base ne sont pas utilisés** (#145). `api`, `etl`, le collecteur et `ml` se connectent avec `${POSTGRES_USER}`, le super-utilisateur (`docker-compose.staging.yml:47,65,83,137`). Les rôles `enervision_api`, `enervision_etl` et `enervision_ml` existent sans droit de connexion ; les droits de `enervision_ml` sont testés par `SET ROLE`. Créer les comptes de connexion et les donner aux services. Le rafraîchissement de `analytics.energy_hourly` demande un rôle propriétaire de cet agrégat.
 - **Purge de `raw` non écrite.** Le schéma l'autorise (clé étrangère `ON DELETE SET NULL`, droit `DELETE` de l'ETL sur `raw`), mais aucune tâche ne purge : `raw` grossit d'environ 13 000 réponses par jour avec le collecteur.
-- **État des alertes non calculé.** `last_seen_at` et `resolved_at` existent, rien ne les remplit : toutes les alertes paraissent actives.
+- **État des alertes** (corrigé le 27/10). L'ETL enregistre la dernière réception (`last_seen_at`) et l'API déduit l'état de la fraîcheur : les identifiants du mock changent à chaque appel, une alerte n'est donc jamais « résolue » par disparition. `resolved_at` reste inutilisé.
 - **Pas de monitoring ni d'alerte** (#150). Seules les sondes de santé existent : aucune alerte si le minuteur du staging ou le collecteur s'arrête. La release refuse seulement un commit que le staging n'a pas annoncé.
 - **Pas de scan DAST ni de test de charge** (#149).
 - **`/health` publie le titre du commit et le sha**, y compris en production (le workflow de déploiement s'en sert). À assumer ou à réduire.
@@ -29,7 +29,6 @@ Aucun.
 - **Énumération de comptes à l'inscription** : `/auth/register` répond 409 sur un e-mail connu, lié à la décision sur l'inscription ouverte.
 - **`/health/mock` est public** et déclenche un appel sortant vers le mock à chaque requête.
 - **Pas de linter pour le frontend** (#148) : `npm run lint --if-present` réussit faute de script `lint`.
-- **Tests de bout en bout non branchés en CI.** Les quatre fichiers de tests Cypress (`frontend/cypress`) se lancent en local avec `docker compose --profile e2e run --rm e2e` ; aucun job de CI ne les exécute.
 - **Couverture** : pas de seuil global dans la CI, et `pytest || [ $? -eq 5 ]` (`ci.yml:136`) tolère encore « aucun test collecté » alors que chaque module a des tests. La porte de SonarQube Cloud (80 % sur le code neuf) tient : 90,1 % le 26/10.
 - **Pas de `terraform plan` en lecture seule en CI** : le job `terraform` ne lance que `fmt -check` et `validate`.
 - **Compose de développement : MLflow (5000, sans authentification), l'ETL (8001) et l'API publiés sur toutes les interfaces** ; seul PostgreSQL est lié à `127.0.0.1`. Lier au moins MLflow à `127.0.0.1`, comme dans le compose du staging.
@@ -41,7 +40,7 @@ Aucun.
 - **Revue et protection de `main`** (règle `main`, vérifiée par l'API le 26/10) : une approbation obligatoire, résolution des fils, `ci-ok` requis et branche à jour, fusion par *squash* uniquement, ni suppression ni force push. Aucun administrateur ne contourne la règle ; seule l'App `enervision-release` le peut, par PR. Les 21 dernières PR fusionnées dans `main` ont au moins une approbation.
 - **Réglages GitHub** ([détail](reglages-github.md)) : signalement privé de vulnérabilités, alertes Dependabot, mises à jour de sécurité, secret scanning et protection au push activés (0 alerte de secret) ; approbation des workflows de tous les contributeurs externes ; Actions en lecture seule par défaut, sans création ni approbation de PR ; environnement `production` avec approbation, `staging` limité à `main`.
 - **Dépendances** : `pip-audit` ne trouve rien sur `api`, `etl` et `ml` ; `npm audit` : 0 alerte sur les dépendances de production du frontend. Aucun fichier `.env`, `tfvars`, `backend.hcl`, clé ni `tfstate` suivi ou ajouté dans l'historique, aucun motif de clé dans les fichiers suivis.
-- **Tests sur `main`** (journal de la CI de `fe0793b`) : API 63 tests (couverture 99 %), ETL 125 (99 %), ML 40 (99 %), frontend 32 cas Vitest (comptage des `it`, job `frontend` vert). Les tests d'intégration de l'ETL et du ML tournent sur une base TimescaleDB migrée (#192) : seuls 5 tests de l'ETL restent ignorés, faute du fichier DVC. Les requêtes SQL du ML sont testées avec le rôle `enervision_ml`.
+- **Tests sur `main`** : chaque module a ses tests, avec couverture, et le job `frontend` est vert. Les tests d'intégration de l'ETL et du ML tournent sur une base TimescaleDB migrée (#192) : seuls 5 tests de l'ETL restent ignorés, faute du fichier DVC. Les requêtes SQL du ML sont testées avec le rôle `enervision_ml`.
 - **CI** : jobs limités aux modules touchés, images réutilisées quand le dossier du module est inchangé, analyse SonarQube Cloud avec couverture, contrôle `terraform fmt` et `validate`, scan Trivy des dépendances et de la configuration. `publish` ne tourne que sur un push de `main` (plus de déclencheur `workflow_run`) ; sa condition porte `always()` pour que les contrôles propres aux PR, ignorés sur un push, ne le bloquent pas.
 - **Release vérifiée** : la VM annonce à GitHub le commit qu'elle fait tourner, la release refuse un commit non annoncé ou sans `feat` ni `fix` depuis le dernier tag, puis enchaîne promotion (SBOM joints) et production dans un seul run.
 - **Dependabot** : `pip`, `npm`, `docker` et Actions, une PR groupée par type le lundi ; `typescript` et `@types/node` ignorés (Angular fixe la plage de TypeScript), job `commit-messages` exclu pour le robot.
@@ -58,8 +57,8 @@ Aucun.
 ## Assumé ou écarté
 
 - **Port 8000 du staging publié** : la recette lit le sha sur `:8000/health`, la VM n'est joignable que depuis le réseau de l'école.
-- **MLflow du staging sans authentification** : lié à `127.0.0.1` de la VM, accès par tunnel SSH.
-- **Collecteur absent de la production** : il interroge le mock public chaque minute ; à activer dans le `COMPOSE_PROFILES` de `production.env` sur décision d'équipe.
+- **MLflow sans authentification** (staging et, depuis le 27/10, production) : lié à `127.0.0.1` de la machine, accès par tunnel SSH (staging) ou redirection de port Session Manager (production).
+- **Collecteur de la production** : activé le 27/10 (`COMPOSE_PROFILES=apps,collector,mlflow`) ; il interroge le mock public chaque minute.
 - **`docker-compose.staging.yml` gardé tel quel** : `deploy-production.yml` le nomme en dur, un retour vers un ancien tag échouerait après un renommage.
 - **Production : auto-approbation** : les relecteurs de l'environnement `production` (six personnes) peuvent approuver leur propre déploiement (`prevent_self_review` désactivé). Choix d'équipe.
 - **Bucket S3 sans versionnement et avec `force_destroy`** : le projet dure deux semaines, tout est coupé ensuite. En SSE-S3 et non KMS : coût et gestion de clé injustifiés.

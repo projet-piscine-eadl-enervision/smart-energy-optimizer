@@ -1,59 +1,74 @@
-<div class="min-h-screen bg-slate-100">
-  <header class="flex items-center justify-between bg-white px-6 py-4 shadow">
-    <h1 class="text-xl font-semibold text-emerald-700">Smart Energy Optimizer</h1>
-    <div class="flex items-center gap-4 text-sm text-slate-600">
-      @if (user(); as u) {
-        <span>{{ u.email }} <span class="rounded bg-slate-200 px-2 py-0.5">{{ u.role }}</span></span>
-      }
-      <button (click)="auth.logout()" class="text-red-600 hover:underline">Déconnexion</button>
-    </div>
-  </header>
-
-  <main class="mx-auto max-w-7xl p-6">
-    @if (loading()) {
-      <p class="text-slate-500">Chargement…</p>
-    } @else if (error()) {
-      <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
-    } @else {
-      <!-- Grille principale à 2 colonnes sur écran moyen/large -->
-      <div class="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
-
-        <!-- COLONNE GAUCHE : Flexbox pour empiler les 2 graphiques -->
-        <div class="flex flex-col gap-6">
-          <section class="rounded-xl bg-white p-6 shadow">
-            <h2 class="mb-3 text-lg font-semibold text-slate-800">Prédictions de la consommation</h2>
-            <div class="relative h-64 w-full">
-              <canvas #predictionsLineChart></canvas>
-            </div>
-          </section>
-
-          <section class="rounded-xl bg-white p-6 shadow">
-            <h2 class="mb-3 text-lg font-semibold text-slate-800">Historique (24 h)</h2>
-            <div class="relative h-64 w-full">
-              <canvas #historyChart></canvas>
-            </div>
-          </section>
-        </div>
-
-        <!-- COLONNE DROITE : Recommandations -->
-        <section class="rounded-xl bg-white p-6 shadow">
-          <h2 class="mb-3 text-lg font-semibold text-slate-800">Recommandations</h2>
-          <ul class="space-y-3">
-            @for (r of recommendations(); track r.id) {
-              <li class="rounded border border-slate-200 p-3">
-                <p class="font-medium text-slate-800">{{ r.title }}</p>
-                <p class="text-sm text-slate-600">{{ r.message }}</p>
-                @if (r.estimated_saving_kw !== null) {
-                  <p class="mt-1 text-xs text-emerald-700">
-                    Économie estimée : {{ r.estimated_saving_kw | number: '1.1-1' }} kW
-                  </p>
-                }
-              </li>
-            }
-          </ul>
-        </section>
-
-      </div>
+<div class="mb-6 flex flex-wrap items-center gap-4">
+  <app-site-select [value]="siteId()" (changed)="selectSite($event)" />
+  <div class="flex items-center gap-1 text-sm">
+    @for (p of periods; track p.days) {
+      <button
+        type="button"
+        (click)="selectPeriod(p.days)"
+        class="rounded px-3 py-1"
+        [class]="days() === p.days ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-200'"
+      >
+        {{ p.label }}
+      </button>
     }
-  </main>
+  </div>
 </div>
+
+@if (loading()) {
+  <p class="text-slate-500">Chargement…</p>
+} @else if (error()) {
+  <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
+} @else {
+  <div class="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
+    <div class="flex flex-col gap-6">
+      <section class="rounded-xl bg-white p-6 shadow">
+        <h2 class="mb-3 text-lg font-semibold text-slate-800">Prédictions de la consommation</h2>
+        @if (predictions().length === 0) {
+          <p class="text-sm text-slate-500">Aucune prévision disponible pour les prochaines heures.</p>
+        } @else {
+          <div class="relative h-64 w-full">
+            <canvas #predictionsChart></canvas>
+          </div>
+          <p class="mt-2 text-xs text-slate-500">
+            <span class="inline-block h-2 w-2 rounded-full bg-red-600"></span> pic prévu pour le site
+          </p>
+        }
+      </section>
+
+      <section class="rounded-xl bg-white p-6 shadow">
+        <h2 class="mb-3 text-lg font-semibold text-slate-800">Historique ({{ periodLabel() }})</h2>
+        @if (history().length === 0) {
+          <p class="text-sm text-slate-500">Aucune mesure sur cette période.</p>
+        } @else {
+          <div class="relative h-64 w-full">
+            <canvas #historyChart></canvas>
+          </div>
+        }
+      </section>
+    </div>
+
+    <section class="rounded-xl bg-white p-6 shadow">
+      <h2 class="mb-3 text-lg font-semibold text-slate-800">Recommandations</h2>
+      @if (recommendations().length === 0) {
+        <p class="text-sm text-slate-500">Aucune recommandation pour le moment.</p>
+      } @else {
+        <ul class="space-y-3">
+          @for (r of recommendations(); track r.id) {
+            <li class="rounded border border-slate-200 p-3">
+              <p class="font-medium text-slate-800">{{ r.title }}</p>
+              <p class="text-sm text-slate-600">{{ r.message }}</p>
+              <p class="mt-1 text-xs text-slate-500">
+                {{ r.site_id }} · {{ r.target_time | date: 'dd/MM HH:mm' }}
+              </p>
+              @if (r.estimated_saving_kw !== null) {
+                <p class="mt-1 text-xs text-emerald-700">
+                  Économie estimée : {{ r.estimated_saving_kw | number: '1.1-1' }} kW
+                </p>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  </div>
+}
