@@ -1,0 +1,53 @@
+<div class="mb-6 flex flex-wrap items-center gap-4">
+  <app-site-select [value]="siteId()" (changed)="selectSite($event)" />
+  <div class="flex items-center gap-1 text-sm">
+    @for (h of horizons; track h) {
+      <button
+        type="button"
+        (click)="selectHorizon(h)"
+        class="rounded px-3 py-1"
+        [class]="hours() === h ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-200'"
+      >
+        {{ h }} h
+      </button>
+    }
+  </div>
+</div>
+
+<section class="rounded-xl bg-white p-6 shadow">
+  <h2 class="mb-3 text-lg font-semibold text-slate-800">Pics prévus</h2>
+  @if (loading()) {
+    <p class="text-slate-500">Chargement…</p>
+  } @else if (error()) {
+    <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
+  } @else if (peaks().length === 0) {
+    <p class="text-sm text-slate-500">Aucun pic prévu sur cette période.</p>
+  } @else {
+    <table class="w-full text-left text-sm">
+      <thead class="text-slate-500">
+        <tr>
+          <th class="py-2">Heure</th>
+          <th>Site</th>
+          <th class="text-right">Prévu (kW)</th>
+          <th class="text-right">Seuil (kW)</th>
+          <th class="text-right">Dépassement (kW)</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of peaks(); track p.timestamp + p.site_id) {
+          <tr class="border-t border-slate-200">
+            <td class="py-2">{{ p.timestamp | date: 'dd/MM HH:mm' }}</td>
+            <td>{{ p.site_id }}</td>
+            <td class="text-right">{{ p.predicted_kw | number: '1.1-1' }}</td>
+            <td class="text-right">
+              {{ p.threshold_kw === null ? '–' : (p.threshold_kw | number: '1.1-1') }}
+            </td>
+            <td class="text-right font-medium text-red-600">
+              {{ p.excess_kw === null ? '–' : (p.excess_kw | number: '1.1-1') }}
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</section>
