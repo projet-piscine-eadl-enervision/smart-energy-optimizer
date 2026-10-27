@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir --only-binary=:all: -r requirements.txt \
     && pip uninstall -y pip
 
 # Copie explicite du seul code exécuté (règle Sonar S6470) : ni .env, ni tests, ni données
-COPY --chown=root:root --chmod=755 main.py ./
+COPY --chown=root:root --chmod=755 main.py metrics.py ./
 COPY --chown=root:root --chmod=755 pipeline/ ./pipeline/
 COPY --chown=root:root --chmod=755 mock_client/ ./mock_client/
 
