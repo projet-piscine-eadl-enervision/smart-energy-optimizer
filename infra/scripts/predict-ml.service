@@ -1,0 +1,9 @@
+[Unit]
+Description=Prévision horaire du module ML (staging EnerVision)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/enervision
+ExecStart=/usr/bin/docker compose -f docker-compose.staging.yml --env-file /etc/enervision/staging.env run --rm ml python -m enervision_ml.predict

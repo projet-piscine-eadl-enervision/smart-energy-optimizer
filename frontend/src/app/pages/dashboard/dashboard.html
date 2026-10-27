@@ -43,9 +43,11 @@
               <li class="rounded border border-slate-200 p-3">
                 <p class="font-medium text-slate-800">{{ r.title }}</p>
                 <p class="text-sm text-slate-600">{{ r.message }}</p>
-                <p class="mt-1 text-xs text-emerald-700">
-                  Économie estimée : {{ r.estimated_saving_kw | number: '1.1-1' }} kW
-                </p>
+                @if (r.estimated_saving_kw !== null) {
+                  <p class="mt-1 text-xs text-emerald-700">
+                    Économie estimée : {{ r.estimated_saving_kw | number: '1.1-1' }} kW
+                  </p>
+                }
               </li>
             }
           </ul>

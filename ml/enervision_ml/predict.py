@@ -8,6 +8,7 @@ from datetime import timedelta
 
 import mlflow
 import pandas as pd
+import psycopg
 from mlflow import MlflowClient
 
 from enervision_ml import registry
@@ -17,7 +18,12 @@ from enervision_ml.config import (
     MODEL_NAME,
     load_settings,
 )
-from enervision_ml.data import latest_hour, load_hourly, save_predictions
+from enervision_ml.data import (
+    latest_hour,
+    load_hourly,
+    refresh_recommendations,
+    save_predictions,
+)
 from enervision_ml.features import (
     FEATURE_COLUMNS,
     add_features,
@@ -85,6 +91,12 @@ def run(now: pd.Timestamp | None = None) -> int:
     version = str(champion.version)
     count = save_predictions(settings.database_url, predictions, version)
     print(f"{count} prédictions écrites ({MODEL_NAME} v{version})")
+    try:
+        created = refresh_recommendations(settings.database_url)
+    except psycopg.Error as exc:
+        # Les prévisions sont déjà enregistrées ; l'échec reste visible (code de sortie non nul)
+        raise SystemExit(f"Prédictions écrites, mais recommandations non recalculées : {exc}") from exc
+    print(f"{created} recommandation(s) créée(s)")
     return count
 
 

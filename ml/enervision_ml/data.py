@@ -93,6 +93,18 @@ def latest_hour(database_url: str) -> datetime | None:
         return conn.execute("SELECT max(hour) FROM analytics.energy_hourly").fetchone()[0]
 
 
+REFRESH_RECOMMENDATIONS = "SELECT app.refresh_recommendations()"
+
+
+def refresh_recommendations(database_url: str) -> int:
+    """Recalcule les recommandations (pics prévus et alertes récentes) ; renvoie le nombre de lignes créées.
+
+    Fonction SQL exécutée avec les droits de la base : le rôle ML n'écrit pas dans le schéma app.
+    """
+    with psycopg.connect(database_url) as conn:
+        return conn.execute(REFRESH_RECOMMENDATIONS).fetchone()[0]
+
+
 def save_predictions(database_url: str, predictions: pd.DataFrame, model_version: str) -> int:
     """Écrit les prédictions ; relancer sur les mêmes heures met à jour au lieu de dupliquer."""
     rows = [

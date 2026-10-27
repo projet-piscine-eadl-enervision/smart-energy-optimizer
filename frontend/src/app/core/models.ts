@@ -33,5 +33,5 @@ export interface Recommendation {
   id: number;
   title: string;
   message: string;
-  estimated_saving_kw: number;
+  estimated_saving_kw: number | null;
 }
