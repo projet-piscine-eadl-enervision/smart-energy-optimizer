@@ -200,3 +200,18 @@ def save_drift_metrics(database_url: str, rows: list[dict]) -> int:
     with psycopg.connect(database_url) as conn, conn.cursor() as cur:
         cur.executemany(UPSERT_DRIFT_METRIC, rows)
     return len(rows)
+
+
+LABELED_HISTORY_QUERY = """
+SELECT site_id, time, consumption_kw::float AS consumption_kw, anomaly_type
+FROM ml.history_labeled
+WHERE consumption_kw IS NOT NULL
+ORDER BY site_id, time
+"""
+
+
+def load_labeled_history(database_url: str) -> pd.DataFrame:
+    """Historique 2023-2024 nettoyé avec ses anomalies étiquetées (chargé par l'ETL, vide avant)."""
+    with psycopg.connect(database_url) as conn:
+        rows = conn.execute(LABELED_HISTORY_QUERY).fetchall()
+    return pd.DataFrame(rows, columns=["site_id", "time", "consumption_kw", "anomaly_type"])

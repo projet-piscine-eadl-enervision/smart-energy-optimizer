@@ -205,6 +205,10 @@ Impact et automatisation en exploitation : `ml.operation_kpi` (sur 7 jours, par 
 
 Journal : `journalctl -u predict-ml.service` (et `monitor-ml`, `train-ml`). Chaque ligne porte la version du modèle, et le run MLflow pour l'entraînement ; l'adresse de la base n'y figure jamais.
 
+## Historique étiqueté
+
+Le jeu fourni (2023-2024) contient des anomalies étiquetées (pic, chute, coupure, plateau) : une vérité terrain pour juger la détection de pics. `python -m enervision_ml.anomaly_eval` lit `ml.history_labeled` et compare deux détecteurs aux étiquettes : l'écart au profil du site (3 écarts types et 15 %) et la règle de pic du service (`PEAK_RATIO` fois la moyenne du site). Rappel par type d'anomalie, précision et fausses alertes vont dans MLflow (expérience `enervision-monitoring`). La table est chargée par le traitement `load-history` de l'ETL ; tant qu'elle est vide, la commande le dit.
+
 ## Tests
 
 Depuis `ml/`, comme la CI :
