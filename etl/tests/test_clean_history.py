@@ -1,4 +1,5 @@
 """Nettoyage de l'historique : règles (cleaning) et traitement complet (jobs.clean_history)."""
+import base64
 import json
 
 import numpy as np
@@ -109,6 +110,27 @@ def test_cli_fails_without_metadata_file(tmp_path):
     make_readings([1.0]).to_csv(input_file, index=False)
     with pytest.raises(FileNotFoundError):
         job.main(["--input", str(input_file), "--metadata", str(tmp_path / "absent.json"), "--output", str(tmp_path / "o.parquet")])
+
+
+@pytest.mark.parametrize(
+    "problem, expected",
+    [
+        ("mismatch", "difference with the metadata: mismatch"),
+        ("site_1: 3 rows\n2 announced", "problem: " + str(base64.b64encode(b"site_1: 3 rows\n2 announced"))),
+    ],
+)
+def test_cli_logs_metadata_problems(allowed_dirs, monkeypatch, caplog, problem, expected):
+    """Alphanumeric problems are logged as is, the others base64-encoded (no log injection)."""
+    input_file, meta = allowed_dirs / "in.csv", allowed_dirs / "meta.json"
+    make_readings([1.0, 2.0]).to_csv(input_file, index=False)
+    meta.write_text(json.dumps(make_metadata([])))
+    monkeypatch.setattr(job, "check_against_metadata", lambda df, metadata: [problem])
+
+    with caplog.at_level("WARNING"):
+        job.main(["--input", str(input_file), "--metadata", str(meta), "--output", str(allowed_dirs / "o.parquet")])
+
+    assert [r.getMessage() for r in caplog.records if r.levelname == "WARNING"] == [expected]
+    assert "metadata check: totals" not in caplog.text
 
 
 @pytest.mark.parametrize(
