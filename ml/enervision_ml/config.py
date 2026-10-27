@@ -60,6 +60,10 @@ MISSING_SHARE_MAX = 0.20
 # Erreur récente (nMAE par jour, face à la mesure) rapportée à l'erreur de validation du champion
 CONCEPT_NMAE_RATIO_MAX = 1.5
 CONCEPT_MIN_DAYS = 3
+# Évaluation de la détection d'anomalies contre l'historique étiqueté (anomaly_eval.py) : écart au profil du
+# site supérieur à 3 écarts types et à 15 % (constat 9 de docs/analyse-api-mock.md)
+ANOMALY_Z = 3
+ANOMALY_MIN_DEVIATION = 0.15
 # Âge de la dernière prévision : elle tourne toutes les heures, plus de deux heures signale une panne
 PREDICTION_AGE_MAX_HOURS = 2.0
 
