@@ -12,6 +12,7 @@ JOBS = {
     "load-ref": "pipeline.jobs.load_ref",
     "poll-current": "pipeline.jobs.poll_current",
     "backfill": "pipeline.jobs.backfill",
+    "load-history": "pipeline.jobs.load_history",
 }
 
 
