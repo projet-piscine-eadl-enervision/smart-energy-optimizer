@@ -10,6 +10,7 @@ Ce que la CI contrôle sur chaque PR, où lire les résultats et que faire quand
 | `changes` | liste des modules touchés (voir plus bas) | oui |
 | `python (api\|etl\|ml)` | `ruff` et `pytest` du module ; pour `api`, `etl` et `ml`, sur une base TimescaleDB migrée | oui |
 | `frontend` | tests et build Angular | oui |
+| `e2e` | scénarios Cypress contre la vraie pile (base migrée, API, front), si `frontend/` ou `api/` change | oui |
 | `migrations` | migrations SQL appliquées deux fois sur une base vide | oui |
 | `terraform` | `terraform fmt -check` et `terraform validate` sur `infra/terraform/`, sans identifiants ni state | oui |
 | `security` | Trivy sur le code : dépendances, secrets, Terraform, Dockerfiles | oui |

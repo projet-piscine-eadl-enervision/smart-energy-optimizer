@@ -29,7 +29,6 @@ Aucun.
 - **Énumération de comptes à l'inscription** : `/auth/register` répond 409 sur un e-mail connu, lié à la décision sur l'inscription ouverte.
 - **`/health/mock` est public** et déclenche un appel sortant vers le mock à chaque requête.
 - **Pas de linter pour le frontend** (#148) : `npm run lint --if-present` réussit faute de script `lint`.
-- **Tests de bout en bout non branchés en CI.** Les fichiers de tests Cypress (`frontend/cypress`) se lancent en local avec `docker compose --profile e2e run --rm e2e` ; aucun job de CI ne les exécute.
 - **Couverture** : pas de seuil global dans la CI, et `pytest || [ $? -eq 5 ]` (`ci.yml:136`) tolère encore « aucun test collecté » alors que chaque module a des tests. La porte de SonarQube Cloud (80 % sur le code neuf) tient : 90,1 % le 26/10.
 - **Pas de `terraform plan` en lecture seule en CI** : le job `terraform` ne lance que `fmt -check` et `validate`.
 - **Compose de développement : MLflow (5000, sans authentification), l'ETL (8001) et l'API publiés sur toutes les interfaces** ; seul PostgreSQL est lié à `127.0.0.1`. Lier au moins MLflow à `127.0.0.1`, comme dans le compose du staging.

@@ -64,8 +64,8 @@ seul fichier : `docker compose --profile e2e run --rm e2e --browser chrome --spe
 
 Scénarios Cypress dans `cypress/e2e/` : connexion, inscription, accès protégé par le garde,
 tableau de bord, navigation, sites, alertes et pics prévus. Ils tournent contre la vraie pile (frontend, API, base), dans le conteneur
-`e2e` (image `cypress/included`), donc sans Node ni Cypress installés dans WSL. Depuis la racine
-du dépôt :
+`e2e` (image `cypress/included`), donc sans Node ni Cypress installés dans WSL, et dans le job `e2e`
+de la CI. Depuis la racine du dépôt :
 
 ```bash
 docker compose up -d
