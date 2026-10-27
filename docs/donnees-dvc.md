@@ -42,7 +42,7 @@ Quand les données changent, faire `dvc push` et `dvc push -r prod` **avant** le
 ## Fichiers suivis
 
 - `etl/pipeline/provided_files/all_sites_combined.csv` et `dataset_metadata.json` : fournis par l'école, pointeurs `.dvc` à côté.
-- `etl/pipeline/edited_files/energy_consumption_cleaned.parquet` : produit par `dvc repro` (`etl/dvc.yaml`, `etl/dvc.lock`).
+- `etl/pipeline/edited_files/energy_consumption_cleaned.parquet` : produit par `dvc repro` (`etl/dvc.yaml`, `etl/dvc.lock`), chargé dans `ml.history_labeled` par `python -m pipeline load-history`.
 
 ## Erreurs courantes
 

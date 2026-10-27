@@ -3,11 +3,20 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
+import pandas as pd
+
 from mock_client.schemas.alert import Alert
 from mock_client.schemas.reading import Reading
 from mock_client.schemas.site import Site
 
 Source = Literal["current", "readings"]
+
+# Colonnes du parquet nettoyé qui alimentent ml.history_labeled
+HISTORY_COLUMNS = (
+    "timestamp", "site_id", "consumption_kwh_clean", "consumption_kwh_source",
+    "temperature_celsius_clean", "humidity_percent_clean", "solar_irradiance_wm2_clean",
+    "anomaly_type", "anomaly_severity",
+)
 
 
 def to_decimal(value: float | None) -> Decimal | None:
@@ -71,3 +80,29 @@ def energy_reading_row(
         "source": source,
         "raw_id": raw_id,
     }
+
+
+def history_rows(frame: pd.DataFrame) -> list[dict]:
+    """Lignes de ml.history_labeled depuis le parquet nettoyé de l'historique.
+
+    NaN, NaT et pd.NA deviennent None (NULL) : une colonne NUMERIC accepterait un NaN tel quel, et
+    chaque moyenne qui le croiserait deviendrait NaN. La consommation nettoyée (consumption_kwh_clean)
+    est en kWh sur une heure, c'est-à-dire le kW moyen de l'heure : elle va dans consumption_kw.
+    """
+    def value(item):
+        return None if pd.isna(item) else item
+
+    return [
+        {
+            "site_id": record.site_id,
+            "time": record.timestamp.to_pydatetime(),
+            "consumption_kw": to_decimal(value(record.consumption_kwh_clean)),
+            "consumption_source": record.consumption_kwh_source,
+            "temperature_celsius": to_decimal(value(record.temperature_celsius_clean)),
+            "humidity_percent": to_decimal(value(record.humidity_percent_clean)),
+            "solar_irradiance_wm2": to_decimal(value(record.solar_irradiance_wm2_clean)),
+            "anomaly_type": value(record.anomaly_type),
+            "anomaly_severity": value(record.anomaly_severity),
+        }
+        for record in frame[list(HISTORY_COLUMNS)].itertuples(index=False)
+    ]
