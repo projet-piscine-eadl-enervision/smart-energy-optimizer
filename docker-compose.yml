@@ -43,8 +43,10 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dev}@db:5432/${POSTGRES_DB:-enervision}
-      # Seul proxy dont l'API croit X-Forwarded-For : le frontend (adresse fixée dans son service)
-      TRUSTED_PROXY_IPS: 172.29.42.200
+      # Proxys dont l'API croit X-Forwarded-For : les conteneurs du réseau du compose (plage fixée en bas du
+      # fichier), dont le frontend. La passerelle (172.29.42.1), par laquelle arrive un appel de l'hôte sur le
+      # port publié, en est exclue, comme tout client extérieur.
+      TRUSTED_PROXY_IPS: 172.29.42.128/25
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "${API_PORT:-8000}:8000"
@@ -125,9 +127,6 @@ services:
       - /app/node_modules
     depends_on:
       - api
-    networks:
-      default:
-        ipv4_address: 172.29.42.200
 
   # Tests de bout en bout (Cypress). Lancé seulement à la demande, une fois la pile démarrée :
   #   docker compose up -d
@@ -200,12 +199,14 @@ volumes:
   pgdata:
   mlflow-data:
 
-# Réseau fixé pour que l'API reconnaisse le proxy du frontend : le frontend a une adresse fixe, hors de la
-# plage attribuée aux autres conteneurs (ip_range), et lui seul peut transmettre l'IP du client par
-# X-Forwarded-For (TRUSTED_PROXY_IPS de l'API). Sur une base existante : docker compose down, puis up.
+# Réseau fixé pour que l'API reconnaisse le proxy du frontend : les conteneurs reçoivent une adresse de la
+# plage 172.29.42.128/25 (TRUSTED_PROXY_IPS de l'API), la passerelle reste hors de cette plage. Pas d'adresse
+# fixe par service : `docker compose run` doit pouvoir créer un conteneur de plus.
+# Sur une stack existante, le réseau est recréé au prochain up : docker compose down, puis up.
 networks:
   default:
     ipam:
       config:
         - subnet: 172.29.42.0/24
-          ip_range: 172.29.42.0/25
+          gateway: 172.29.42.1
+          ip_range: 172.29.42.128/25
