@@ -1,6 +1,15 @@
+<div class="mb-6">
+  <h2 class="text-xl font-semibold text-slate-800">Pics de consommation prévus</h2>
+  <p class="mt-1 text-sm text-slate-600">
+    Un pic est une heure où la consommation prévue d'un site dépasse son seuil habituel. Le seuil est
+    propre à chaque site et fixé par le modèle.
+  </p>
+</div>
+
 <div class="mb-6 flex flex-wrap items-center gap-4">
   <app-site-select [value]="siteId()" (changed)="selectSite($event)" />
   <div class="flex items-center gap-1 text-sm">
+    <span class="mr-1 text-slate-600">Prochaines</span>
     @for (h of horizons; track h) {
       <button
         type="button"
@@ -14,40 +23,100 @@
   </div>
 </div>
 
-<section class="rounded-xl bg-white p-6 shadow">
-  <h2 class="mb-3 text-lg font-semibold text-slate-800">Pics prévus</h2>
-  @if (loading()) {
-    <p class="text-slate-500">Chargement…</p>
-  } @else if (error()) {
-    <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
-  } @else if (peaks().length === 0) {
-    <p class="text-sm text-slate-500">Aucun pic prévu sur cette période.</p>
-  } @else {
-    <table class="w-full text-left text-sm">
-      <thead class="text-slate-500">
-        <tr>
-          <th class="py-2">Heure</th>
-          <th>Site</th>
-          <th class="text-right">Prévu (kW)</th>
-          <th class="text-right">Seuil (kW)</th>
-          <th class="text-right">Dépassement (kW)</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (p of peaks(); track p.timestamp + p.site_id) {
-          <tr class="border-t border-slate-200">
-            <td class="py-2">{{ p.timestamp | date: 'dd/MM HH:mm' }}</td>
-            <td>{{ p.site_id }}</td>
-            <td class="text-right">{{ p.predicted_kw | number: '1.1-1' }}</td>
-            <td class="text-right">
-              {{ p.threshold_kw === null ? '–' : (p.threshold_kw | number: '1.1-1') }}
-            </td>
-            <td class="text-right font-medium text-red-600">
-              {{ p.excess_kw === null ? '–' : (p.excess_kw | number: '1.1-1') }}
-            </td>
-          </tr>
+@if (loading()) {
+  <p class="text-slate-500">Chargement…</p>
+} @else if (error()) {
+  <p class="rounded bg-red-50 p-3 text-red-700">{{ error() }}</p>
+} @else if (peaks().length === 0) {
+  <section class="rounded-xl bg-white p-6 shadow">
+    <p class="font-medium text-slate-800">Aucun pic prévu sur les {{ hours() }} prochaines heures.</p>
+    <p class="mt-1 text-sm text-slate-500">La consommation prévue reste sous le seuil de chaque site.</p>
+  </section>
+} @else {
+  <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="rounded-xl bg-white p-4 shadow">
+      <p class="text-3xl font-semibold text-slate-800">{{ peaks().length }}</p>
+      <p class="text-sm text-slate-500">{{ peaks().length > 1 ? 'heures de pic prévues' : 'heure de pic prévue' }}</p>
+    </div>
+    <div class="rounded-xl bg-white p-4 shadow">
+      <p class="text-3xl font-semibold text-slate-800">{{ siteCount() }}</p>
+      <p class="text-sm text-slate-500">{{ siteCount() > 1 ? 'sites concernés' : 'site concerné' }}</p>
+    </div>
+    <div class="rounded-xl bg-white p-4 shadow">
+      @if (strongest(); as s) {
+        <p class="text-3xl font-semibold text-red-600">+{{ s.percent | number: '1.0-0' }} %</p>
+        <p class="text-sm text-slate-500">
+          dépassement le plus fort : {{ s.peak.site_id }}, {{ s.peak.timestamp | date: 'dd/MM HH:mm' }}
+        </p>
+      } @else {
+        <p class="text-3xl font-semibold text-slate-400">–</p>
+        <p class="text-sm text-slate-500">dépassement inconnu (seuil non défini)</p>
+      }
+    </div>
+  </div>
+
+  <section class="mb-6 rounded-xl bg-white p-6 shadow">
+    <h3 class="mb-1 text-lg font-semibold text-slate-800">Vue d'ensemble</h3>
+    <p class="mb-3 text-sm text-slate-500">
+      Une ligne par site, une case par heure à partir de maintenant. Une case colorée est un pic.
+    </p>
+    <div class="space-y-1">
+      @for (strip of strips(); track strip.siteId) {
+        <div class="flex items-center gap-3">
+          <span class="w-40 shrink-0 truncate text-sm text-slate-700" [title]="strip.siteName ?? strip.siteId">
+            {{ strip.siteId }}@if (strip.siteName) { · {{ strip.siteName }} }
+          </span>
+          <div class="flex flex-1 gap-px">
+            @for (cell of strip.cells; track $index) {
+              <span
+                class="h-5 flex-1 rounded-sm"
+                [class]="cell ? cell.bar : 'bg-slate-100'"
+                [title]="cell ? cellTitle(cell) : ''"
+              ></span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+    <div class="mt-1 flex gap-3">
+      <span class="w-40 shrink-0"></span>
+      <div class="relative h-4 flex-1 text-xs text-slate-500">
+        @for (t of ticks(); track t.left) {
+          <span class="absolute" [style.left.%]="t.left">{{ t.label }}</span>
         }
-      </tbody>
-    </table>
+      </div>
+    </div>
+  </section>
+
+  @for (day of days(); track day.label) {
+    <section class="mb-6 rounded-xl bg-white p-6 shadow">
+      <h3 class="mb-3 text-lg font-semibold text-slate-800">{{ day.label }}</h3>
+      <ul class="divide-y divide-slate-200">
+        @for (r of day.rows; track r.peak.timestamp + r.peak.site_id) {
+          <li class="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-sm">
+            <span class="w-14 font-medium text-slate-800">{{ r.peak.timestamp | date: 'HH:mm' }}</span>
+            <a [routerLink]="['/sites', r.peak.site_id]" class="w-56 text-emerald-700 hover:underline">
+              {{ r.peak.site_id }}@if (r.siteName) { · {{ r.siteName }} }
+            </a>
+            <span class="text-slate-700">
+              prévu <strong>{{ r.peak.predicted_kw | number: '1.1-1' }} kW</strong>
+              @if (r.peak.threshold_kw !== null) {
+                pour un seuil de {{ r.peak.threshold_kw | number: '1.1-1' }} kW
+              } @else {
+                (seuil non défini)
+              }
+            </span>
+            @if (r.percent !== null) {
+              <span class="rounded px-2 py-0.5 font-medium" [class]="r.badge">
+                +{{ r.percent | number: '1.0-0' }} % ({{ r.peak.excess_kw | number: '1.1-1' }} kW)
+              </span>
+              <span class="h-2 w-24 rounded bg-slate-100">
+                <span class="block h-2 rounded" [class]="r.bar" [style.width.%]="r.width"></span>
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    </section>
   }
-</section>
+}

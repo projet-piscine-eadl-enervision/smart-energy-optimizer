@@ -41,7 +41,7 @@ WHERE site_id = :site_id
   AND hour >= date_trunc('hour', now()) - make_interval(days => :days)
   AND hour <  date_trunc('hour', now())
   AND avg_consumption_kw IS NOT NULL
-  AND nb_missing <= 0.5 * nb_readings
+  AND (nb_missing <= 0.5 * nb_readings OR nb_readings - nb_missing >= 10)
 ORDER BY hour
 """
 )
