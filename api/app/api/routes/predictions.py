@@ -8,7 +8,7 @@ il n'a pas de sens pour un total, où il reste vide.
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, site_scope
 from app.schemas.energy import PeakHour, Prediction
 
 router = APIRouter(prefix="/predictions", tags=["Predictions"])
@@ -86,7 +86,7 @@ async def get_peak_predictions(
     hours: int = Query(default=24, ge=1, le=72, description="Horizon, en heures"),
     site_id: str | None = Query(default=None, description="Un site ; sans valeur, le total des sites"),
 ):
-    return await fetch_predictions(db, hours, site_id)
+    return await fetch_predictions(db, hours, site_scope(current_user, site_id))
 
 
 @router.get("/peaks", response_model=list[PeakHour], summary="Predicted consumption peaks")
@@ -97,7 +97,7 @@ async def get_predicted_peaks(
     site_id: str | None = Query(default=None, description="Un site ; sans valeur, tous les sites"),
 ):
     """Heures prévues au-dessus du seuil de pic de leur site, avec ce seuil et le dépassement."""
-    result = await db.execute(PEAKS_SQL, {"hours": hours, "site_id": site_id})
+    result = await db.execute(PEAKS_SQL, {"hours": hours, "site_id": site_scope(current_user, site_id)})
     peaks = []
     for row in result:
         predicted = float(row.predicted_kw)

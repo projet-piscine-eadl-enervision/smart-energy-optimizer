@@ -60,6 +60,10 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # Source GitHub du dashboard « CI et livraisons » : plugin téléchargé au démarrage (version
+      # épinglée), jeton en lecture seule facultatif (vide : le dashboard de la CI reste en erreur)
+      GF_PLUGINS_PREINSTALL_SYNC: grafana-github-datasource@2.9.4
+      GRAFANA_GITHUB_TOKEN: ${GRAFANA_GITHUB_TOKEN:-}
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
@@ -69,15 +73,19 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
 
-  # Métriques de l'hôte (EC2 ou VM) : CPU, mémoire, disque, réseau.
+  # Métriques de l'hôte (EC2 ou VM) : CPU, mémoire, disque, réseau, et état des minuteurs systemd
+  # du projet (mise à jour du staging, tâches ML), lu par le bus D-Bus de l'hôte.
   node-exporter:
     image: prom/node-exporter:v1.12.1
     restart: unless-stopped
     command:
       - --path.rootfs=/host
+      - --collector.systemd
+      - --collector.systemd.unit-include=(update-staging|(predict|monitor|train)-ml(-production)?)\.(service|timer)
     pid: host
     volumes:
       - /:/host:ro
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket:ro
 
   # Métriques de chaque conteneur : CPU, mémoire, réseau, redémarrages.
   cadvisor:

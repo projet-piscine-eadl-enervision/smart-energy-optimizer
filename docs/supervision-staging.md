@@ -19,6 +19,7 @@ Dans `/etc/enervision/staging.env`, en root :
 COMPOSE_PROFILES=apps,collector,monitoring     # garder les profils déjà présents, ajouter monitoring
 GRAFANA_ADMIN_PASSWORD=...                     # openssl rand -base64 24 | tr -d '/+='
 TEAMS_WEBHOOK_URL=https://...                  # alertes dans Teams, voir monitoring/README.md
+GRAFANA_GITHUB_TOKEN=github_pat_...            # dashboard de la CI (facultatif), voir monitoring/README.md
 ```
 
 Le minuteur `update-staging.timer` lance la supervision à son passage suivant (2 minutes au plus).
@@ -47,7 +48,10 @@ docker compose -f docker-compose.staging.yml -f docker-compose.monitoring.yml \
 Prérequis : être sur le réseau de l'école (ou son VPN) et avoir sa clé SSH autorisée sur la VM
 (la même qu'utilisée pour l'administrer).
 
-Depuis le poste (terminal WSL ou PowerShell, **pas** depuis la VM) :
+Depuis **son poste** (terminal WSL ou PowerShell), **jamais depuis la VM** : un tunnel lancé sur la VM
+relie la VM à elle-même, et le navigateur du poste ne le voit pas. Repère : avant de lancer la
+commande, l'invite doit être celle du poste (`lea@...`, `PS C:\...`), pas `root@ml-stagiaire-01`.
+Si c'est le cas, `exit` pour quitter la VM d'abord.
 
 ```bash
 ssh -N -L 3001:127.0.0.1:3000 -L 9091:127.0.0.1:9090 root@10.43.43.50
@@ -98,6 +102,7 @@ puis `ssh -N enervision-staging-monitoring`.
 |----------|----------------------------|
 | `ssh: connect to host 10.43.43.50 port 22: Connection timed out` | Pas sur le réseau de l'école ou son VPN. |
 | `Permission denied (publickey)` | Clé SSH non autorisée sur la VM : la faire ajouter par l'administrateur. |
+| Les pages `localhost` sont inaccessibles alors que le tunnel tourne sans erreur | Tunnel lancé depuis la VM (invite `root@ml-stagiaire-01`) : `Ctrl+C`, `exit`, puis relancer depuis le poste. |
 | `bind [127.0.0.1]:3001: Address already in use` | Un autre tunnel est déjà ouvert sur le poste : le réutiliser, ou changer le port local (`-L 3002:127.0.0.1:3000`). |
 | La page ne charge pas, le tunnel est ouvert | La supervision n'est pas active sur la VM : `docker ps` sur la VM doit montrer `grafana` ; sinon voir « Une seule fois ». |
 | Grafana refuse le mot de passe de `staging.env` | Grafana avait démarré avant que la ligne soit ajoutée ou changée : réaligner le mot de passe (voir « Une seule fois »). |

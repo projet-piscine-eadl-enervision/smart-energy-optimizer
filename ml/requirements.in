@@ -2,3 +2,4 @@ mlflow==3.17.2
 pandas
 psycopg[binary]
 python-dotenv
+scikit-learn

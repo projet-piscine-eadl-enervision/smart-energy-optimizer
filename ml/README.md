@@ -22,6 +22,7 @@ Depuis la racine du projet, base et MLflow démarrés (`docker compose up -d`) :
 # Entraîner : challenger, promu champion s'il bat l'actuel
 docker compose run --rm ml                                            # profil (par défaut)
 docker compose run --rm ml python train.py --model seasonal_naive     # modèle de comparaison
+docker compose run --rm ml python train.py --model gradient_boosting  # challenger par boosting d'arbres
 
 # Prévoir les 24 prochaines heures avec le champion
 docker compose run --rm ml python -m enervision_ml.predict
@@ -110,7 +111,7 @@ Un seuil en quantile ou en part de la capacité ne convient pas : il marquerait 
 **Modèles** (`models.py`).
 1. `site_profile` : moyenne de l'entraînement par site, mois, type de jour et heure. C'est la meilleure prévision possible sur ces données, et la référence que tout modèle doit battre.
 2. `seasonal_naive` : même heure la semaine dernière. Il recopie le bruit de la semaine passée et fait environ 1,4 fois moins bien que le profil (vérifié par `test_profile_beats_naive_on_mock_like_data`) : la preuve que les mesures récentes n'apportent rien.
-3. Un modèle plus complexe (LightGBM) peut être proposé comme challenger ; il n'est pas attendu qu'il batte le profil, puisque le reste est du bruit.
+3. `gradient_boosting` : gradient boosting d'arbres (`HistGradientBoostingRegressor` de scikit-learn, même famille qu'XGBoost et LightGBM, sans dépendance de plus). Il voit le site et le calendrier, pas les décalages, et apprend la consommation rapportée à la moyenne du site pour que chaque site pèse autant, comme dans la nMAE. Sur des données construites comme le mock, il rejoint le profil à 10 % près (`test_gradient_boosting_matches_profile_on_mock_like_data`), et le devance parfois de peu (nMAE 0,040 contre 0,041 sur 500 jours factices) : il partage ce que les mois ont de commun, là où le profil moyenne chaque case sur peu de mesures. Il ne peut pas faire beaucoup mieux, le reste étant du bruit. Il se propose comme challenger : `python train.py --model gradient_boosting`.
 
 **Évaluation** (`evaluate.py`). Découpage dans l'ordre du temps, jamais aléatoire : entraînement, puis validation (60 derniers jours avant le test), puis test (60 derniers jours). L'entraînement doit couvrir **au moins un an**, sinon le facteur du mois n'est pas appris (constat 5) : l'entraînement s'arrête avec un message clair. Le profil est calculé sur l'entraînement seulement : `analytics.site_baseline`, calculée par l'ETL sur toutes les données, ne doit pas servir de modèle (fuite de la validation et du test).
 

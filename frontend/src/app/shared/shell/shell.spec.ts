@@ -29,7 +29,10 @@ describe('Shell', () => {
     }).compileComponents();
     const fixture = TestBed.createComponent(Shell);
     fixture.detectChanges();
+    // Le compte d'abord, puis les alertes, qui ne partent qu'une fois le compte connu
     const requests = answer(routes);
+    await fixture.whenStable();
+    requests.push(...answer(routes));
     await fixture.whenStable();
     fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
@@ -88,6 +91,27 @@ describe('Shell', () => {
 
     expect(element.querySelector('nav')).not.toBeNull();
     expect(element.querySelector('header')!.textContent).not.toContain('a@b.fr');
+  });
+
+  it("affiche le site d'un user rattaché à un site", async () => {
+    const { element, requests } = await render({
+      ...ROUTES,
+      '/api/auth/me': { ...USER, role: 'user', site_id: 'SITE001' },
+    });
+
+    expect(element.querySelector('header')!.textContent).toContain('SITE001');
+    expect(requests).toContain('/api/alerts?status=active&limit=200');
+  });
+
+  it("explique à un user sans site qu'il doit en demander un, sans interroger les données", async () => {
+    const { element, requests } = await render({
+      ...ROUTES,
+      '/api/auth/me': { ...USER, role: 'user', site_id: null },
+    });
+
+    expect(element.querySelector('main')!.textContent).toContain('Aucun site');
+    expect(element.querySelector('router-outlet')).toBeNull();
+    expect(requests).toEqual(['/api/auth/me']);
   });
 
   it('Déconnexion efface le jeton et renvoie vers /login', async () => {

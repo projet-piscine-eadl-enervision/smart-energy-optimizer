@@ -1,0 +1,6 @@
+# Exceptions du scan DAST (OWASP ZAP), lues par zap-api-scan.py (-c) et par infra/scripts/check-zap-report.py.
+# Une ligne par règle, colonnes séparées par des tabulations :
+#   <id de la règle>	<IGNORE|INFO|WARN|FAIL>	(<nom de la règle>)	<raison>
+# IGNORE retire la règle du blocage sur les alertes hautes : la raison est obligatoire.
+# Les règles absentes restent à WARN (visibles dans le rapport, sans bloquer).
+# Liste des règles et de leurs id : https://www.zaproxy.org/docs/alerts/

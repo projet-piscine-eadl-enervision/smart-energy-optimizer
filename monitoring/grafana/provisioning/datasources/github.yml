@@ -1,0 +1,18 @@
+# Source de données GitHub (plugin grafana-github-datasource, installé au démarrage par
+# docker-compose.monitoring.yml) : runs de la CI, PR, releases et déploiements du dépôt, pour le
+# dashboard « CI et livraisons ». Jeton en lecture seule dans GRAFANA_GITHUB_TOKEN, jamais dans le dépôt ;
+# vide, la source existe mais ses requêtes échouent.
+apiVersion: 1
+
+datasources:
+  - name: GitHub
+    # Identifiant fixe : le dashboard monitoring/grafana/dashboards/ci.json y fait référence
+    uid: github
+    type: grafana-github-datasource
+    editable: false
+    jsonData:
+      githubPlan: github-basic
+      selectedAuthType: personal-access-token
+      cachingEnabled: true
+    secureJsonData:
+      accessToken: $GRAFANA_GITHUB_TOKEN

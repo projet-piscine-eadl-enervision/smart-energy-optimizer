@@ -1,7 +1,7 @@
 // Commandes partagées par tous les scénarios.
 // Les comptes sont créés par l'API réelle : chaque test utilise un email unique, ce qui évite
 // de vider la base entre deux lancements.
-import { DEFAULT_PASSWORD, TOKEN_KEY, uniqueEmail } from './helpers';
+import { ADMIN, DEFAULT_PASSWORD, TOKEN_KEY, uniqueEmail } from './helpers';
 
 /** Crée un compte directement par l'API (plus rapide que par le formulaire). */
 Cypress.Commands.add('createUser', (email, password = DEFAULT_PASSWORD) => {
@@ -29,11 +29,29 @@ Cypress.Commands.add('visitAsLoggedIn', (path, token) => {
   });
 });
 
-/** Crée un compte neuf et ouvre une page en étant connecté avec ce compte. */
-Cypress.Commands.add('loginAsNewUser', (path = '/') => {
+/** Simule le profil renvoyé par /api/auth/me (rôle et site), avec le vrai email du compte. */
+Cypress.Commands.add('stubAccount', (email, account) => {
+  return cy.intercept('GET', '/api/auth/me', {
+    id: 1,
+    email,
+    is_active: true,
+    created_at: '2026-10-28T00:00:00Z',
+    ...account,
+  });
+});
+
+/**
+ * Crée un compte neuf et ouvre une page en étant connecté avec ce compte.
+ * `account` simule son profil (admin par défaut) ; `null` garde le vrai profil de l'API : un `user`
+ * sans site.
+ */
+Cypress.Commands.add('loginAsNewUser', (path = '/', account = ADMIN) => {
   const email = uniqueEmail();
   return cy.createUser(email).then(() =>
-    cy.getToken(email).then((token) => cy.visitAsLoggedIn(path, token).then(() => email))
+    cy.getToken(email).then((token) => {
+      if (account) cy.stubAccount(email, account);
+      return cy.visitAsLoggedIn(path, token).then(() => email);
+    })
   );
 });
 

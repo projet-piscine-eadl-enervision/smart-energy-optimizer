@@ -92,6 +92,7 @@ jobs:
             bash "infra/scripts/$t.sh"
           done
           python3 infra/scripts/test-prefix-coverage.py
+          python3 infra/scripts/test-check-zap-report.py
       - name: Modules touchés
         id: modules
         env:
@@ -231,6 +232,52 @@ jobs:
         with:
           name: cypress-screenshots
           path: frontend/cypress/screenshots
+          if-no-files-found: ignore
+      - name: Journaux de la pile
+        if: failure()
+        run: docker compose logs --tail 80
+      - name: Arrêter la pile
+        if: always()
+        run: docker compose down -v
+
+  # Scan DAST de l'API (OWASP ZAP), passif, contre une pile éphémère (base migrée, API) : le staging est
+  # sur un réseau interne, injoignable depuis un exécuteur GitHub, et on ne scanne jamais la production.
+  # Bloque sur les alertes hautes, sauf exception motivée dans infra/zap/rules.tsv.
+  dast:
+    needs: changes
+    if: contains(needs.changes.outputs.python, '"api"')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configurer la pile
+        run: |
+          {
+            echo "MOCK_API_URL=http://mock.invalid"
+            echo "SECRET_KEY=$(openssl rand -hex 32)"
+          } > .env
+      - name: Démarrer l'API
+        run: docker compose up -d --build api
+      - name: Attendre l'API
+        run: |
+          for _ in $(seq 1 60); do
+            curl -fsS http://localhost:8000/health >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          docker compose logs --tail 80
+          exit 1
+      - name: Scan ZAP (passif)
+        # ZAP tourne en utilisateur zap (uid 1000) : le dossier doit être inscriptible pour les rapports
+        run: |
+          chmod a+w infra/zap
+          docker compose --profile dast run --rm zap
+      - name: Alertes hautes
+        run: python3 infra/scripts/check-zap-report.py infra/zap/zap-report.json infra/zap/rules.tsv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-report
+          path: infra/zap/zap-report.*
           if-no-files-found: ignore
       - name: Journaux de la pile
         if: failure()
@@ -405,7 +452,7 @@ jobs:
   # seul ce job est à exiger, quels que soient les composants présents.
   ci-ok:
     if: always()
-    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, e2e, security, terraform, migrations, sonar, monitoring]
+    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, e2e, dast, security, terraform, migrations, sonar, monitoring]
     runs-on: ubuntu-24.04
     steps:
       - name: Vérifier les résultats

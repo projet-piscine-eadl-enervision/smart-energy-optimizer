@@ -49,6 +49,10 @@ services:
       MOCK_API_URL: ${MOCK_API_URL:?MOCK_API_URL manquant dans staging.env ou production.env}
       MOCK_API_USERNAME: ${MOCK_API_USERNAME:?MOCK_API_USERNAME manquant dans staging.env ou production.env}
       MOCK_API_PASSWORD: ${MOCK_API_PASSWORD:?MOCK_API_PASSWORD manquant dans staging.env ou production.env}
+      # Proxys dont l'API croit X-Forwarded-For : les conteneurs du réseau du compose (plage fixée en bas du
+      # fichier), dont le frontend. La passerelle (172.29.42.1), par laquelle arrive un appel de l'hôte sur le
+      # port publié, en est exclue, comme tout client extérieur.
+      TRUSTED_PROXY_IPS: 172.29.42.128/25
     depends_on:
       db:
         condition: service_healthy
@@ -163,3 +167,15 @@ services:
 volumes:
   db_data:
   mlflow_data:
+
+# Réseau fixé pour que l'API reconnaisse le proxy du frontend : les conteneurs reçoivent une adresse de la
+# plage 172.29.42.128/25 (TRUSTED_PROXY_IPS de l'API), la passerelle reste hors de cette plage. Pas d'adresse
+# fixe par service : `docker compose run` doit pouvoir créer un conteneur de plus.
+# Sur une stack existante, le réseau est recréé au prochain up : docker compose down, puis up.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.42.0/24
+          gateway: 172.29.42.1
+          ip_range: 172.29.42.128/25

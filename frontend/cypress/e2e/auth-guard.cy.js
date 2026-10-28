@@ -15,10 +15,11 @@ describe('Accès protégé par le garde', () => {
   });
 
   it('renvoie un utilisateur connecté de /login vers le tableau de bord', () => {
-    cy.loginAsNewUser('/login');
+    // Profil réel : un compte neuf sans site arrive sur l'accueil, qui lui affiche le message
+    cy.loginAsNewUser('/login', null);
 
     cy.location('pathname').should('eq', '/');
-    cy.contains('h2', 'Prédictions de la consommation');
+    cy.contains('main', 'Aucun site');
   });
 
   it('déconnecte quand le jeton est refusé par l\'API', () => {

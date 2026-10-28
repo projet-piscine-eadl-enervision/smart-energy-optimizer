@@ -11,7 +11,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import text
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, site_scope
 from app.schemas.sites import Period, Site, SiteConsumptionPoint, SiteQuality
 
 router = APIRouter(prefix="/sites", tags=["Sites"])
@@ -27,6 +27,7 @@ SELECT s.site_id, s.site_name, s.site_type, s.location, s.capacity_kw, s.status,
        l.last_quality
 FROM ref.site s
 LEFT JOIN analytics.latest_reading l ON l.site_id = s.site_id
+WHERE CAST(:site_id AS text) IS NULL OR s.site_id = :site_id
 ORDER BY s.site_id
 """
 )
@@ -88,7 +89,8 @@ async def require_site(db: DbSession, site_id: str) -> None:
 
 @router.get("", response_model=list[Site], summary="Sites")
 async def get_sites(current_user: CurrentUser, db: DbSession):
-    result = await db.execute(SITES_SQL)
+    # Un admin voit tous les sites, un user seulement le sien
+    result = await db.execute(SITES_SQL, {"site_id": site_scope(current_user, None)})
     return [
         Site(
             site_id=row.site_id,
@@ -117,6 +119,7 @@ async def get_site_consumption(
     period: Annotated[Period, Query()] = "day",
     days: int | None = Query(default=None, ge=1, le=730, description="Fenêtre ; selon la période par défaut"),
 ):
+    site_scope(current_user, site_id)
     await require_site(db, site_id)
     days = days or DEFAULT_DAYS[period]
     if period == "hour":
@@ -137,6 +140,7 @@ async def get_site_quality(
     db: DbSession,
     days: int = Query(default=7, ge=1, le=30),
 ):
+    site_scope(current_user, site_id)
     await require_site(db, site_id)
     row = (await db.execute(QUALITY_SQL, {"site_id": site_id, "days": days})).first()
     return SiteQuality(

@@ -64,8 +64,9 @@ describe('Connexion', () => {
   });
 
   it('déconnecte et revient à la page de connexion', () => {
-    cy.loginAsNewUser('/');
-    cy.contains('h2', 'Prédictions de la consommation');
+    // Profil réel : un compte neuf sans site voit le message, puis se déconnecte
+    cy.loginAsNewUser('/', null);
+    cy.contains('main', 'Aucun site');
 
     cy.contains('button', 'Déconnexion').click();
 

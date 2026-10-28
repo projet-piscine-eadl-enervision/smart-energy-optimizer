@@ -69,6 +69,7 @@ describe('AuthService', () => {
       email: 'a@b.fr',
       is_active: true,
       role: 'user',
+      site_id: null,
       created_at: '2026-10-23T00:00:00Z',
     };
     let received: User | undefined;

@@ -54,3 +54,92 @@ tests:
             exp_annotations:
               summary: "api ne répond plus à Prometheus"
               description: "La cible api:8000 (job api) n'est plus collectée depuis 2 minutes."
+
+  # Tâche planifiée en échec plus d'une minute
+  - interval: 1m
+    input_series:
+      - series: node_systemd_unit_state{job="node", instance="node-exporter:9100", name="predict-ml.service", state="failed", type="oneshot"}
+        values: "0 0 1 1 1"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: TachePlanifieeEnEchec
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: TachePlanifieeEnEchec
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: node
+              instance: node-exporter:9100
+              name: predict-ml.service
+              state: failed
+              type: oneshot
+            exp_annotations:
+              summary: "predict-ml.service en échec"
+              description: "Le dernier lancement de predict-ml.service a échoué : journalctl -u predict-ml.service -n 50 sur la machine. Pour monitor-ml, le code 2 signale une dérive du modèle (vue ml.model_health)."
+
+  # Minuteur désactivé plus de 5 minutes
+  - interval: 1m
+    input_series:
+      - series: node_systemd_unit_state{job="node", instance="node-exporter:9100", name="train-ml-production.timer", state="active", type=""}
+        values: "1 1 0 0 0 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: MinuteurArrete
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: MinuteurArrete
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: node
+              instance: node-exporter:9100
+              name: train-ml-production.timer
+              state: active
+            exp_annotations:
+              summary: "train-ml-production.timer arrêté"
+              description: "Le minuteur train-ml-production.timer n'est plus actif : systemctl enable --now train-ml-production.timer sur la machine."
+
+  # Mise à jour du staging déclenchée à t=60 s puis plus rien : en retard au-delà de 10 minutes.
+  # Un minuteur jamais déclenché (0) ne sonne pas, même au-delà de son seuil.
+  - interval: 1m
+    input_series:
+      - series: node_systemd_timer_last_trigger_seconds{job="node", instance="node-exporter:9100", name="update-staging.timer"}
+        values: "60x20"
+      - series: node_systemd_timer_last_trigger_seconds{job="node", instance="node-exporter:9100", name="predict-ml.timer"}
+        values: "0x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MinuteurEnRetard
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: MinuteurEnRetard
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: node
+              instance: node-exporter:9100
+              name: update-staging.timer
+            exp_annotations:
+              summary: "update-staging.timer ne s'est pas déclenché à l'heure"
+              description: "Dernier déclenchement il y a 11m 0s : systemctl list-timers sur la machine."
+
+  # Pic d'échecs de connexion : 5 par minute, soit 50 en 10 minutes ; le trafic normal ne sonne pas
+  - interval: 1m
+    input_series:
+      - series: auth_login_attempts_total{job="api", instance="api:8000", outcome="invalid_credentials"}
+        values: "0+5x20"
+      - series: auth_login_attempts_total{job="api", instance="api:8000", outcome="success"}
+        values: "0+50x20"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ConnexionsEnEchec
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: ConnexionsEnEchec
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Pic d'échecs de connexion sur l'API"
+              description: "50 connexions refusées en 10 minutes (mot de passe faux ou tentative bloquée). Voir les logs « login failed » et « login blocked » de l'API."

@@ -9,7 +9,7 @@ courbe.
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, site_scope
 from app.schemas.energy import ConsumptionPoint
 
 router = APIRouter(prefix="/history", tags=["History"])
@@ -58,4 +58,4 @@ async def get_history(
     days: int = Query(default=7, ge=1, le=90),
     site_id: str | None = Query(default=None, description="Un site ; sans valeur, le total des sites"),
 ):
-    return await fetch_history(db, days, site_id)
+    return await fetch_history(db, days, site_scope(current_user, site_id))

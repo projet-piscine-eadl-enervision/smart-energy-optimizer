@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.login_throttle import LoginThrottle, SqlFailureStore
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import Role, User
@@ -17,6 +18,14 @@ from app.models.user import Role, User
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+def get_login_throttle(db: DbSession) -> LoginThrottle:
+    """Compteurs d'échecs de /auth/login, en base (partagés entre instances de l'API)."""
+    return LoginThrottle(SqlFailureStore(db))
+
+
+LoginThrottleDep = Annotated[LoginThrottle, Depends(get_login_throttle)]
 
 
 async def get_current_user(
@@ -60,3 +69,19 @@ def require_role(*roles: Role):
 
 # Raccourci : AdminUser dans la signature d'une route la réserve aux admins
 AdminUser = Annotated[User, Depends(require_role(Role.ADMIN))]
+
+
+def site_scope(user: User, site_id: str | None) -> str | None:
+    """Site que l'utilisateur a le droit de lire, à passer aux requêtes à la place de site_id.
+
+    - admin : le site demandé, ou None pour tous les sites ;
+    - user : toujours son propre site, même sans site_id (le « total » devient son site) ;
+      un autre site → 403, aucun site attribué → 403.
+    """
+    if user.role == Role.ADMIN:
+        return site_id
+    if user.site_id is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Aucun site attribué à ce compte")
+    if site_id is not None and site_id != user.site_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Accès refusé à ce site")
+    return user.site_id

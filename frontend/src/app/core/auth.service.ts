@@ -22,6 +22,15 @@ export class AuthService {
   private readonly tokenSignal = signal<string | null>(this.readToken());
   readonly isLoggedIn = computed(() => this.tokenSignal() !== null);
 
+  /** Compte connecté, chargé par loadUser() ; vide tant qu'il n'est pas connu. */
+  readonly user = signal<User | null>(null);
+  readonly isAdmin = computed(() => this.user()?.role === 'admin');
+  /** Un `user` sans site attribué : l'API lui refuse toutes les données (403). */
+  readonly hasNoSite = computed(() => {
+    const u = this.user();
+    return u !== null && u.role !== 'admin' && !u.site_id;
+  });
+
   token(): string | null {
     return this.tokenSignal();
   }
@@ -43,7 +52,13 @@ export class AuthService {
     return this.http.get<User>(`${API_URL}/auth/me`);
   }
 
+  /** Charge le compte connecté et le garde dans `user`. */
+  loadUser(): Observable<User> {
+    return this.me().pipe(tap((u) => this.user.set(u)));
+  }
+
   logout(): void {
+    this.user.set(null);
     this.saveToken(null);
     this.router.navigate(['/login']);
   }

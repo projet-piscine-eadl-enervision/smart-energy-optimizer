@@ -12,7 +12,7 @@ monitoring/
   prometheus/alerts.test.yml     tests des règles (promtool test rules)
   blackbox/blackbox.yml          façons de sonder les URL (http_2xx, http_frontend)
   alertmanager/alertmanager.yml  envoi des alertes dans Teams (regroupement, rappels)
-  grafana/provisioning/          source de données Prometheus et chargement des dashboards
+  grafana/provisioning/          sources de données (Prometheus, GitHub) et chargement des dashboards
   grafana/dashboards/*.json      dashboards, rangés dans le dossier « EnerVision » de Grafana
 ```
 
@@ -20,7 +20,7 @@ monitoring/
 
 | Job Prometheus      | Source                                   | Ce qu'on y voit                                               |
 |---------------------|------------------------------------------|---------------------------------------------------------------|
-| `node`              | node-exporter                            | CPU, mémoire, disque, réseau de l'hôte (EC2 ou VM)            |
+| `node`              | node-exporter                            | CPU, mémoire, disque, réseau de l'hôte (EC2 ou VM), et état des minuteurs systemd du projet |
 | `cadvisor`          | cAdvisor                                 | CPU, mémoire, réseau, disque de chaque conteneur              |
 | `postgres`          | postgres-exporter                        | connexions, transactions, cache, verrous de PostgreSQL        |
 | `api`               | `/metrics` de l'API                      | requêtes par route et par code, latence, requêtes en cours    |
@@ -90,12 +90,32 @@ de groupe de sécurité n'est nécessaire.
 ## Alertes
 
 `prometheus/alerts.yml` : disponibilité (cible injoignable, sonde HTTP en échec, base injoignable),
-hôte (disque à 80 et 90 %, mémoire, CPU) et application (erreurs 5xx et latence de l'API, absence de
-nouvelle mesure, dernière exécution de l'ETL en échec). Gravité `critical` : service indisponible ;
+hôte (disque à 80 et 90 %, mémoire, CPU), tâches planifiées (voir ci-dessous) et application (erreurs
+5xx et latence de l'API, absence de nouvelle mesure, dernière exécution de l'ETL en échec). Gravité `critical` : service indisponible ;
 `warning` : à regarder avant que ça le devienne.
 
 Les alertes se consultent dans Prometheus (*Alerts*) et dans Grafana (*Alerting > Alert rules*), et
 Alertmanager les envoie dans un canal Teams (voir « Notifications Teams »).
+
+### Tâches planifiées
+
+Les minuteurs systemd du projet (`update-staging` sur la VM, `predict-ml`, `monitor-ml`, `train-ml` et
+leurs variantes `-production`) sont lus par le collecteur systemd de node-exporter, par le bus D-Bus de
+l'hôte (`/var/run/dbus/system_bus_socket`, monté en lecture seule). Seules ces unités sont collectées
+(`--collector.systemd.unit-include` dans `docker-compose.monitoring.yml`) : un nouveau minuteur s'y
+ajoute.
+
+- `TachePlanifieeEnEchec` : le dernier lancement d'un service a échoué. Un service oneshot reste en
+  échec jusqu'au lancement réussi suivant, l'alerte aussi (rappel toutes les 4 h) ; après correction,
+  `systemctl reset-failed <service>` l'efface sans attendre. `monitor-ml` en échec signale aussi une
+  dérive du modèle (code de sortie 2).
+- `MinuteurArrete` : un minuteur n'est plus actif (désactivé ou arrêté).
+- `MinuteurEnRetard` : pas de déclenchement depuis un peu plus que sa période (mise à jour du staging
+  10 min, prévision 2 h, surveillance 26 h, entraînement 8 jours). Un minuteur jamais déclenché, juste
+  après son installation, est ignoré.
+
+Un minuteur absent de la machine ne produit aucune série et ne déclenche aucune alerte : en production,
+les minuteurs doivent être installés (`docs/mise-en-production.md`). Dashboard : *Tâches planifiées*.
 
 `EtlSansNouvelleMesure` ne sonne que si la base contient des mesures : sans collecteur (production
 par défaut), la table est vide et l'alerte reste muette.
@@ -145,6 +165,35 @@ Le message arrive après `group_wait` (30 s). Une modification de `alertmanager/
 demande `docker compose ... restart alertmanager`. Vérification locale :
 `docker run --rm -v "$PWD/monitoring/alertmanager:/c:ro" -w /c --entrypoint amtool prom/alertmanager:v0.34.1 check-config alertmanager.yml`.
 
+## Dashboard de la CI
+
+*CI et livraisons* (`grafana/dashboards/ci.json`) ne lit pas Prometheus mais l'API GitHub, par le
+plugin officiel `grafana-github-datasource` (téléchargé au démarrage de Grafana, version épinglée dans
+`docker-compose.monitoring.yml`) et la source `GitHub` (`grafana/provisioning/datasources/github.yml`) :
+
+- dernier run de `ci.yml` sur `main`, nombre de runs, réussites, échecs et durées (cycle de facturation
+  GitHub en cours) ;
+- les 20 derniers runs de la CI, toutes branches, avec un lien vers chacun ;
+- les déploiements annoncés à GitHub (staging et production) et les PR mergées sur la période.
+
+Il demande un jeton GitHub **en lecture seule**, dans `GRAFANA_GITHUB_TOKEN` de `staging.env`,
+`production.env` ou `.env` (jamais dans le dépôt) :
+
+1. GitHub > *Settings* > *Developer settings* > *Fine-grained tokens* > *Generate new token*.
+2. *Resource owner* : `projet-piscine-eadl-enervision` ; *Repository access* : seulement
+   `smart-energy-optimizer` ; expiration : fin du projet.
+3. *Repository permissions*, toutes en **Read-only** : *Actions*, *Deployments*, *Pull requests*
+   (*Metadata* est ajouté d'office). Rien d'autre.
+4. Si l'organisation exige une approbation des jetons, un propriétaire de l'organisation la donne.
+5. Coller le jeton dans `GRAFANA_GITHUB_TOKEN`, puis recréer Grafana au déploiement suivant, ou à la main :
+   `docker compose ... up -d --force-recreate grafana`. Le jeton est relu à chaque démarrage.
+
+Vérifier : *Connections* > *Data sources* > *GitHub* > *Test*, qui doit répondre « Data source is
+working ». Sans jeton, ou jeton expiré, la source répond `401` et seul ce dashboard reste en erreur ; les
+autres ne dépendent que de Prometheus. Pas d'alerte sur la CI : GitHub notifie déjà les échecs.
+Rafraîchissement toutes les 5 minutes, bien en dessous du quota de l'API GitHub (5 000 requêtes par heure
+et par jeton).
+
 ## Ajouter ou modifier un dashboard
 
 Les dashboards ne se modifient pas dans l'interface (`allowUiUpdates: false`) : le dépôt est la seule
@@ -152,7 +201,8 @@ source.
 
 1. Construire ou ajuster le dashboard dans Grafana, puis *Export > Export as JSON*.
 2. Dans le JSON : `uid` stable et unique (`enervision-...`), toutes les sources de données sur
-   `{"type": "prometheus", "uid": "prometheus"}`, pas de variable de source (`${DS_PROMETHEUS}`), pas de
+   `{"type": "prometheus", "uid": "prometheus"}` (ou `{"type": "grafana-github-datasource", "uid": "github"}`
+   pour un dashboard GitHub), pas de variable de source (`${DS_PROMETHEUS}`), pas de
    bloc `__inputs` ni `__requires`.
 3. Le déposer dans `grafana/dashboards/` et vérifier :
    `python3 infra/scripts/check-dashboards.py monitoring/grafana/dashboards`.
@@ -160,7 +210,8 @@ source.
 Les dashboards actuels viennent de grafana.com, adaptés selon ces règles : Node Exporter Full (1860),
 Docker monitoring (15798), le dashboard livré avec postgres-exporter et Blackbox Exporter (13659).
 Le dashboard des conteneurs s'appuie sur les labels `service` et `container`, créés par la règle
-`metric_relabel_configs` du job `cadvisor`.
+`metric_relabel_configs` du job `cadvisor`. *Tâches planifiées* (`timers.json`) est écrit pour le
+projet : état de chaque minuteur, dernier lancement, dernier déclenchement et historique des échecs.
 
 ## CI
 
@@ -179,4 +230,9 @@ images utilisées sont lues dans `docker-compose.monitoring.yml`.
 - **postgres-exporter** utilise l'utilisateur de l'application par défaut ; `MONITORING_DB_USER` et
   `MONITORING_DB_PASSWORD` permettent de passer à un utilisateur dédié en lecture seule (rôle
   `pg_monitor`).
+- **Dashboard de la CI** : il dépend d'un jeton personnel GitHub, lié à un compte et qui expire (à
+  renouveler). Grafana doit pouvoir télécharger le plugin au démarrage (sortie HTTPS, ouverte sur l'EC2).
+- **Minuteurs** : node-exporter ne connaît pas l'heure du prochain déclenchement
+  (`systemctl list-timers` sur la machine). Sur un poste, le dashboard *Tâches planifiées* reste vide :
+  les minuteurs n'y sont pas installés.
 - **Rétention** : 15 jours, 5 Go au plus, pour ne pas remplir le disque de l'instance.

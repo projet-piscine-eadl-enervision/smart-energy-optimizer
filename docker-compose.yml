@@ -43,6 +43,10 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dev}@db:5432/${POSTGRES_DB:-enervision}
+      # Proxys dont l'API croit X-Forwarded-For : les conteneurs du réseau du compose (plage fixée en bas du
+      # fichier), dont le frontend. La passerelle (172.29.42.1), par laquelle arrive un appel de l'hôte sur le
+      # port publié, en est exclue, comme tout client extérieur.
+      TRUSTED_PROXY_IPS: 172.29.42.128/25
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "${API_PORT:-8000}:8000"
@@ -145,6 +149,27 @@ services:
     depends_on:
       - frontend
 
+  # Scan DAST de l'API (OWASP ZAP), passif : ZAP importe /openapi.json, appelle chaque route une fois et
+  # analyse les réponses, sans attaque (-S). Lancé seulement à la demande, une fois l'API démarrée :
+  #   docker compose up -d api
+  #   docker compose --profile dast run --rm zap
+  # Rapports dans infra/zap/ (zap-report.html et .json, ignorés par git), exceptions dans infra/zap/rules.tsv.
+  # À ne jamais lancer contre le staging ou la production.
+  zap:
+    image: zaproxy/zap-stable:2.17.0
+    container_name: enervision-zap
+    profiles: [dast]
+    restart: "no"
+    # -I : les avertissements ne font pas échouer le scan, le blocage sur les alertes hautes est fait par
+    # infra/scripts/check-zap-report.py. Code 3 : le scan n'a pas pu se faire (API injoignable…).
+    command: >
+      zap-api-scan.py -t http://api:8000/openapi.json -f openapi -S -I
+      -c rules.tsv -r zap-report.html -J zap-report.json
+    volumes:
+      - ./infra/zap:/zap/wrk
+    depends_on:
+      - api
+
   mlflow:
     image: ghcr.io/mlflow/mlflow:v3.17.2
     container_name: enervision-mlflow
@@ -194,3 +219,15 @@ services:
 volumes:
   pgdata:
   mlflow-data:
+
+# Réseau fixé pour que l'API reconnaisse le proxy du frontend : les conteneurs reçoivent une adresse de la
+# plage 172.29.42.128/25 (TRUSTED_PROXY_IPS de l'API), la passerelle reste hors de cette plage. Pas d'adresse
+# fixe par service : `docker compose run` doit pouvoir créer un conteneur de plus.
+# Sur une stack existante, le réseau est recréé au prochain up : docker compose down, puis up.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.42.0/24
+          gateway: 172.29.42.1
+          ip_range: 172.29.42.128/25
