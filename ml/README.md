@@ -14,6 +14,10 @@ TimescaleDB (analytics.energy_hourly, ref.site)
 
 Le module ne parle qu'à la base et à MLflow, jamais à l'API Mock ni au backend.
 
+Vue complète, des sources de l'ETL aux expériences MLflow :
+
+![Des données au modèle, de l'ETL à MLflow](../docs/schema-flux-etl-ml.png)
+
 ## Lancer
 
 Depuis la racine du projet, base et MLflow démarrés (`docker compose up -d`) :

@@ -24,6 +24,11 @@ title = "Réglages GitHub"
 section = "Démarrer"
 
 [[page]]
+source = "docs/decisions-architecture.md"
+title = "Registre des décisions"
+section = "Architecture et modules"
+
+[[page]]
 source = "docs/environnements-techniques.md"
 title = "Environnements techniques"
 section = "Architecture et modules"
