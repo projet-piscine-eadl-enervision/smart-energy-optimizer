@@ -145,4 +145,4 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 - Les indicateurs se mesurent sans saisie, depuis l'API de GitHub : le délai médian d'un ticket est de 19 heures.
 - Limites : le Kanban ne porte ni jalons ni estimations, et les indicateurs n'ont pas été définis au départ.
 
-**Preuves.** [Kanban de l'organisation](https://github.com/orgs/projet-piscine-eadl-enervision/projects/3), premiers tickets du 19/10. Décision orale, non tracée.
+**Preuves.** [Kanban de l'organisation](https://github.com/orgs/projet-piscine-eadl-enervision/projects/3), PR [15](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/15) du 19/10 (bascule des tickets sur les issues GitHub, gabarits de ticket et de PR). Décision orale, non tracée ailleurs.
