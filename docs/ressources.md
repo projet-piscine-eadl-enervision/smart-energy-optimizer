@@ -130,6 +130,56 @@ Une page générée depuis `CONTRIBUTING.md`, avec son bandeau d'origine et la b
 
 ## Supervision
 
+### Cibles de Prometheus
+
+![Cibles de Prometheus](ressources/prometheus-cibles.png)
+
+Page *Status > Target health* de Prometheus : chaque job collecté (Alertmanager, API, sondes du frontend, de l'API et de l'ETL…) est à l'état `UP`, avec la date de la dernière collecte et sa durée. Voir la [supervision](supervision-production.md) et [`monitoring/README.md`](../monitoring/README.md).
+
+### Hôte
+
+![Dashboard Grafana de l'hôte](ressources/grafana-hote.png)
+
+Dashboard « Hôte (Node Exporter Full) » sur 24 heures, pour l'instance de production (2 cœurs, 8 Gio de mémoire, disque de 63 Gio) : pression, charge CPU, mémoire, disque racine et réseau. Pas de swap, d'où la jauge `N/A`.
+
+### Conteneurs
+
+![Dashboard Grafana des conteneurs](ressources/grafana-conteneurs.png)
+
+Dashboard « Conteneurs (cAdvisor) » : 13 conteneurs en marche, 3,70 Gio de mémoire utilisée sur 7,66 Gio, puis le CPU, la mémoire et le réseau de chaque conteneur sur 24 heures (base, API, ETL, collecteur, frontend, supervision).
+
+### Base de données
+
+![Dashboard Grafana de PostgreSQL](ressources/grafana-postgresql.png)
+
+Dashboard « PostgreSQL » (postgres-exporter) sur une heure : requêtes par seconde, lignes lues, renvoyées, insérées, modifiées et supprimées, tampons, conflits et interblocages (aucun), taux de cache à 100 % et connexions actives.
+
+### Sondes HTTP
+
+![Dashboard Grafana des sondes HTTP](ressources/grafana-sondes-http.png)
+
+Dashboard « Sondes HTTP (Blackbox) » : le frontend et les `/health` de l'API et de l'ETL répondent `200` (`UP`), avec leur temps de réponse sur 6 heures, de l'ordre de quelques millisecondes en moyenne.
+
+### Tâches planifiées
+
+![Dashboard Grafana des tâches planifiées](ressources/grafana-taches-planifiees.png)
+
+Dashboard « Tâches planifiées » en production : les trois minuteurs du module ML sont actifs ; le dernier lancement de `monitor-ml-production.service` est en échec (code 2 : dérive du modèle détectée), la prévision et l'entraînement sont `OK`. En dessous, le dernier déclenchement de chaque minuteur et l'historique des lancements.
+
+### Alertes dans Teams
+
+![Alertes de supervision dans Teams](ressources/teams-alerte-derive-modele.png)
+
+Le canal Teams des alertes, alimenté par Alertmanager : `TachePlanifieeEnEchec` sur la surveillance du modèle (`monitor-ml`), au staging puis en production, avec la commande à lancer et la signification du code 2 (dérive). Le message vert annonce la résolution de l'alerte du staging.
+
+### CI et livraisons
+
+![Dashboard Grafana de la CI et des livraisons](ressources/grafana-ci-livraisons.png)
+
+Dashboard « CI et livraisons », lu dans l'API GitHub, du 19 au 28/10 : 572 runs de CI, dont 383 réussis (67 %) et 95 en échec, pour une durée moyenne de 2 min 33 s ; les derniers runs par branche, les déploiements staging et production et les PR mergées.
+
+### Modèle ML
+
 ![Dashboard Grafana du modèle ML](ressources/grafana-modele-ml.png)
 
 Dashboard « Modèle ML » : état du modèle, délai depuis la dernière prévision, pénalités évitées sur 7 jours, version championne, contrôles de dérive par site et versions entraînées. Voir la [supervision](supervision-production.md).
@@ -173,3 +223,9 @@ L'unique instance de production : `t3.large` en cours d'exécution, 3 vérificat
 ![Compartiments S3](ressources/aws-s3.png)
 
 Deux compartiments en région Paris : les données de la production (remote DVC de production) et l'état Terraform. Voir [données et DVC](donnees-dvc.md).
+
+## Mascotte
+
+![Mojo](ressources/mojo.jpg)
+
+Mojo, relecteur silencieux du projet. Sur fond sombre, il ne reste que les yeux : aucun risque de fuite d'information.
