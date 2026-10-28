@@ -6,6 +6,7 @@ from enervision_ml.evaluate import evaluate, temporal_split
 from enervision_ml.features import add_features, to_hourly_grid
 from enervision_ml.models import (
     ConsumptionModel,
+    GradientBoosting,
     SeasonalNaive,
     SiteProfile,
     peak_thresholds,
@@ -50,6 +51,27 @@ def test_profile_beats_naive_on_mock_like_data():
     assert profile["nmae"] == pytest.approx(0.05 * np.sqrt(2 / np.pi), rel=0.15)  # plancher du bruit
     # Attendu : √2 ≈ 1,4 fois (deux bruits indépendants au lieu d'un), marge pour le hasard
     assert naive["nmae"] > 1.2 * profile["nmae"]
+
+
+def test_gradient_boosting_matches_profile_on_mock_like_data():
+    """Le calendrier porte tout le prévisible : le boosting rejoint le profil, sans pouvoir
+    faire beaucoup mieux, et bat le naïf."""
+    data = add_features(to_hourly_grid(make_mock_like(days=500)))
+    train, validation, _ = temporal_split(data)
+    thresholds = peak_thresholds(train)
+    profile = evaluate(validation, SiteProfile().fit(train).predict(validation), thresholds)
+    boosting = evaluate(validation, GradientBoosting().fit(train).predict(validation), thresholds)
+    naive = evaluate(validation, SeasonalNaive().predict(validation), thresholds)
+
+    assert boosting["nmae"] == pytest.approx(profile["nmae"], rel=0.1)
+    assert boosting["nmae"] < naive["nmae"]
+
+
+def test_gradient_boosting_unknown_site_is_not_predicted():
+    data = add_features(to_hourly_grid(make_mock_like(days=30)))
+    model = GradientBoosting().fit(data)
+    unknown = data.head(3).assign(site_id="SITE999")
+    assert np.isnan(model.predict(unknown)).all()
 
 
 def test_peak_threshold_relative_to_site_mean():

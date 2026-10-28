@@ -3,6 +3,7 @@
 Lancement manuel :
     docker compose run --rm ml                                  # SiteProfile, par défaut
     docker compose run --rm ml python train.py --model seasonal_naive
+    docker compose run --rm ml python train.py --model gradient_boosting
 """
 
 import argparse
