@@ -195,4 +195,4 @@ bucket du state dans la console S3 (*Empty*, puis *Delete* : il est versionné).
 - **Nom de domaine et chiffrement de bout en bout** : aujourd'hui CloudFront en `*.cloudfront.net`
   et HTTP jusqu'à l'instance. Voir *Exposition* plus haut.
 - **Dimensionnement** : `t3.large` à confirmer d'après la consommation réelle.
-- **MLflow sans authentification** : déployé en production (profil `mlflow`), lié à `127.0.0.1` de l'instance, accessible par redirection de port Session Manager. Le module ML tourne par des minuteurs systemd installés à la main (voir `docs/mise-en-production.md`).
+- **MLflow sans authentification** : déployé en production (profil `mlflow`), lié à `127.0.0.1` de l'instance, accessible par redirection de port Session Manager. Le module ML tourne par des minuteurs systemd, installés par le déploiement (voir `docs/mise-en-production.md`).

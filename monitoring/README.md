@@ -115,7 +115,7 @@ ajoute.
   après son installation, est ignoré.
 
 Un minuteur absent de la machine ne produit aucune série et ne déclenche aucune alerte : en production,
-les minuteurs doivent être installés (`docs/mise-en-production.md`). Dashboard : *Tâches planifiées*.
+le déploiement installe les minuteurs (`docs/mise-en-production.md`), au staging ils sont installés à la main. Dashboard : *Tâches planifiées*.
 
 `EtlSansNouvelleMesure` ne sonne que si la base contient des mesures : sans collecteur (production
 par défaut), la table est vide et l'alerte reste muette.
