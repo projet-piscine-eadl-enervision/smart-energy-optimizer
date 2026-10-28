@@ -44,7 +44,7 @@ export class AuthService {
     const body = new HttpParams().set('username', email).set('password', password);
     return this.http.post<Token>(`${API_URL}/auth/login`, body).pipe(
       tap((res) => this.saveToken(res.access_token)),
-      map(() => undefined)
+      map(() => undefined),
     );
   }
 

@@ -24,7 +24,10 @@ const ROUTES = {
 
 describe('Alerts', () => {
   async function render(routes: Record<string, unknown> = ROUTES) {
-    await TestBed.configureTestingModule({ imports: [Alerts], providers: apiProviders() }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [Alerts],
+      providers: apiProviders(),
+    }).compileComponents();
     const fixture = TestBed.createComponent(Alerts);
     fixture.detectChanges();
     const requests = answer(routes);
@@ -46,14 +49,19 @@ describe('Alerts', () => {
   });
 
   it('marque une alerte résolue', async () => {
-    const { element } = await render({ ...ROUTES, '/api/alerts': [{ ...ALERT, status: 'resolved' }] });
+    const { element } = await render({
+      ...ROUTES,
+      '/api/alerts': [{ ...ALERT, status: 'resolved' }],
+    });
 
     expect(element.textContent).toContain('résolue');
   });
 
   it("recharge selon l'état choisi", async () => {
     const { fixture, element } = await render();
-    Array.from(element.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Toutes')!.click();
+    Array.from(element.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Toutes')!
+      .click();
     const requests = answer(ROUTES);
     await fixture.whenStable();
 

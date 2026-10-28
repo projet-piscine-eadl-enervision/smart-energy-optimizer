@@ -9,7 +9,7 @@ Ce que la CI contrôle sur chaque PR, où lire les résultats et que faire quand
 | `pr-title`, `branch-name`, `commit-messages` | Conventional Commits, nom de branche | oui |
 | `changes` | liste des modules touchés (voir plus bas) | oui |
 | `python (api\|etl\|ml)` | `ruff` et `pytest` du module ; pour `api`, `etl` et `ml`, sur une base TimescaleDB migrée | oui |
-| `frontend` | tests et build Angular | oui |
+| `frontend` | lint (`npm run lint` : ESLint, dont l'organisation `core` / `shared` / `pages`), mise en forme (`npm run format:check` : Prettier), tests et build Angular | oui |
 | `e2e` | scénarios Cypress contre la vraie pile (base migrée, API, front), si `frontend/` ou `api/` change | oui |
 | `dast` | scan OWASP ZAP passif de l'API sur une pile éphémère, si `api/` change ; rapport en artefact | sur les alertes hautes |
 | `load` | test de charge smoke de l'API (k6) sur une pile éphémère, si `api/` ou `infra/k6/` change | oui |

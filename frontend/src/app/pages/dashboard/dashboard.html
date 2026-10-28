@@ -6,7 +6,11 @@
         type="button"
         (click)="selectPeriod(p.days)"
         class="rounded px-3 py-1"
-        [class]="days() === p.days ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-200'"
+        [class]="
+          days() === p.days
+            ? 'bg-emerald-600 text-white'
+            : 'bg-white text-slate-600 hover:bg-slate-200'
+        "
       >
         {{ p.label }}
       </button>
@@ -24,13 +28,16 @@
       <section class="rounded-xl bg-white p-6 shadow">
         <h2 class="mb-3 text-lg font-semibold text-slate-800">Prédictions de la consommation</h2>
         @if (predictions().length === 0) {
-          <p class="text-sm text-slate-500">Aucune prévision disponible pour les prochaines heures.</p>
+          <p class="text-sm text-slate-500">
+            Aucune prévision disponible pour les prochaines heures.
+          </p>
         } @else {
           <div class="relative h-64 w-full">
             <canvas #predictionsChart></canvas>
           </div>
           <p class="mt-2 text-xs text-slate-500">
-            <span class="inline-block h-2 w-2 rounded-full bg-red-600"></span> pic prévu pour le site
+            <span class="inline-block h-2 w-2 rounded-full bg-red-600"></span> pic prévu pour le
+            site
           </p>
         }
       </section>

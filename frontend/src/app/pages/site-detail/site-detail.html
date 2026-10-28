@@ -7,7 +7,11 @@
         type="button"
         (click)="selectPeriod(p.value)"
         class="rounded px-3 py-1"
-        [class]="period() === p.value ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-200'"
+        [class]="
+          period() === p.value
+            ? 'bg-emerald-600 text-white'
+            : 'bg-white text-slate-600 hover:bg-slate-200'
+        "
       >
         {{ p.label }}
       </button>

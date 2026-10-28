@@ -11,7 +11,10 @@ const SITES = [
 
 describe('SiteSelect', () => {
   async function render(sites: unknown = SITES, user: User | null = null) {
-    await TestBed.configureTestingModule({ imports: [SiteSelect], providers: apiProviders() }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [SiteSelect],
+      providers: apiProviders(),
+    }).compileComponents();
     TestBed.inject(AuthService).user.set(user);
     const fixture = TestBed.createComponent(SiteSelect);
     fixture.detectChanges();
@@ -23,7 +26,9 @@ describe('SiteSelect', () => {
 
   it('propose le total puis les sites de l’API', async () => {
     const { element, requests } = await render();
-    const options = Array.from(element.querySelectorAll('option')).map((o) => o.textContent?.trim());
+    const options = Array.from(element.querySelectorAll('option')).map((o) =>
+      o.textContent?.trim(),
+    );
 
     expect(requests).toEqual(['/api/sites']);
     expect(options).toEqual(['Tous les sites', 'SITE001 · Usine Lyon', 'SITE002 · Bureau Paris']);
@@ -32,12 +37,12 @@ describe('SiteSelect', () => {
   it('reste utilisable avec le seul total si la liste ne se charge pas', async () => {
     const { element } = await render(new Failure(500));
 
-    expect(Array.from(element.querySelectorAll('option')).map((o) => o.textContent?.trim())).toEqual([
-      'Tous les sites',
-    ]);
+    expect(
+      Array.from(element.querySelectorAll('option')).map((o) => o.textContent?.trim()),
+    ).toEqual(['Tous les sites']);
   });
 
-  it("montre à un user son seul site, sans choix ni total", async () => {
+  it('montre à un user son seul site, sans choix ni total', async () => {
     const user: User = {
       id: 2,
       email: 'u@b.fr',

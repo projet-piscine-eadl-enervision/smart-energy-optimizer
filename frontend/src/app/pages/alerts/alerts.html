@@ -6,7 +6,11 @@
         type="button"
         (click)="selectStatus(s.value)"
         class="rounded px-3 py-1"
-        [class]="status() === s.value ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-200'"
+        [class]="
+          status() === s.value
+            ? 'bg-emerald-600 text-white'
+            : 'bg-white text-slate-600 hover:bg-slate-200'
+        "
       >
         {{ s.label }}
       </button>
@@ -28,9 +32,15 @@
   } @else {
     <ul class="space-y-3">
       @for (a of alerts(); track a.alert_id) {
-        <li class="rounded border border-slate-200 p-3" [class.opacity-60]="a.status === 'resolved'">
+        <li
+          class="rounded border border-slate-200 p-3"
+          [class.opacity-60]="a.status === 'resolved'"
+        >
           <div class="flex flex-wrap items-center gap-2">
-            <span class="rounded px-2 py-0.5 text-xs font-medium" [class]="severityClass(a.severity)">
+            <span
+              class="rounded px-2 py-0.5 text-xs font-medium"
+              [class]="severityClass(a.severity)"
+            >
               {{ a.severity }}
             </span>
             <span class="font-medium text-slate-800">{{ a.alert_label }}</span>

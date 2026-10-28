@@ -3,7 +3,13 @@ import { provideRouter, Router } from '@angular/router';
 import { answer, apiProviders, Failure } from '../../testing/api';
 import { Shell } from './shell';
 
-const USER = { id: 1, email: 'a@b.fr', is_active: true, role: 'admin', created_at: '2026-10-23T00:00:00Z' };
+const USER = {
+  id: 1,
+  email: 'a@b.fr',
+  is_active: true,
+  role: 'admin',
+  created_at: '2026-10-23T00:00:00Z',
+};
 const ALERT = {
   alert_id: 'ALR-SITE001-1',
   timestamp: '2026-10-27T10:00:00Z',
@@ -73,11 +79,14 @@ describe('Shell', () => {
   });
 
   it("affiche le nombre d'alertes actives dans un badge", async () => {
-    const { element } = await render({ ...ROUTES, '/api/alerts': [ALERT, { ...ALERT, alert_id: 'x' }, ALERT] });
+    const { element } = await render({
+      ...ROUTES,
+      '/api/alerts': [ALERT, { ...ALERT, alert_id: 'x' }, ALERT],
+    });
 
-    expect(element.querySelector('nav a[href="/alerts"]')!.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Alertes 3',
-    );
+    expect(
+      element.querySelector('nav a[href="/alerts"]')!.textContent?.replace(/\s+/g, ' ').trim(),
+    ).toBe('Alertes 3');
   });
 
   it("n'affiche pas de badge sans alerte active", async () => {
@@ -86,7 +95,7 @@ describe('Shell', () => {
     expect(element.querySelector('nav a[href="/alerts"]')!.textContent?.trim()).toBe('Alertes');
   });
 
-  it("reste utilisable si la requête du compte échoue", async () => {
+  it('reste utilisable si la requête du compte échoue', async () => {
     const { element } = await render({ ...ROUTES, '/api/auth/me': new Failure(500) });
 
     expect(element.querySelector('nav')).not.toBeNull();

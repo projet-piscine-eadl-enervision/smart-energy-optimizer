@@ -48,8 +48,12 @@ export class AlertsService {
     });
   }
 
-  getAlerts(filters: { siteId?: string; status?: AlertStatus | 'all'; limit?: number } = {}): Observable<Alert[]> {
-    let params = new HttpParams().set('status', filters.status ?? 'active').set('limit', filters.limit ?? 50);
+  getAlerts(
+    filters: { siteId?: string; status?: AlertStatus | 'all'; limit?: number } = {},
+  ): Observable<Alert[]> {
+    let params = new HttpParams()
+      .set('status', filters.status ?? 'active')
+      .set('limit', filters.limit ?? 50);
     if (filters.siteId) params = params.set('site_id', filters.siteId);
     return this.http.get<Alert[]>(`${API_URL}/alerts`, { params });
   }

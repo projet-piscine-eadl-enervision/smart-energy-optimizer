@@ -176,9 +176,13 @@ jobs:
       - name: Installer les dépendances
         if: hashFiles('frontend/package-lock.json') != ''
         run: npm ci
-      - name: Lint
+      # Sans --if-present : un script lint ou format:check absent fait échouer le job.
+      - name: Lint (ESLint)
         if: hashFiles('frontend/package-lock.json') != ''
-        run: npm run lint --if-present
+        run: npm run lint
+      - name: Mise en forme (Prettier)
+        if: hashFiles('frontend/package-lock.json') != ''
+        run: npm run format:check
       - name: Tests unitaires
         if: hashFiles('frontend/package-lock.json') != ''
         run: npm test --if-present -- --coverage --coverage-reporters=lcov

@@ -68,3 +68,14 @@ repos:
         name: ruff (ml)
         files: ^ml/
         args: [--config, 'src = ["ml"]']
+
+  # Lint du frontend, comme le job frontend de la CI : ESLint puis Prettier. Node 24 en local s'il est
+  # installé, sinon le conteneur frontend (voir le script). Corriger la mise en forme : npm run format.
+  - repo: local
+    hooks:
+      - id: lint-frontend
+        name: eslint + prettier (frontend)
+        entry: bash infra/scripts/lint-frontend.sh
+        language: system
+        files: ^frontend/
+        pass_filenames: false

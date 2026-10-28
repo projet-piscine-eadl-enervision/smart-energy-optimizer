@@ -18,7 +18,10 @@ const ROUTES = {
 
 describe('Peaks', () => {
   async function render(routes: Record<string, unknown> = ROUTES) {
-    await TestBed.configureTestingModule({ imports: [Peaks], providers: [...apiProviders(), provideRouter([])] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [Peaks],
+      providers: [...apiProviders(), provideRouter([])],
+    }).compileComponents();
     const fixture = TestBed.createComponent(Peaks);
     fixture.detectChanges();
     const requests = answer(routes);
@@ -31,7 +34,11 @@ describe('Peaks', () => {
   /** Un pic dans `hoursAhead` heures, pour que la frise et le jour affiché soient ceux d'aujourd'hui. */
   function peakIn(hoursAhead: number, overrides = {}) {
     const hour = Math.floor(Date.now() / 3_600_000) * 3_600_000;
-    return { ...PEAK, timestamp: new Date(hour + hoursAhead * 3_600_000).toISOString(), ...overrides };
+    return {
+      ...PEAK,
+      timestamp: new Date(hour + hoursAhead * 3_600_000).toISOString(),
+      ...overrides,
+    };
   }
 
   it('liste les pics avec le site, le seuil et le dépassement', async () => {
@@ -104,7 +111,9 @@ describe('Peaks', () => {
     const select = element.querySelector('select')!;
     select.value = 'SITE001';
     select.dispatchEvent(new Event('change'));
-    Array.from(element.querySelectorAll('button')).find((b) => b.textContent?.trim() === '72 h')!.click();
+    Array.from(element.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === '72 h')!
+      .click();
     const requests = answer(ROUTES);
     await fixture.whenStable();
 
