@@ -10,17 +10,31 @@ describe('Tableau de bord', () => {
       });
   };
 
-  it("affiche l'utilisateur et les trois blocs de données, lus dans l'API réelle", () => {
-    // Aucune réponse simulée : la base du test est vide, chaque bloc montre donc son état vide
+  it("montre à un compte neuf, sans site, qu'il doit en demander un, sans lire de données", () => {
+    // Profil réel de l'API : un compte créé par l'inscription est un user sans site
     cy.intercept('GET', '/api/predictions*').as('predictions');
     cy.intercept('GET', '/api/history*').as('history');
     cy.intercept('GET', '/api/recommendations*').as('recommendations');
 
-    cy.loginAsNewUser('/').then((email) => {
+    cy.loginAsNewUser('/', null).then((email) => {
       cy.contains('header', 'Smart Energy Optimizer');
       cy.contains('header', email);
       cy.contains('header', 'user');
     });
+
+    cy.contains('main', "Aucun site n'est encore rattaché à votre compte");
+    cy.contains('h2', 'Prédictions de la consommation').should('not.exist');
+    cy.get('@predictions.all').should('have.length', 0);
+    cy.get('@history.all').should('have.length', 0);
+    cy.get('@recommendations.all').should('have.length', 0);
+  });
+
+  it('affiche les trois blocs de données dans leur état vide', () => {
+    cy.intercept('GET', '/api/predictions*', []).as('predictions');
+    cy.intercept('GET', '/api/history*', []).as('history');
+    cy.intercept('GET', '/api/recommendations*', []).as('recommendations');
+
+    cy.loginAsNewUser('/');
 
     // La page demande 24 h d'historique
     cy.wait('@history').its('request.url').should('include', 'days=1');
@@ -72,6 +86,8 @@ describe('Tableau de bord', () => {
 
   it("affiche un message d'erreur si une route de données échoue", () => {
     cy.intercept('GET', '/api/predictions*', { statusCode: 500, body: {} });
+    cy.intercept('GET', '/api/history*', []);
+    cy.intercept('GET', '/api/recommendations*', []);
 
     cy.loginAsNewUser('/');
 

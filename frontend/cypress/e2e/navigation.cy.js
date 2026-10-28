@@ -1,3 +1,5 @@
+import { USER_SITE001 } from '../support/helpers';
+
 describe('Navigation et pages de données', () => {
   const SITE = {
     site_id: 'SITE001',
@@ -158,5 +160,19 @@ describe('Navigation et pages de données', () => {
     cy.wait('@predictions').its('request.url').should('include', 'site_id=SITE001');
     cy.wait('@history').its('request.url').should('include', 'site_id=SITE001');
     cy.wait('@recommendations').its('request.url').should('include', 'site_id=SITE001');
+  });
+
+  it("montre à un user son seul site, sans choix de site", () => {
+    stubEmptyData();
+    cy.intercept('GET', '/api/sites', [SITE]);
+    cy.intercept('GET', '/api/alerts*', []);
+
+    cy.loginAsNewUser('/', USER_SITE001);
+
+    cy.contains('header', 'SITE001');
+    cy.contains('SITE001 · Usine Lyon');
+    cy.get('select').should('not.exist');
+    cy.contains('Tous les sites').should('not.exist');
+    cy.contains('h2', 'Prédictions de la consommation');
   });
 });
