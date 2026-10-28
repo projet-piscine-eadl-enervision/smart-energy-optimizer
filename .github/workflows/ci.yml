@@ -424,7 +424,7 @@ jobs:
           image=$(docker compose config --images | grep '^prom/blackbox-exporter:')
           docker run --rm -v "$PWD/monitoring/blackbox:/etc/blackbox:ro" "$image" \
             --config.file=/etc/blackbox/blackbox.yml --config.check
-      - name: Dashboards Grafana (JSON lisible, uid unique, source prometheus)
+      - name: Dashboards Grafana (JSON lisible, uid unique, sources provisionnées)
         run: python3 infra/scripts/check-dashboards.py monitoring/grafana/dashboards
 
   migrations:
