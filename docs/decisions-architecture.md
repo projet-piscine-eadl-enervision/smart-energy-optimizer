@@ -107,7 +107,7 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 - **Statut** : accepté
 - **Décision prise le** : 21/10/2026, en PR [79](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/79)
 - **Rédigé le** : 28/10/2026, a posteriori
-- **Décideurs** : le groupe ; mise en œuvre Flavie (Terraform), Léa (accès et déploiement)
+- **Décideurs** : le groupe ; mise en œuvre Léa (accès et déploiement)
 - **Domaine** : Cloud
 
 **Contexte.** Le dossier de conception prévoyait d'abord Azure, avec un squelette Terraform (PR [60](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/60)). Les comptes Azure fournis par l'école n'étaient pas prêts à accueillir l'infrastructure (paramétrage du compte inadapté, quotas serrés).
