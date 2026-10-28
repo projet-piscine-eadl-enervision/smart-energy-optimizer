@@ -149,6 +149,27 @@ services:
     depends_on:
       - frontend
 
+  # Scan DAST de l'API (OWASP ZAP), passif : ZAP importe /openapi.json, appelle chaque route une fois et
+  # analyse les réponses, sans attaque (-S). Lancé seulement à la demande, une fois l'API démarrée :
+  #   docker compose up -d api
+  #   docker compose --profile dast run --rm zap
+  # Rapports dans infra/zap/ (zap-report.html et .json, ignorés par git), exceptions dans infra/zap/rules.tsv.
+  # À ne jamais lancer contre le staging ou la production.
+  zap:
+    image: zaproxy/zap-stable:2.17.0
+    container_name: enervision-zap
+    profiles: [dast]
+    restart: "no"
+    # -I : les avertissements ne font pas échouer le scan, le blocage sur les alertes hautes est fait par
+    # infra/scripts/check-zap-report.py. Code 3 : le scan n'a pas pu se faire (API injoignable…).
+    command: >
+      zap-api-scan.py -t http://api:8000/openapi.json -f openapi -S -I
+      -c rules.tsv -r zap-report.html -J zap-report.json
+    volumes:
+      - ./infra/zap:/zap/wrk
+    depends_on:
+      - api
+
   mlflow:
     image: ghcr.io/mlflow/mlflow:v3.17.2
     container_name: enervision-mlflow
