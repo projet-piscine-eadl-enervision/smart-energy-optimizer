@@ -9,8 +9,8 @@ cd "$tmp"
 git init -q -b main .
 git config user.email test@example.com
 git config user.name test
-mkdir -p api etl ml frontend db docs .github/workflows infra/scripts infra/terraform monitoring
-for f in api/a etl/a ml/a frontend/a db/a docs/a .github/workflows/a infra/scripts/a infra/terraform/a monitoring/a docker-compose.yml; do
+mkdir -p api etl ml frontend db docs .github/workflows infra/scripts infra/terraform infra/k6 monitoring
+for f in api/a etl/a ml/a frontend/a db/a docs/a .github/workflows/a infra/scripts/a infra/terraform/a infra/k6/a monitoring/a docker-compose.yml; do
   echo x > "$f"
 done
 git add -A && git commit -q -m base
@@ -44,6 +44,7 @@ expect "frontend seul" "frontend/a" '[]' true false false false
 expect "base de données seule : migrations et tests de l'API, de l'ETL et du ML" "db/a" '["api","etl","ml"]' false true false false
 expect "documentation seule" "docs/a" '[]' false false false false
 expect "terraform seul" "infra/terraform/a" '[]' false false true false
+expect "scénarios k6 : jobs de l'API" "infra/k6/a" '["api"]' false false false false
 expect "monitoring seul" "monitoring/a" '[]' false false false true
 expect "workflow : tout" ".github/workflows/a" '["api","etl","ml"]' true true true true
 expect "scripts d'infra : tout" "infra/scripts/a" '["api","etl","ml"]' true true true true
