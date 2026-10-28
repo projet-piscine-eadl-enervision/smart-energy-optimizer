@@ -1,0 +1,1023 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "CI et livraisons du dépôt, lues dans l'API GitHub (source GitHub, jeton GRAFANA_GITHUB_TOKEN) : runs de ci.yml, déploiements staging et production, PR mergées.",
+  "editable": false,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Actions du dépôt",
+      "type": "link",
+      "url": "https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/actions",
+      "targetBlank": true,
+      "icon": "external link"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Dernier run de CI sur main",
+      "description": "Conclusion du dernier run de ci.yml sur main (publication des images comprise).",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Workflow_Runs",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {
+            "workflow": "ci.yml",
+            "branch": "main"
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "created_at",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {
+            "limitField": 1
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "success": {
+                  "text": "Succès",
+                  "color": "green",
+                  "index": 0
+                },
+                "failure": {
+                  "text": "Échec",
+                  "color": "red",
+                  "index": 1
+                },
+                "cancelled": {
+                  "text": "Annulé",
+                  "color": "text",
+                  "index": 2
+                },
+                "skipped": {
+                  "text": "Ignoré",
+                  "color": "text",
+                  "index": 3
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "En cours",
+                  "color": "blue",
+                  "index": 10
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "empty",
+                "result": {
+                  "text": "En cours",
+                  "color": "blue",
+                  "index": 11
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^conclusion$/",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Runs de CI",
+      "description": "Workflow CI (ci.yml), toutes branches, sur le cycle de facturation GitHub en cours.",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Workflow_Usage",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {
+            "workflow": "ci.yml"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^runs$/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Réussites",
+      "description": "Workflow CI (ci.yml), toutes branches, sur le cycle de facturation GitHub en cours.",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Workflow_Usage",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {
+            "workflow": "ci.yml"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^successes$/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Échecs",
+      "description": "Workflow CI (ci.yml), toutes branches, sur le cycle de facturation GitHub en cours.",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Workflow_Usage",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {
+            "workflow": "ci.yml"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^failures$/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Durée moyenne d'un run",
+      "description": "Workflow CI (ci.yml), toutes branches, sur le cycle de facturation GitHub en cours.",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Workflow_Usage",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {
+            "workflow": "ci.yml"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^average run duration \\(approx\\.\\)$/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Durée au 95e centile",
+      "description": "Workflow CI (ci.yml), toutes branches, sur le cycle de facturation GitHub en cours.",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Workflow_Usage",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {
+            "workflow": "ci.yml"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^p95 run duration \\(approx\\.\\)$/",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Derniers runs de CI (toutes branches)",
+      "description": "Les 20 derniers runs de ci.yml. Le numéro ouvre le run dans GitHub.",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Workflow_Runs",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {
+            "workflow": "ci.yml"
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "created_at",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {
+            "limitField": 20
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "run_number": true,
+              "conclusion": true,
+              "head_branch": true,
+              "event": true,
+              "created_at": true,
+              "html_url": true
+            },
+            "indexByName": {
+              "run_number": 0,
+              "conclusion": 1,
+              "head_branch": 2,
+              "event": 3,
+              "created_at": 4,
+              "html_url": 5
+            },
+            "renameByName": {
+              "run_number": "Run",
+              "conclusion": "Résultat",
+              "head_branch": "Branche",
+              "event": "Déclencheur",
+              "created_at": "Lancé le",
+              "html_url": "Lien"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Résultat"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "success": {
+                        "text": "Succès",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "failure": {
+                        "text": "Échec",
+                        "color": "red",
+                        "index": 1
+                      },
+                      "cancelled": {
+                        "text": "Annulé",
+                        "color": "text",
+                        "index": 2
+                      },
+                      "skipped": {
+                        "text": "Ignoré",
+                        "color": "text",
+                        "index": 3
+                      }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "null",
+                      "result": {
+                        "text": "En cours",
+                        "color": "blue",
+                        "index": 10
+                      }
+                    }
+                  },
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "empty",
+                      "result": {
+                        "text": "En cours",
+                        "color": "blue",
+                        "index": 11
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lancé le"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lien"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ouvrir le run dans GitHub",
+                    "url": "${__data.fields.Lien}",
+                    "targetBlank": true
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Déploiements",
+      "description": "Déploiements annoncés à GitHub : staging (la VM, à chaque mise à jour) et production (workflow de déploiement, après approbation).",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Deployments",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {}
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "created_at",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {
+            "limitField": 20
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "environment": true,
+              "sha": true,
+              "creator": true,
+              "created_at": true
+            },
+            "indexByName": {
+              "environment": 0,
+              "sha": 1,
+              "creator": 2,
+              "created_at": 3
+            },
+            "renameByName": {
+              "environment": "Environnement",
+              "sha": "Commit",
+              "creator": "Par",
+              "created_at": "Le"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Le"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Environnement"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "production": {
+                        "text": "production",
+                        "color": "purple",
+                        "index": 0
+                      },
+                      "staging": {
+                        "text": "staging",
+                        "color": "blue",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Commit"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ouvrir le commit dans GitHub",
+                    "url": "https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/commit/${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Par"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "PR mergées sur la période",
+      "description": "PR fusionnées dans la période affichée (en haut à droite). Le numéro ouvre la PR.",
+      "datasource": {
+        "type": "grafana-github-datasource",
+        "uid": "github"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-github-datasource",
+            "uid": "github"
+          },
+          "queryType": "Pull_Requests",
+          "owner": "projet-piscine-eadl-enervision",
+          "repository": "smart-energy-optimizer",
+          "options": {
+            "query": "is:merged",
+            "timeField": 2
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "merged_at",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {
+            "limitField": 50
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "includeByName": {
+              "number": true,
+              "title": true,
+              "author_login": true,
+              "merged_at": true,
+              "url": true
+            },
+            "indexByName": {
+              "number": 0,
+              "title": 1,
+              "author_login": 2,
+              "merged_at": 3,
+              "url": 4
+            },
+            "renameByName": {
+              "number": "PR",
+              "title": "Titre",
+              "author_login": "Auteur",
+              "merged_at": "Mergée le",
+              "url": "Lien"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mergée le"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lien"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "PR"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Ouvrir la PR dans GitHub",
+                    "url": "${__data.fields.Lien}",
+                    "targetBlank": true
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Auteur"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": [
+    "enervision",
+    "ci",
+    "github"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "timezone": "",
+  "title": "CI et livraisons",
+  "uid": "enervision-ci",
+  "version": 1
+}
