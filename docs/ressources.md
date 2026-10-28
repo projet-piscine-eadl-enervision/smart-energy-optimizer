@@ -173,3 +173,9 @@ L'unique instance de production : `t3.large` en cours d'exécution, 3 vérificat
 ![Compartiments S3](ressources/aws-s3.png)
 
 Deux compartiments en région Paris : les données de la production (remote DVC de production) et l'état Terraform. Voir [données et DVC](donnees-dvc.md).
+
+## Mascotte
+
+![Mojo](ressources/mojo.jpg)
+
+Mojo, relecteur silencieux du projet. Sur fond sombre, il ne reste que les yeux : aucun risque de fuite d'information.
