@@ -170,6 +170,27 @@ services:
     depends_on:
       - api
 
+  # Test de charge de l'API (k6), lancé seulement à la demande, une fois l'API démarrée :
+  #   docker compose up -d api
+  #   docker compose --profile load run --rm k6                      (scénario smoke)
+  #   docker compose --profile load run --rm k6 run /scripts/<scénario>.js
+  # K6_EMAIL et K6_PASSWORD (compte de test) viennent du .env. Scripts et réglages : infra/k6/.
+  # Le script refuse une cible de production.
+  k6:
+    image: grafana/k6:2.2.0
+    container_name: enervision-k6
+    profiles: [load]
+    restart: "no"
+    command: run /scripts/smoke.js
+    environment:
+      BASE_URL: ${K6_BASE_URL:-http://api:8000}
+      K6_EMAIL: ${K6_EMAIL:-}
+      K6_PASSWORD: ${K6_PASSWORD:-}
+    volumes:
+      - ./infra/k6:/scripts:ro
+    depends_on:
+      - api
+
   mlflow:
     image: ghcr.io/mlflow/mlflow:v3.17.2
     container_name: enervision-mlflow

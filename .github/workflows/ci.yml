@@ -286,6 +286,68 @@ jobs:
         if: always()
         run: docker compose down -v
 
+  # Test de charge smoke de l'API (k6) sur une pile éphémère, comme le job dast : 5 utilisateurs pendant
+  # une minute sur les routes du tableau de bord. Bloque si une requête échoue ou si la p95 dépasse 500 ms.
+  # La base est vide : le job détecte une régression de latence ou une route cassée, pas une capacité.
+  load:
+    needs: changes
+    if: contains(needs.changes.outputs.python, '"api"')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configurer la pile
+        run: |
+          {
+            echo "MOCK_API_URL=http://mock.invalid"
+            echo "SECRET_KEY=$(openssl rand -hex 32)"
+          } > .env
+      - name: Démarrer l'API
+        run: docker compose up -d --build api
+      - name: Attendre l'API
+        run: |
+          for _ in $(seq 1 60); do
+            curl -fsS http://localhost:8000/health >/dev/null 2>&1 && exit 0
+            sleep 2
+          done
+          docker compose logs --tail 80
+          exit 1
+      - name: Créer le compte de test
+        # Un compte créé par l'API est un user sans site (403 sur les données) : il passe admin en base
+        run: |
+          email="k6-ci@enervision-k6.fr"
+          password="$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          curl -fsS -X POST http://localhost:8000/auth/register \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$email\",\"password\":\"$password\"}" >/dev/null
+          docker compose exec -T db psql -U postgres -d enervision -v ON_ERROR_STOP=1 \
+            -c "UPDATE public.users SET role = 'admin' WHERE email = '$email'"
+          {
+            echo "K6_EMAIL=$email"
+            echo "K6_PASSWORD=$password"
+          } >> .env
+      - name: Scénario smoke
+        run: docker compose --profile load run --rm k6
+      - name: Le seuil de latence fait bien échouer k6
+        # Seuil impossible (p95 sous 1 ms) : k6 doit sortir en code 99, sinon les seuils ne protègent rien
+        run: |
+          set +e
+          docker compose --profile load run --rm -e P95_MS=1 -e DURATION=10s k6
+          code=$?
+          set -e
+          if [ "$code" -ne 99 ]; then
+            echo "::error::k6 aurait dû échouer sur le seuil (code 99), code obtenu : $code"
+            exit 1
+          fi
+          echo "Seuil dépassé détecté, comme attendu (code 99)"
+      - name: Journaux de la pile
+        if: failure()
+        run: docker compose logs --tail 80
+      - name: Arrêter la pile
+        if: always()
+        run: docker compose down -v
+
   security:
     runs-on: ubuntu-24.04
     permissions:
@@ -452,7 +514,7 @@ jobs:
   # seul ce job est à exiger, quels que soient les composants présents.
   ci-ok:
     if: always()
-    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, e2e, dast, security, terraform, migrations, sonar, monitoring]
+    needs: [pr-title, branch-name, commit-messages, changes, python, frontend, e2e, dast, load, security, terraform, migrations, sonar, monitoring]
     runs-on: ubuntu-24.04
     steps:
       - name: Vérifier les résultats
