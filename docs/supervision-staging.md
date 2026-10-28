@@ -19,6 +19,7 @@ Dans `/etc/enervision/staging.env`, en root :
 COMPOSE_PROFILES=apps,collector,monitoring     # garder les profils déjà présents, ajouter monitoring
 GRAFANA_ADMIN_PASSWORD=...                     # openssl rand -base64 24 | tr -d '/+='
 TEAMS_WEBHOOK_URL=https://...                  # alertes dans Teams, voir monitoring/README.md
+GRAFANA_GITHUB_TOKEN=github_pat_...            # dashboard de la CI (facultatif), voir monitoring/README.md
 ```
 
 Le minuteur `update-staging.timer` lance la supervision à son passage suivant (2 minutes au plus).
