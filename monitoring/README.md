@@ -20,7 +20,7 @@ monitoring/
 
 | Job Prometheus      | Source                                   | Ce qu'on y voit                                               |
 |---------------------|------------------------------------------|---------------------------------------------------------------|
-| `node`              | node-exporter                            | CPU, mémoire, disque, réseau de l'hôte (EC2 ou VM)            |
+| `node`              | node-exporter                            | CPU, mémoire, disque, réseau de l'hôte (EC2 ou VM), et état des minuteurs systemd du projet |
 | `cadvisor`          | cAdvisor                                 | CPU, mémoire, réseau, disque de chaque conteneur              |
 | `postgres`          | postgres-exporter                        | connexions, transactions, cache, verrous de PostgreSQL        |
 | `api`               | `/metrics` de l'API                      | requêtes par route et par code, latence, requêtes en cours    |
@@ -90,12 +90,32 @@ de groupe de sécurité n'est nécessaire.
 ## Alertes
 
 `prometheus/alerts.yml` : disponibilité (cible injoignable, sonde HTTP en échec, base injoignable),
-hôte (disque à 80 et 90 %, mémoire, CPU) et application (erreurs 5xx et latence de l'API, absence de
-nouvelle mesure, dernière exécution de l'ETL en échec). Gravité `critical` : service indisponible ;
+hôte (disque à 80 et 90 %, mémoire, CPU), tâches planifiées (voir ci-dessous) et application (erreurs
+5xx et latence de l'API, absence de nouvelle mesure, dernière exécution de l'ETL en échec). Gravité `critical` : service indisponible ;
 `warning` : à regarder avant que ça le devienne.
 
 Les alertes se consultent dans Prometheus (*Alerts*) et dans Grafana (*Alerting > Alert rules*), et
 Alertmanager les envoie dans un canal Teams (voir « Notifications Teams »).
+
+### Tâches planifiées
+
+Les minuteurs systemd du projet (`update-staging` sur la VM, `predict-ml`, `monitor-ml`, `train-ml` et
+leurs variantes `-production`) sont lus par le collecteur systemd de node-exporter, par le bus D-Bus de
+l'hôte (`/var/run/dbus/system_bus_socket`, monté en lecture seule). Seules ces unités sont collectées
+(`--collector.systemd.unit-include` dans `docker-compose.monitoring.yml`) : un nouveau minuteur s'y
+ajoute.
+
+- `TachePlanifieeEnEchec` : le dernier lancement d'un service a échoué. Un service oneshot reste en
+  échec jusqu'au lancement réussi suivant, l'alerte aussi (rappel toutes les 4 h) ; après correction,
+  `systemctl reset-failed <service>` l'efface sans attendre. `monitor-ml` en échec signale aussi une
+  dérive du modèle (code de sortie 2).
+- `MinuteurArrete` : un minuteur n'est plus actif (désactivé ou arrêté).
+- `MinuteurEnRetard` : pas de déclenchement depuis un peu plus que sa période (mise à jour du staging
+  10 min, prévision 2 h, surveillance 26 h, entraînement 8 jours). Un minuteur jamais déclenché, juste
+  après son installation, est ignoré.
+
+Un minuteur absent de la machine ne produit aucune série et ne déclenche aucune alerte : en production,
+les minuteurs doivent être installés (`docs/mise-en-production.md`). Dashboard : *Tâches planifiées*.
 
 `EtlSansNouvelleMesure` ne sonne que si la base contient des mesures : sans collecteur (production
 par défaut), la table est vide et l'alerte reste muette.
@@ -160,7 +180,8 @@ source.
 Les dashboards actuels viennent de grafana.com, adaptés selon ces règles : Node Exporter Full (1860),
 Docker monitoring (15798), le dashboard livré avec postgres-exporter et Blackbox Exporter (13659).
 Le dashboard des conteneurs s'appuie sur les labels `service` et `container`, créés par la règle
-`metric_relabel_configs` du job `cadvisor`.
+`metric_relabel_configs` du job `cadvisor`. *Tâches planifiées* (`timers.json`) est écrit pour le
+projet : état de chaque minuteur, dernier lancement, dernier déclenchement et historique des échecs.
 
 ## CI
 
@@ -179,4 +200,7 @@ images utilisées sont lues dans `docker-compose.monitoring.yml`.
 - **postgres-exporter** utilise l'utilisateur de l'application par défaut ; `MONITORING_DB_USER` et
   `MONITORING_DB_PASSWORD` permettent de passer à un utilisateur dédié en lecture seule (rôle
   `pg_monitor`).
+- **Minuteurs** : node-exporter ne connaît pas l'heure du prochain déclenchement
+  (`systemctl list-timers` sur la machine). Sur un poste, le dashboard *Tâches planifiées* reste vide :
+  les minuteurs n'y sont pas installés.
 - **Rétention** : 15 jours, 5 Go au plus, pour ne pas remplir le disque de l'instance.
