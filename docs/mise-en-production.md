@@ -27,7 +27,7 @@ Pour le reste : les règles de branches, de commits et de versions sont dans [`C
 
 Le merge d'une PR (squash) crée un `push` sur `main`. La CI s'exécute puis publie les images (job `publish` de `ci.yml`). La VM tire ensuite les nouvelles images (au plus 2 minutes de minuteur, mécanisme décrit dans `deploiement-staging.md`) et annonce à GitHub qu'elle fait tourner ce commit : un déploiement `staging` apparaît dans l'onglet *Deployments* du dépôt. **C'est le signal « le staging est à jour, la recette peut commencer ».** `version.sha` de http://10.43.43.50:8000/health (réseau de l'école) affiche alors le sha du commit de merge.
 
-Le module ML (prévision horaire, surveillance, entraînement hebdomadaire) tourne par des minuteurs systemd installés à la main sur la VM de staging et sur l'instance de production : un merge ne les installe ni ne les met à jour.
+Le module ML (prévision horaire, surveillance, entraînement hebdomadaire) tourne par des minuteurs systemd installés à la main sur la VM de staging et sur l'instance de production : un merge ne les installe ni ne les met à jour. Minuteurs systemd et non EventBridge : les tâches tournent sur l'instance, et le même mécanisme sert au staging (voir « Assumé ou écarté » dans [`audit-depot.md`](audit-depot.md)).
 
 Si l'annonce n'apparaît pas alors que `/health` est à jour, le jeton de la VM est absent ou expiré (voir `deploiement-staging.md`, section « Annonce du staging à GitHub »).
 
