@@ -71,6 +71,49 @@ groups:
           summary: "CPU de l'hôte occupé à plus de 90 %"
           description: "Utilisation moyenne : {{ $value | humanizePercentage }} depuis 15 minutes."
 
+  # Minuteurs systemd du projet (collecteur systemd de node-exporter) : mise à jour du staging et
+  # tâches ML, avec leurs variantes -production. Un minuteur absent de la machine ne produit aucune série.
+  - name: taches-planifiees
+    rules:
+      # Un service oneshot reste « failed » jusqu'au lancement réussi suivant (ou systemctl reset-failed)
+      - alert: TachePlanifieeEnEchec
+        expr: node_systemd_unit_state{name=~".+\\.service", state="failed"} == 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} en échec"
+          description: "Le dernier lancement de {{ $labels.name }} a échoué : journalctl -u {{ $labels.name }} -n 50 sur la machine. Pour monitor-ml, le code 2 signale une dérive du modèle (vue ml.model_health)."
+
+      - alert: MinuteurArrete
+        expr: node_systemd_unit_state{name=~".+\\.timer", state="active"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} arrêté"
+          description: "Le minuteur {{ $labels.name }} n'est plus actif : systemctl enable --now {{ $labels.name }} sur la machine."
+
+      # Seuil par minuteur : un peu plus que sa période. Un minuteur jamais déclenché (dernier
+      # déclenchement à 0, juste après l'installation) est ignoré.
+      - alert: MinuteurEnRetard
+        expr: |
+          (
+              (time() - node_systemd_timer_last_trigger_seconds{name="update-staging.timer"} > 600)
+            or
+              (time() - node_systemd_timer_last_trigger_seconds{name=~"predict-ml(-production)?\\.timer"} > 7200)
+            or
+              (time() - node_systemd_timer_last_trigger_seconds{name=~"monitor-ml(-production)?\\.timer"} > 93600)
+            or
+              (time() - node_systemd_timer_last_trigger_seconds{name=~"train-ml(-production)?\\.timer"} > 691200)
+          )
+          and node_systemd_timer_last_trigger_seconds > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.name }} ne s'est pas déclenché à l'heure"
+          description: "Dernier déclenchement il y a {{ $value | humanizeDuration }} : systemctl list-timers sur la machine."
+
   - name: application
     rules:
       - alert: ApiTropDErreurs
