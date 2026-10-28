@@ -130,6 +130,19 @@ docker compose exec db psql -U postgres -d enervision \
   -c "UPDATE users SET role = 'admin' WHERE email = 'toi@mail.com';"
 ```
 
+### Accès aux sites
+
+- Un `admin` lit tous les sites : sans `site_id`, les routes renvoient le total ou la liste de tous les sites.
+- Un `user` ne lit que **son** site (`users.site_id`) : sans `site_id`, les routes renvoient son site ; un autre site répond `403`. `/sites` ne liste que le sien.
+- Un `user` sans site attribué reçoit `403` sur toutes les routes de données. Le site s'attribue en base, comme le rôle :
+
+```bash
+docker compose exec db psql -U postgres -d enervision \
+  -c "UPDATE users SET site_id = 'SITE001' WHERE email = 'client@mail.com';"
+```
+
+Dans une route qui lit des données d'un site, toujours passer `site_scope(current_user, site_id)` aux requêtes, jamais le `site_id` reçu tel quel.
+
 ## Base de données
 
 Ouvrir un terminal SQL :

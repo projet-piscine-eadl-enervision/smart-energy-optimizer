@@ -69,3 +69,19 @@ def require_role(*roles: Role):
 
 # Raccourci : AdminUser dans la signature d'une route la réserve aux admins
 AdminUser = Annotated[User, Depends(require_role(Role.ADMIN))]
+
+
+def site_scope(user: User, site_id: str | None) -> str | None:
+    """Site que l'utilisateur a le droit de lire, à passer aux requêtes à la place de site_id.
+
+    - admin : le site demandé, ou None pour tous les sites ;
+    - user : toujours son propre site, même sans site_id (le « total » devient son site) ;
+      un autre site → 403, aucun site attribué → 403.
+    """
+    if user.role == Role.ADMIN:
+        return site_id
+    if user.site_id is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Aucun site attribué à ce compte")
+    if site_id is not None and site_id != user.site_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Accès refusé à ce site")
+    return user.site_id

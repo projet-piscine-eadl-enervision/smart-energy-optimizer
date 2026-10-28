@@ -30,3 +30,6 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Site de rattachement (ref.site, contrainte posée par la migration) : un `user` ne lit que celui-ci,
+    # un `admin` lit tous les sites. Vide = aucun site attribué
+    site_id: Mapped[str | None] = mapped_column(String, default=None)

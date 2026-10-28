@@ -32,4 +32,5 @@ class UserRead(BaseModel):
     email: EmailStr
     is_active: bool
     role: Role
+    site_id: str | None = None
     created_at: datetime

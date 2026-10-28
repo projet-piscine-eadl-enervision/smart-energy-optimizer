@@ -27,6 +27,8 @@ describe('Inscription', () => {
     cy.location('pathname').should('eq', '/');
     cy.contains('header', email);
     cy.contains('header', 'user');
+    // Un compte neuf n'a pas de site : c'est un admin qui le lui attribue
+    cy.contains('main', 'Aucun site');
   });
 
   it('refuse un email déjà utilisé', () => {

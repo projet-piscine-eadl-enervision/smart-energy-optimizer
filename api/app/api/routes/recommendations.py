@@ -8,7 +8,7 @@ les :hours prochaines heures. L'économie estimée d'un pic prévu est la part d
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, site_scope
 from app.schemas.energy import Recommendation
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
@@ -69,4 +69,4 @@ async def get_recommendations(
     site_id: str | None = Query(default=None, description="Un site ; sans valeur, tous les sites"),
     limit: int = Query(default=50, ge=1, le=200),
 ):
-    return await fetch_recommendations(db, hours, site_id, limit)
+    return await fetch_recommendations(db, hours, site_scope(current_user, site_id), limit)

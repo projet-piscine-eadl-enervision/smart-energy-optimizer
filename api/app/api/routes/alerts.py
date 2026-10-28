@@ -14,7 +14,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, site_scope
 from app.schemas.alerts import Alert
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
@@ -84,4 +84,4 @@ async def get_alerts(
     since: Annotated[datetime | None, Query(description="Alertes reçues après cet instant (UTC)")] = None,
     limit: int = Query(default=50, ge=1, le=200),
 ):
-    return await fetch_alerts(db, site_id, status, since, limit)
+    return await fetch_alerts(db, site_scope(current_user, site_id), status, since, limit)

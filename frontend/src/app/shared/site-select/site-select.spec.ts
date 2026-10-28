@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { AuthService } from '../../core/auth.service';
+import { User } from '../../core/models';
 import { answer, apiProviders, Failure } from '../../testing/api';
 import { SiteSelect } from './site-select';
 
@@ -8,8 +10,9 @@ const SITES = [
 ];
 
 describe('SiteSelect', () => {
-  async function render(sites: unknown = SITES) {
+  async function render(sites: unknown = SITES, user: User | null = null) {
     await TestBed.configureTestingModule({ imports: [SiteSelect], providers: apiProviders() }).compileComponents();
+    TestBed.inject(AuthService).user.set(user);
     const fixture = TestBed.createComponent(SiteSelect);
     fixture.detectChanges();
     const requests = answer({ '/api/sites': sites });
@@ -32,6 +35,22 @@ describe('SiteSelect', () => {
     expect(Array.from(element.querySelectorAll('option')).map((o) => o.textContent?.trim())).toEqual([
       'Tous les sites',
     ]);
+  });
+
+  it("montre à un user son seul site, sans choix ni total", async () => {
+    const user: User = {
+      id: 2,
+      email: 'u@b.fr',
+      is_active: true,
+      role: 'user',
+      site_id: 'SITE001',
+      created_at: '2026-10-28T00:00:00Z',
+    };
+    const { element } = await render([SITES[0]], user);
+
+    expect(element.querySelector('select')).toBeNull();
+    expect(element.textContent).toContain('SITE001 · Usine Lyon');
+    expect(element.textContent).not.toContain('Tous les sites');
   });
 
   it('émet le site choisi, et une valeur vide pour le total', async () => {
