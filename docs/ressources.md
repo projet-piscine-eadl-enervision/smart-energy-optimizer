@@ -90,9 +90,37 @@ Vue exportée du même Kanban, avec les filtres par personne et par étiquette (
 
 Synthèse du projet : porte de qualité passée, couverture de 96,2 % sur l'ensemble du code, 0 % de duplication, note de sécurité A, 13 problèmes de sécurité fermés sur 30 jours pour un délai de correction moyen de 2,5 jours.
 
+![Qualité du code dans SonarQube Cloud](ressources/sonarqube-code-global.png)
+
+Onglet « Overall Code » : note A en sécurité, fiabilité et maintenabilité, 96,2 % de couverture sur 2,5 k lignes à couvrir, 0 % de duplication sur 6,6 k lignes, 9 risques de dépendances (note C).
+
 ![Risques de dépendances dans SonarQube Cloud](ressources/sonarqube-risques.png)
 
 Vue « Dependency risks » d'une branche : chaque risque indique le paquet, la gravité, le score CVSS et le type de dépendance.
+
+## Tests
+
+### Tous les modules en une commande
+
+![Tests de l'API avec couverture](ressources/tests-api.png)
+
+`infra/scripts/test-all.sh` lance ruff, les tests et la couverture de chaque module. Ici l'API : 175 tests collectés, couverture de 87 % ; les tests qui demandent une base réelle sont ignorés tant qu'elle n'est pas démarrée.
+
+![Récapitulatif des tests](ressources/tests-recapitulatif.png)
+
+Fin de l'exécution : le frontend passe 112 tests en 17 fichiers (98 % des instructions couvertes), puis le récapitulatif par module : API 87 %, ETL 94 %, ML 82 %, frontend 99 %.
+
+### Dépendances figées
+
+![Compilation des dépendances](ressources/requirements-lock.png)
+
+`infra/scripts/compile-requirements.sh` régénère les fichiers `requirements.txt` et `requirements-dev.txt` de l'API, de l'ETL et du ML.
+
+## Développement local
+
+![Conteneurs en local](ressources/docker-desktop.png)
+
+La pile locale dans Docker Desktop : base TimescaleDB, MLflow, `migrate` (qui s'arrête une fois les migrations appliquées), API, frontend et ETL.
 
 ## Wiki
 
@@ -133,6 +161,12 @@ Alertes actives d'un site, classées par gravité (`medium`, `high`, `critical`)
 ![Console AWS](ressources/aws-console.png)
 
 Accueil de la console du compte de production : services utilisés (EC2, Systems Manager) et coût du mois en cours, dominé par le calcul EC2.
+
+### Instance EC2
+
+![Instance EC2 de production](ressources/aws-ec2.png)
+
+L'unique instance de production : `t3.large` en cours d'exécution, 3 vérifications sur 3 réussies, zone `eu-west-3c`, aucune alarme ni événement. Identifiant et adresses masqués.
 
 ### Stockage S3
 
