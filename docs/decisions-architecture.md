@@ -1,6 +1,6 @@
 # Décisions d'architecture
 
-Chaque décision structurante du projet tient en une page : contexte, choix, alternatives réellement examinées, conséquences et preuves. Les décisions ont été prises en daily, en séance à deux ou dans un ticket ; les ADR 0001 à 0004 ont été **rédigés a posteriori le 28/10/2026**, d'où deux dates par fiche : celle de la décision et celle de la rédaction. Quand aucune trace écrite n'existe, la fiche le dit.
+Chaque décision structurante du projet tient en une page : contexte, choix, alternatives réellement examinées, conséquences et preuves. Les décisions ont été prises en daily, en séance à deux ou dans un ticket ; les ADR 0001 à 0005 ont été **rédigés a posteriori le 28/10/2026**, d'où deux dates par fiche : celle de la décision et celle de la rédaction. Quand aucune trace écrite n'existe, la fiche le dit.
 
 | N° | Décision | Statut | Décidée le |
 |---|---|---|---|
@@ -8,6 +8,7 @@ Chaque décision structurante du projet tient en une page : contexte, choix, alt
 | 0002 | Publier les releases sans PR de release | accepté, prolongé par une release manuelle | 19/10/2026 |
 | 0003 | Déployer le staging par un tirage depuis la VM | accepté | 20/10/2026 |
 | 0004 | Héberger la production sur AWS plutôt que sur Azure | accepté | 21/10/2026 |
+| 0005 | Suivre le travail dans un Kanban GitHub plutôt que dans Notion | accepté | 19/10/2026 |
 
 ## Ajouter une décision
 
@@ -123,3 +124,25 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 - Sortie réseau en HTTP et HTTPS ouvertes à tous (adresses de GHCR et de SSM non énumérables), assumée dans l'audit.
 
 **Preuves.** PR [79](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/79), [94](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/94), [environnements techniques](environnements-techniques.md).
+
+## ADR 0005. Suivre le travail dans un Kanban GitHub plutôt que dans Notion
+
+- **Statut** : accepté
+- **Décision prise le** : 19/10/2026, premier jour du projet, en daily
+- **Rédigé le** : 28/10/2026, a posteriori
+- **Décideurs** : le groupe
+- **Domaine** : Organisation
+
+**Contexte.** Il fallait dès le premier jour un outil pour répartir et suivre le travail. Notion avait été envisagé pour tenir ce rôle.
+
+**Décision.** Abandonner Notion et tenir le Kanban dans GitHub Projects (« Kanban Enervision », projet de l'organisation), au même endroit que le code, les tickets et les PR.
+
+**Alternatives examinées.**
+- **Notion** : abandonné dès le premier jour. Les tickets et les PR auraient dû y être recopiés ou liés à la main.
+
+**Conséquences.**
+- Les cartes sont les tickets du dépôt : un ticket fermé par une PR passe à « Done » sans second geste.
+- Les indicateurs se mesurent sans saisie, depuis l'API de GitHub : le délai médian d'un ticket est de 19 heures.
+- Limites : le Kanban ne porte ni jalons ni estimations, et les indicateurs n'ont pas été définis au départ.
+
+**Preuves.** [Kanban de l'organisation](https://github.com/orgs/projet-piscine-eadl-enervision/projects/3), premiers tickets du 19/10. Décision orale, non tracée.
