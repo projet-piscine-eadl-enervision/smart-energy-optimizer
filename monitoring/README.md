@@ -1,7 +1,8 @@
 # Supervision
 
 Prometheus collecte les métriques de l'hôte, des conteneurs, de la base, de l'API et de l'ETL, et
-évalue les règles d'alerte. Grafana les affiche dans des dashboards versionnés ici. La stack est
+évalue les règles d'alerte. Alertmanager envoie les alertes dans un canal Teams. Grafana affiche les
+métriques dans des dashboards versionnés ici. La stack est
 décrite par `docker-compose.monitoring.yml`, à la racine, qui s'ajoute au compose de l'environnement.
 
 ```
@@ -10,6 +11,7 @@ monitoring/
   prometheus/alerts.yml          règles d'alerte
   prometheus/alerts.test.yml     tests des règles (promtool test rules)
   blackbox/blackbox.yml          façons de sonder les URL (http_2xx, http_frontend)
+  alertmanager/alertmanager.yml  envoi des alertes dans Teams (regroupement, rappels)
   grafana/provisioning/          source de données Prometheus et chargement des dashboards
   grafana/dashboards/*.json      dashboards, rangés dans le dossier « EnerVision » de Grafana
 ```
@@ -26,6 +28,7 @@ monitoring/
 | `blackbox-http`     | blackbox-exporter                        | `/health` de l'API et de l'ETL répond-il en 2xx, et en combien de temps |
 | `blackbox-frontend` | blackbox-exporter                        | même chose pour le frontend                                   |
 | `prometheus`        | Prometheus                               | Prometheus lui-même                                           |
+| `alertmanager`      | Alertmanager                             | Alertmanager joignable (sinon plus aucune notification)       |
 
 Les métriques de l'ETL sont lues dans la base à chaque collecte (`etl.run`, `core.energy_reading`) :
 le collecteur n'ouvre aucun port, on observe ce qu'il écrit.
@@ -75,10 +78,12 @@ de groupe de sécurité n'est nécessaire.
 
   puis http://localhost:3000.
 
-> **Activation.** Staging : `monitoring` dans le `COMPOSE_PROFILES` de `staging.env`, avec
-> `GRAFANA_ADMIN_PASSWORD` ; `infra/scripts/update-staging.sh` ajoute alors ce compose à ses commandes
-> (voir `docs/deploiement-staging.md`). Production : pas encore branchée,
-> `.github/workflows/deploy-production.yml` ne lance que `docker-compose.staging.yml`. Ne pas démarrer
+> **Activation.** `monitoring` dans le `COMPOSE_PROFILES` de `staging.env` ou `production.env`, avec
+> `GRAFANA_ADMIN_PASSWORD` (et `TEAMS_WEBHOOK_URL` pour les notifications) :
+> `infra/scripts/update-staging.sh` et `.github/workflows/deploy-production.yml` ajoutent alors ce
+> compose à leurs commandes. Pas à pas et accès de chaque développeur :
+> [`docs/supervision-staging.md`](../docs/supervision-staging.md) et
+> [`docs/supervision-production.md`](../docs/supervision-production.md). Ne pas démarrer
 > la supervision à la main sur un serveur : les deux déploiements utilisent `--remove-orphans` et
 > suppriment au passage suivant les conteneurs qu'ils ne connaissent pas.
 
@@ -89,8 +94,8 @@ hôte (disque à 80 et 90 %, mémoire, CPU) et application (erreurs 5xx et laten
 nouvelle mesure, dernière exécution de l'ETL en échec). Gravité `critical` : service indisponible ;
 `warning` : à regarder avant que ça le devienne.
 
-Sans Alertmanager, aucune notification n'est envoyée : les alertes se consultent dans Prometheus
-(*Alerts*) et dans Grafana (*Alerting > Alert rules*).
+Les alertes se consultent dans Prometheus (*Alerts*) et dans Grafana (*Alerting > Alert rules*), et
+Alertmanager les envoie dans un canal Teams (voir « Notifications Teams »).
 
 `EtlSansNouvelleMesure` ne sonne que si la base contient des mesures : sans collecteur (production
 par défaut), la table est vide et l'alerte reste muette.
@@ -101,6 +106,44 @@ Toute nouvelle règle s'accompagne si possible d'un cas dans `alerts.test.yml` :
 cd monitoring/prometheus
 docker run --rm -v "$PWD:/w:ro" -w /w --entrypoint promtool prom/prometheus:v3.15.0 test rules alerts.test.yml
 ```
+
+## Notifications Teams
+
+Prometheus transmet les alertes à Alertmanager (`alertmanager:9093`), qui les poste dans un canal
+Teams par un workflow (Power Automate), au format carte adaptative (`msteamsv2_configs`). Chaque
+message indique l'environnement (label `environment`, tiré de `APP_ENV`), le nom de l'alerte et sa
+gravité ; un second message signale la résolution. Alertes regroupées par nom et environnement,
+rappel toutes les 4 h tant qu'elles durent ; une alerte `critical` masque le `warning` de même cible.
+
+Mettre en place le webhook, une fois par environnement (un canal par environnement, ou le même) :
+
+1. Dans Teams, sur le canal : *...* > *Workflows* > modèle **« Envoyer des alertes webhook à un
+   canal »** (*Send webhook alerts to a channel*), choisir l'équipe et le canal, puis copier l'URL
+   affichée à la fin.
+2. La mettre dans `staging.env` ou `production.env` (ou `.env` sur le poste) :
+   `TEAMS_WEBHOOK_URL=https://...`. Cette URL suffit pour écrire dans le canal : jamais dans Git ni
+   dans un message.
+3. Le déploiement suivant (minuteur du staging, workflow de production) démarre Alertmanager avec
+   cette URL. S'il tournait déjà, il ne relit pas l'URL : sur le serveur,
+   `docker compose ... up -d --force-recreate alertmanager` (mêmes options `-f` et `--env-file` que
+   le déploiement). Même chose après un changement d'URL.
+
+Les anciens « connecteurs » Office 365 (webhook entrant) sont en cours de retrait par Microsoft : ne
+pas les utiliser. Sans `TEAMS_WEBHOOK_URL`, Alertmanager tourne mais chaque envoi échoue (`Notify for
+alerts failed` dans ses logs) ; les alertes restent visibles dans Prometheus et Grafana.
+
+Vérifier l'envoi : interface d'Alertmanager sur le port 9093 de la machine (tunnel comme pour Grafana,
+`-L 9093:127.0.0.1:9093`), ou envoyer une alerte de test depuis le serveur :
+
+```bash
+docker compose ... exec alertmanager amtool alert add AlerteDeTest severity=warning environment=test \
+  --annotation='summary="Test des notifications"' --annotation='description="À ignorer"' \
+  --alertmanager.url=http://localhost:9093
+```
+
+Le message arrive après `group_wait` (30 s). Une modification de `alertmanager/alertmanager.yml`
+demande `docker compose ... restart alertmanager`. Vérification locale :
+`docker run --rm -v "$PWD/monitoring/alertmanager:/c:ro" -w /c --entrypoint amtool prom/alertmanager:v0.34.1 check-config alertmanager.yml`.
 
 ## Ajouter ou modifier un dashboard
 
@@ -123,14 +166,16 @@ Le dashboard des conteneurs s'appuie sur les labels `service` et `container`, cr
 
 Le job `monitoring` de `ci.yml` tourne quand un fichier de `monitoring/` change (sortie `monitoring`
 de `infra/scripts/changed-modules.sh`) ou qu'un fichier commun change : validation du compose,
-`promtool check config` et `test rules`, `--config.check` du blackbox, et `check-dashboards.py`. Les
+`promtool check config` et `test rules`, `amtool check-config` d'Alertmanager, `--config.check` du blackbox, et `check-dashboards.py`. Les
 images utilisées sont lues dans `docker-compose.monitoring.yml`.
 
 ## Limites connues
 
 - **cAdvisor sous Docker Desktop (WSL2)** : il ne voit pas les conteneurs, le dashboard « Conteneurs »
   reste vide sur un poste Windows. Il fonctionne avec docker-ce sur Debian (VM de staging, EC2).
-- **Pas de notification** tant qu'Alertmanager ou un point de contact Grafana n'est pas configuré.
+- **Notifications** : seulement si `TEAMS_WEBHOOK_URL` est renseignée. Si Alertmanager lui-même
+  tombe, plus rien n'est envoyé (l'alerte `CibleInjoignable` du job `alertmanager` reste visible dans
+  Prometheus et Grafana).
 - **postgres-exporter** utilise l'utilisateur de l'application par défaut ; `MONITORING_DB_USER` et
   `MONITORING_DB_PASSWORD` permettent de passer à un utilisateur dédié en lecture seule (rôle
   `pg_monitor`).

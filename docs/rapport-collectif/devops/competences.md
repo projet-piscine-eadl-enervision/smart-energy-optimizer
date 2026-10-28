@@ -56,7 +56,7 @@ Les scripts d'exploitation sont versionnés dans `infra/scripts/` et testés par
 
 ## La supervision (C24)
 
-Les sondes existent : `/health` publie la version, le commit et l'environnement ; les images `api`, `etl` et `frontend` ont un `HEALTHCHECK` Docker ; le collecteur de l'ETL écrit un signal de vivacité à chaque tour réussi, lu par une sonde qui le déclare `unhealthy` après trois intervalles sans tour ; le staging annonce ses déploiements à GitHub, et la production est contrôlée après chaque déploiement. Il n'y a en revanche ni collecte de métriques ni alerte (#150) : rien ne signale l'échec du minuteur de mise à jour du staging, qui se lit seulement dans le journal de l'unité systemd. L'évolution prévue est un export des métriques de l'hôte et des conteneurs vers Prometheus, un tableau Grafana (processeur, mémoire, disque, taux d'erreur, latence de `/health`) et une alerte sur l'échec du minuteur de mise à jour.
+Les sondes existent : `/health` publie la version, le commit et l'environnement ; les images `api`, `etl` et `frontend` ont un `HEALTHCHECK` Docker ; le collecteur de l'ETL écrit un signal de vivacité à chaque tour réussi, lu par une sonde qui le déclare `unhealthy` après trois intervalles sans tour ; le staging annonce ses déploiements à GitHub, et la production est contrôlée après chaque déploiement. Depuis la #202, prometheus et Grafana sont livrés (#202) : métriques de l'hôte, des conteneurs, de la base, de l'API et de l'ETL, quatre dashboards versionnés et des règles d'alerte testées avec `promtool`. La supervision est active au staging et pas encore branchée en production. Sans Alertmanager, aucune alerte n'est notifiée : elles se consultent dans Prometheus et Grafana, et l'échec du minuteur de mise à jour du staging n'a pas de règle. Le modèle n'est pas dans Grafana : sa dérive est calculée chaque jour par le module ML (`ml.drift_metric`, expérience MLflow `enervision-monitoring`).
 
 ## La documentation (C20)
 
@@ -71,11 +71,11 @@ Les règles d'équipe sont dans `CONTRIBUTING.md` ; les procédures de bout en b
 
 ## Limites et évolutions envisagées
 
-- **Supervision** avec alertes (#150), voir plus haut.
+- **Supervision** : notification des alertes (Alertmanager), branchement en production et modèle dans Grafana, voir plus haut (#150).
 - **Scan dynamique** de l'application, par exemple OWASP ZAP contre le staging (#149), et tests de charge.
 - **Scan des images** publié mais non bloquant (#146) : il le devient une fois les deux alertes de l'image `db` assumées.
 - **`terraform plan` en CI**, en lecture seule, avec un rôle AWS distinct du rôle de déploiement ; le job `terraform` contrôle aujourd'hui le format et la validité.
-- **Comptes de connexion par module** pour la base (#145), **linter du frontend** (#148) et **tests de bout en bout** dans la CI.
+- **Comptes de connexion par module** pour la base (#145), **linter du frontend** (#148).
 
 L'[audit du dépôt](../../audit-depot.md) donne le détail de ces écarts.
 

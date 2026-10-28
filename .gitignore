@@ -244,3 +244,4 @@ tfplan
 
 # Fichiers Windows créés par les copies vers WSL
 *:Zone.Identifier
+.venv-tests/

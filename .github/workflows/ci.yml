@@ -305,6 +305,11 @@ jobs:
             --entrypoint promtool "$image" check config prometheus.yml
           docker run --rm -v "$PWD/monitoring/prometheus:/etc/prometheus:ro" -w /etc/prometheus \
             --entrypoint promtool "$image" test rules alerts.test.yml
+      - name: Alertmanager (amtool check-config)
+        run: |
+          image=$(docker compose config --images | grep '^prom/alertmanager:')
+          docker run --rm -v "$PWD/monitoring/alertmanager:/etc/alertmanager:ro" -w /etc/alertmanager \
+            --entrypoint amtool "$image" check-config alertmanager.yml
       - name: Blackbox (config.check)
         run: |
           image=$(docker compose config --images | grep '^prom/blackbox-exporter:')

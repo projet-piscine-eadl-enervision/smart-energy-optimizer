@@ -1,5 +1,6 @@
-# Règles d'alerte évaluées par Prometheus (rule_files de prometheus.yml). Sans Alertmanager, les alertes
-# s'affichent dans Prometheus (/alerts) et dans Grafana (Alerting), sans notification envoyée.
+# Règles d'alerte évaluées par Prometheus (rule_files de prometheus.yml). Elles s'affichent dans
+# Prometheus (/alerts) et dans Grafana (Alerting), et Alertmanager les envoie dans le canal Teams
+# (monitoring/alertmanager/alertmanager.yml) quand TEAMS_WEBHOOK_URL est renseignée.
 # Gravité : critical = service rendu indisponible ; warning = à regarder avant que ça le devienne.
 # Test : promtool test rules alerts.test.yml (depuis ce dossier)
 groups:

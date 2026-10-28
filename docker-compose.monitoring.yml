@@ -7,7 +7,8 @@
 # Configuration dans monitoring/. Prometheus et Grafana n'écoutent que sur 127.0.0.1 : rien n'est
 # exposé sur le réseau. En production, on y accède par une redirection de port SSM (aucune règle de
 # groupe de sécurité à ajouter). Les exporteurs ne publient aucun port : seul Prometheus les interroge.
-# GRAFANA_ADMIN_PASSWORD doit être présent dans .env, staging.env ou production.env.
+# GRAFANA_ADMIN_PASSWORD doit être présent dans .env, staging.env ou production.env ;
+# TEAMS_WEBHOOK_URL (facultatif) fait envoyer les alertes dans un canal Teams par Alertmanager.
 
 services:
   # Collecte toutes les cibles de monitoring/prometheus/prometheus.yml. Rétention bornée en durée
@@ -20,11 +21,34 @@ services:
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=15d
       - --storage.tsdb.retention.size=5GB
+    environment:
+      # Label environment ajouté à chaque alerte (external_labels de prometheus.yml)
+      APP_ENV: ${APP_ENV:-staging}
     volumes:
       - ./monitoring/prometheus:/etc/prometheus:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
+
+  # Notifications : reçoit les alertes de Prometheus, les regroupe et les envoie dans un canal Teams
+  # (Workflows, monitoring/alertmanager/alertmanager.yml). L'URL du webhook vient de TEAMS_WEBHOOK_URL
+  # et n'est jamais dans le dépôt ; vide, les alertes restent visibles mais ne sont pas envoyées.
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      # Une seule instance : pas de cluster (ni port 9094, ni attente de synchronisation)
+      - --cluster.listen-address=
+    configs:
+      - source: teams_webhook_url
+        target: /run/alertmanager/teams_webhook_url
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
 
   # Tableaux de bord. Source de données et dashboards provisionnés depuis le dépôt.
   grafana:
@@ -94,3 +118,8 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  alertmanager_data:
+
+configs:
+  teams_webhook_url:
+    content: ${TEAMS_WEBHOOK_URL:-}
