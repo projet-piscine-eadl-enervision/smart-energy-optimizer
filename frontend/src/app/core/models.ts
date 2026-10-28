@@ -10,6 +10,8 @@ export interface User {
   email: string;
   is_active: boolean;
   role: Role;
+  /** Site de rattachement : un `user` ne voit que celui-ci, un `admin` voit tous les sites. */
+  site_id: string | null;
   created_at: string;
 }
 

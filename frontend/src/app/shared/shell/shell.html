@@ -39,13 +39,27 @@
     </div>
     <div class="flex items-center gap-4 text-sm text-slate-600">
       @if (user(); as u) {
-        <span>{{ u.email }} <span class="rounded bg-slate-200 px-2 py-0.5">{{ u.role }}</span></span>
+        <span
+          >{{ u.email }} <span class="rounded bg-slate-200 px-2 py-0.5">{{ u.role }}</span>
+          @if (u.site_id) {
+            <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">{{ u.site_id }}</span>
+          }
+        </span>
       }
       <button (click)="auth.logout()" class="text-red-600 hover:underline">Déconnexion</button>
     </div>
   </header>
 
   <main class="mx-auto max-w-7xl p-6">
-    <router-outlet />
+    @if (!ready()) {
+      <p class="text-slate-500">Chargement…</p>
+    } @else if (auth.hasNoSite()) {
+      <p class="rounded bg-amber-50 p-4 text-amber-800" role="status">
+        Aucun site n'est encore rattaché à votre compte. Demandez à un administrateur de vous attribuer votre
+        site pour accéder à ses données.
+      </p>
+    } @else {
+      <router-outlet />
+    }
   </main>
 </div>
