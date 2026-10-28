@@ -81,7 +81,7 @@ describe('Navigation et pages de données', () => {
     });
 
     cy.loginAsNewUser('/sites');
-    cy.contains('tbody tr', 'SITE001').within(() => {
+    cy.contains('li', 'SITE001').within(() => {
       cy.contains('Usine Lyon');
       cy.contains('842.4');
       cy.contains('good');
