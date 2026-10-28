@@ -148,8 +148,17 @@ def make_user(db):
     return _make_user
 
 
+def headers_for(user: User) -> dict:
+    return {"Authorization": f"Bearer {create_access_token(subject=str(user.id))}"}
+
+
 @pytest.fixture
 def auth_headers(make_user):
-    user = make_user()
-    token = create_access_token(subject=str(user.id))
-    return {"Authorization": f"Bearer {token}"}
+    """Jeton d'un admin : il lit tous les sites, ce que vérifient les tests des routes de données."""
+    return headers_for(make_user(role=Role.ADMIN))
+
+
+@pytest.fixture
+def user_headers(make_user):
+    """Jeton d'un user rattaché à SITE001 : il ne lit que ce site."""
+    return headers_for(make_user(email="bob@example.com", role=Role.USER, site_id="SITE001"))
