@@ -70,7 +70,9 @@ export class Peaks implements OnInit {
     const names = new Map(this.sitesService.sites().map((s) => [s.site_id, s.site_name]));
     return this.peaks().map((peak) => {
       const percent =
-        peak.excess_kw !== null && peak.threshold_kw ? (peak.excess_kw / peak.threshold_kw) * 100 : null;
+        peak.excess_kw !== null && peak.threshold_kw
+          ? (peak.excess_kw / peak.threshold_kw) * 100
+          : null;
       return {
         peak,
         siteName: names.get(peak.site_id) ?? null,
@@ -98,7 +100,8 @@ export class Peaks implements OnInit {
   /** Le pic le plus marqué, au dépassement relatif le plus grand. */
   protected readonly strongest = computed(() =>
     this.rows().reduce<PeakRow | null>(
-      (best, row) => (row.percent !== null && (best === null || row.percent > best.percent!) ? row : best),
+      (best, row) =>
+        row.percent !== null && (best === null || row.percent > best.percent!) ? row : best,
       null,
     ),
   );
@@ -109,7 +112,7 @@ export class Peaks implements OnInit {
       const strip = bySite.get(row.peak.site_id) ?? {
         siteId: row.peak.site_id,
         siteName: row.siteName,
-        cells: Array<PeakRow | null>(this.hours()).fill(null),
+        cells: new Array<PeakRow | null>(this.hours()).fill(null),
       };
       const index = Math.floor((new Date(row.peak.timestamp).getTime() - this.from()) / HOUR_MS);
       if (index >= 0 && index < strip.cells.length) strip.cells[index] = row;
@@ -152,7 +155,11 @@ export class Peaks implements OnInit {
 
   private dayLabel(day: number, today: number): string {
     const gap = Math.round((day - today) / DAY_MS);
-    const date = new Date(day).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+    const date = new Date(day).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+    });
     if (gap === 0) return `Aujourd'hui, ${date}`;
     if (gap === 1) return `Demain, ${date}`;
     return date.charAt(0).toUpperCase() + date.slice(1);

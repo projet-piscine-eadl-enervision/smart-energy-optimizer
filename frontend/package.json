@@ -7,6 +7,9 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "lint": "ng lint --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "serve:ssr:enervision": "node dist/enervision/server/server.mjs"
   },
   "private": true,
@@ -29,15 +32,20 @@
     "@angular/build": "^22.2.3",
     "@angular/cli": "^22.2.3",
     "@angular/compiler-cli": "^22.2.0",
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/express": "^5.0.1",
     "@types/node": "^22.12.0",
     "@vitest/coverage-v8": "^5.0.5",
+    "angular-eslint": "^22.6.0",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
     "jsdom": "^30.0.0",
     "postcss": "^8.5.3",
     "prettier": "3.9.10",
     "tailwindcss": "^4.1.12",
     "typescript": "~6.0.2",
+    "typescript-eslint": "^8.72.1",
     "vitest": "^5.0.0"
   }
 }

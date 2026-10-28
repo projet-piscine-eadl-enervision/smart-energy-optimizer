@@ -41,7 +41,9 @@ describe('Tableau de bord', () => {
     cy.wait(['@predictions', '@recommendations']);
 
     cy.contains('Chargement…').should('not.exist');
-    cy.contains('section', 'Prédictions de la consommation').contains('Aucune prévision disponible');
+    cy.contains('section', 'Prédictions de la consommation').contains(
+      'Aucune prévision disponible',
+    );
     cy.contains('section', 'Historique (24 h)').contains('Aucune mesure sur cette période.');
     cy.contains('section', 'Recommandations').contains('Aucune recommandation pour le moment.');
   });

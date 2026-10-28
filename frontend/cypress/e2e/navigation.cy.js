@@ -119,7 +119,7 @@ describe('Navigation et pages de données', () => {
     });
   });
 
-  it("affiche les pics prévus avec leur seuil et leur dépassement", () => {
+  it('affiche les pics prévus avec leur seuil et leur dépassement', () => {
     stubEmptyData();
     cy.intercept('GET', '/api/sites', [SITE]);
     cy.intercept('GET', '/api/alerts*', []);
@@ -146,7 +146,7 @@ describe('Navigation et pages de données', () => {
     cy.wait('@peaks').its('request.url').should('include', 'hours=72');
   });
 
-  it("filtre le tableau de bord par site", () => {
+  it('filtre le tableau de bord par site', () => {
     cy.intercept('GET', '/api/sites', [SITE]);
     cy.intercept('GET', '/api/alerts*', []);
     cy.intercept('GET', '/api/predictions*', []).as('predictions');
@@ -162,7 +162,7 @@ describe('Navigation et pages de données', () => {
     cy.wait('@recommendations').its('request.url').should('include', 'site_id=SITE001');
   });
 
-  it("montre à un user son seul site, sans choix de site", () => {
+  it('montre à un user son seul site, sans choix de site', () => {
     stubEmptyData();
     cy.intercept('GET', '/api/sites', [SITE]);
     cy.intercept('GET', '/api/alerts*', []);

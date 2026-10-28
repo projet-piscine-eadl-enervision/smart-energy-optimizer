@@ -41,6 +41,16 @@ git push -u origin ma-tache
 # ouvrir la PR, demander une revue, corriger, squash merge
 ```
 
+## Lint du frontend
+
+Le frontend est contrôlé par ESLint (`frontend/eslint.config.js`, règles angular-eslint) et Prettier (`frontend/.prettierrc`), dans le job `frontend` de la CI et dans le hook pre-commit. Depuis `frontend/` :
+
+- `npm run lint` : ESLint, aucun avertissement toléré ;
+- `npm run format:check` : vérifie la mise en forme, `npm run format` la corrige ;
+- sans Node 24 dans WSL : `./infra/scripts/lint-frontend.sh` lance les deux dans le conteneur frontend.
+
+La mise en forme relève de Prettier seul (`eslint-config-prettier` coupe les règles d'ESLint qui le contrediraient). ESLint protège aussi l'organisation de `src/app` : `core` (services, modèles) n'importe ni `shared` ni `pages`, `shared` n'importe pas `pages`, une page n'importe pas une autre page, et `testing` est réservé aux tests. Ce qui sert à plusieurs pages va dans `shared` ou `core`.
+
 ## Migrations de la base
 
 Toute modification de la base (table, colonne, index, agrégat, données de référence) est un fichier SQL de `db/migrations/`, jamais une commande lancée à la main. Il s'applique tout seul au démarrage de la pile. Détail, création d'une migration et cas particuliers dans [`docs/migrations-base-de-donnees.md`](docs/migrations-base-de-donnees.md). Les règles :

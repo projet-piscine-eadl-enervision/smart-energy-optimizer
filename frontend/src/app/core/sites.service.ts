@@ -32,10 +32,16 @@ export class SitesService {
     return this.http.get<Site[]>(`${API_URL}/sites`);
   }
 
-  getConsumption(siteId: string, period: Period, days?: number): Observable<SiteConsumptionPoint[]> {
+  getConsumption(
+    siteId: string,
+    period: Period,
+    days?: number,
+  ): Observable<SiteConsumptionPoint[]> {
     let params = new HttpParams().set('period', period);
     if (days) params = params.set('days', days);
-    return this.http.get<SiteConsumptionPoint[]>(`${API_URL}/sites/${siteId}/consumption`, { params });
+    return this.http.get<SiteConsumptionPoint[]>(`${API_URL}/sites/${siteId}/consumption`, {
+      params,
+    });
   }
 
   getQuality(siteId: string, days = 7): Observable<SiteQuality> {

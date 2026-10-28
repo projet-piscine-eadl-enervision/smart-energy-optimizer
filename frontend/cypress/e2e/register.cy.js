@@ -6,7 +6,7 @@ describe('Inscription', () => {
     cy.contains('button', 'Pas de compte ? Inscris-toi').click();
   });
 
-  it("passe le formulaire en mode inscription et peut revenir à la connexion", () => {
+  it('passe le formulaire en mode inscription et peut revenir à la connexion', () => {
     cy.contains('h1', 'Créer un compte');
     cy.contains('button[type="submit"]', "S'inscrire");
     cy.get('input[formcontrolname="password"]').should('have.attr', 'autocomplete', 'new-password');

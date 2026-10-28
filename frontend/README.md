@@ -4,15 +4,26 @@ This project was generated using [Angular CLI](https://github.com/angular/angula
 
 ## Pages
 
-| Adresse | Page |
-|---|---|
-| `/login` | connexion et inscription |
-| `/` | tableau de bord : prévisions (pics en rouge), historique, recommandations, par site ou pour le total |
-| `/peaks` | pics prévus : heure, site, seuil, dépassement |
-| `/alerts` | alertes, actives ou résolues ; le badge de l'en-tête compte les actives (sondage toutes les 30 s) |
+| Adresse                | Page                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| `/login`               | connexion et inscription                                                                               |
+| `/`                    | tableau de bord : prévisions (pics en rouge), historique, recommandations, par site ou pour le total   |
+| `/peaks`               | pics prévus : heure, site, seuil, dépassement                                                          |
+| `/alerts`              | alertes, actives ou résolues ; le badge de l'en-tête compte les actives (sondage toutes les 30 s)      |
 | `/sites`, `/sites/:id` | sites avec leur dernière mesure ; consommation par heure, jour, semaine ou mois et qualité des relevés |
 
 Les pages vivent dans `src/app/pages/`, les services d'API dans `src/app/core/` et les éléments partagés (en-tête, sélecteur de site) dans `src/app/shared/`. Les tests des écrans passent par les vrais services : seul le réseau est simulé (`src/app/testing/api.ts`).
+
+Cette organisation est contrôlée par ESLint (`eslint.config.js`) : `core` n'importe ni `shared` ni `pages`, `shared` n'importe pas `pages` et une page n'importe pas une autre page.
+
+## Lint et mise en forme
+
+```bash
+npm run lint          # ESLint (angular-eslint), aucun avertissement toléré
+npm run format:check  # Prettier, en lecture seule ; npm run format corrige
+```
+
+La CI et le hook pre-commit lancent les deux (voir `CONTRIBUTING.md`).
 
 ## Development server
 

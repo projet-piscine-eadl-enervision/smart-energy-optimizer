@@ -23,7 +23,10 @@
         @for (s of sites(); track s.site_id) {
           <tr class="border-t border-slate-200">
             <td class="py-2">
-              <a [routerLink]="['/sites', s.site_id]" class="font-medium text-emerald-700 hover:underline">
+              <a
+                [routerLink]="['/sites', s.site_id]"
+                class="font-medium text-emerald-700 hover:underline"
+              >
                 {{ s.site_id }}
               </a>
               <span class="ml-1 text-slate-500">{{ s.site_name }}</span>

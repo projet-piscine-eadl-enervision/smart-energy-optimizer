@@ -22,7 +22,7 @@ describe('Accès protégé par le garde', () => {
     cy.contains('main', 'Aucun site');
   });
 
-  it('déconnecte quand le jeton est refusé par l\'API', () => {
+  it("déconnecte quand le jeton est refusé par l'API", () => {
     // Le garde ne voit qu'un jeton présent ; c'est l'API qui le refuse (401),
     // puis l'intercepteur supprime le jeton et renvoie vers /login
     cy.visitAsLoggedIn('/', 'jeton-invalide');
@@ -32,8 +32,6 @@ describe('Accès protégé par le garde', () => {
   });
 
   it("n'appelle pas les routes protégées sans jeton", () => {
-    cy.request({ url: '/api/auth/me', failOnStatusCode: false })
-      .its('status')
-      .should('eq', 401);
+    cy.request({ url: '/api/auth/me', failOnStatusCode: false }).its('status').should('eq', 401);
   });
 });

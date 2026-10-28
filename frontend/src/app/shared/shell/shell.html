@@ -54,10 +54,10 @@
     @if (!ready()) {
       <p class="text-slate-500">Chargement…</p>
     } @else if (auth.hasNoSite()) {
-      <p class="rounded bg-amber-50 p-4 text-amber-800" role="status">
-        Aucun site n'est encore rattaché à votre compte. Demandez à un administrateur de vous attribuer votre
-        site pour accéder à ses données.
-      </p>
+      <output class="block rounded bg-amber-50 p-4 text-amber-800">
+        Aucun site n'est encore rattaché à votre compte. Demandez à un administrateur de vous
+        attribuer votre site pour accéder à ses données.
+      </output>
     } @else {
       <router-outlet />
     }

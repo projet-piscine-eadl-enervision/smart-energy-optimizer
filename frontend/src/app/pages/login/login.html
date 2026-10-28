@@ -46,7 +46,11 @@
       {{ loading() ? 'Patiente…' : mode() === 'login' ? 'Se connecter' : "S'inscrire" }}
     </button>
 
-    <button type="button" (click)="toggleMode()" class="w-full text-sm text-emerald-700 hover:underline">
+    <button
+      type="button"
+      (click)="toggleMode()"
+      class="w-full text-sm text-emerald-700 hover:underline"
+    >
       {{ mode() === 'login' ? 'Pas de compte ? Inscris-toi' : 'Déjà un compte ? Connecte-toi' }}
     </button>
   </form>

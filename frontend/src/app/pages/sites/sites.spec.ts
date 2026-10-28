@@ -47,7 +47,13 @@ describe('Sites', () => {
 
   it("affiche des tirets quand aucune mesure n'est connue", async () => {
     const { element } = await render([
-      { ...SITE, last_consumption_kw: null, last_reading_age_minutes: null, last_quality: null, location: null },
+      {
+        ...SITE,
+        last_consumption_kw: null,
+        last_reading_age_minutes: null,
+        last_quality: null,
+        location: null,
+      },
     ]);
     const cells = element.querySelectorAll('tbody tr td');
 

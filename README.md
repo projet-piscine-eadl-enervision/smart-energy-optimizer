@@ -227,7 +227,7 @@ source .venv/bin/activate
 
 ### 7. Activer les contrôles avant commit
 
-Le dépôt fournit des hooks [pre-commit](https://pre-commit.com) qui refusent, avant même l'envoi, ce que la CI refuserait : message de commit hors Conventional Commits (type, longueur du titre et des lignes du corps), nom de branche invalide, commit direct sur `main`, clé privée, gros fichier, YAML invalide, erreurs `ruff`. Les règles elles-mêmes sont dans [`CONTRIBUTING.md`](CONTRIBUTING.md), la configuration dans `.pre-commit-config.yaml`.
+Le dépôt fournit des hooks [pre-commit](https://pre-commit.com) qui refusent, avant même l'envoi, ce que la CI refuserait : message de commit hors Conventional Commits (type, longueur du titre et des lignes du corps), nom de branche invalide, commit direct sur `main`, clé privée, gros fichier, YAML invalide, erreurs `ruff`, erreurs ESLint ou mise en forme Prettier du frontend. Les règles elles-mêmes sont dans [`CONTRIBUTING.md`](CONTRIBUTING.md), la configuration dans `.pre-commit-config.yaml`.
 
 À faire une fois dans chaque clone, y compris ceux qui existent déjà :
 
@@ -262,10 +262,10 @@ La production tourne sur AWS (Paris) et est accessible en HTTPS : https://dvrgiz
 
 ## Qualité et sécurité de la CI
 
-Chaque PR passe par `ruff`, `pytest`, le build du frontend, le contrôle des migrations, Trivy (dépendances, secrets, Terraform) et SonarQube Cloud (porte de qualité : 80 % de couverture sur le code neuf). Où lire les résultats et que faire quand un contrôle échoue : [`docs/qualite-et-securite-ci.md`](docs/qualite-et-securite-ci.md). Les tests de la CI se lancent aussi en local, en une commande, depuis WSL :
+Chaque PR passe par `ruff`, `pytest`, ESLint et Prettier sur le frontend, ses tests et son build, le contrôle des migrations, Trivy (dépendances, secrets, Terraform) et SonarQube Cloud (porte de qualité : 80 % de couverture sur le code neuf). Où lire les résultats et que faire quand un contrôle échoue : [`docs/qualite-et-securite-ci.md`](docs/qualite-et-securite-ci.md). Les tests de la CI se lancent aussi en local, en une commande, depuis WSL :
 
 ```bash
-./infra/scripts/test-all.sh               # ruff, tests et couverture de api, etl, ml et frontend
+./infra/scripts/test-all.sh               # ruff / ESLint + Prettier, tests et couverture de api, etl, ml et frontend
 ./infra/scripts/test-all.sh etl frontend  # seulement certains modules
 ```
 

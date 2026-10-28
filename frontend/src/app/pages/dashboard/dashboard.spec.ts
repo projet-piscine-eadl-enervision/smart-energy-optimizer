@@ -7,8 +7,20 @@ const SITES = [
   { site_id: 'SITE004', site_name: 'Site 4' },
 ];
 const PREDICTIONS = [
-  { timestamp: '2026-10-23T10:00:00Z', site_id: 'ALL', predicted_kw: 12.34, is_peak: null, model_version: '1' },
-  { timestamp: '2026-10-23T11:00:00Z', site_id: 'ALL', predicted_kw: 20, is_peak: null, model_version: '1' },
+  {
+    timestamp: '2026-10-23T10:00:00Z',
+    site_id: 'ALL',
+    predicted_kw: 12.34,
+    is_peak: null,
+    model_version: '1',
+  },
+  {
+    timestamp: '2026-10-23T11:00:00Z',
+    site_id: 'ALL',
+    predicted_kw: 20,
+    is_peak: null,
+    model_version: '1',
+  },
 ];
 const HISTORY = [{ timestamp: '2026-10-23T09:00:00Z', consumption_kw: 8 }];
 const RECOMMENDATIONS = [
@@ -40,7 +52,10 @@ const ROUTES = {
 
 describe('Dashboard', () => {
   async function render(routes: Record<string, unknown> = ROUTES) {
-    await TestBed.configureTestingModule({ imports: [Dashboard], providers: apiProviders() }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [Dashboard],
+      providers: apiProviders(),
+    }).compileComponents();
     const fixture = TestBed.createComponent(Dashboard);
     fixture.detectChanges();
     const requests = answer(routes);
@@ -52,9 +67,15 @@ describe('Dashboard', () => {
 
   it("affiche les trois sections et les recommandations de l'API", async () => {
     const { element } = await render();
-    const titles = Array.from(element.querySelectorAll('section h2')).map((h) => h.textContent?.trim());
+    const titles = Array.from(element.querySelectorAll('section h2')).map((h) =>
+      h.textContent?.trim(),
+    );
 
-    expect(titles).toEqual(['Prédictions de la consommation', 'Historique (24 h)', 'Recommandations']);
+    expect(titles).toEqual([
+      'Prédictions de la consommation',
+      'Historique (24 h)',
+      'Recommandations',
+    ]);
     expect(element.querySelectorAll('section canvas')).toHaveLength(2);
     expect(element.textContent).toContain('Décaler le chauffage');
     expect(element.textContent).toContain('Économie estimée : 2.5 kW');
@@ -86,7 +107,9 @@ describe('Dashboard', () => {
 
   it('propose les sites de l’API dans le sélecteur', async () => {
     const { element } = await render();
-    const options = Array.from(element.querySelectorAll('option')).map((o) => o.textContent?.trim());
+    const options = Array.from(element.querySelectorAll('option')).map((o) =>
+      o.textContent?.trim(),
+    );
 
     expect(options).toEqual(['Tous les sites', 'SITE003 · Site 3', 'SITE004 · Site 4']);
   });
@@ -110,7 +133,9 @@ describe('Dashboard', () => {
 
   it("recharge l'historique sur la période choisie", async () => {
     const { fixture, element } = await render();
-    Array.from(element.querySelectorAll('button')).find((b) => b.textContent?.trim() === '7 jours')!.click();
+    Array.from(element.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === '7 jours')!
+      .click();
     const requests = answer(ROUTES);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -135,7 +160,7 @@ describe('Dashboard', () => {
     expect(element.querySelectorAll('section canvas')).toHaveLength(1);
   });
 
-  it("affiche un message si une route de données échoue", async () => {
+  it('affiche un message si une route de données échoue', async () => {
     const { element } = await render({ ...ROUTES, '/api/predictions': new Failure(500) });
 
     expect(element.textContent).toContain("Impossible de charger les données depuis l'API.");

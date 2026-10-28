@@ -15,19 +15,19 @@ import { SitesService } from '../../core/sites.service';
         <span class="rounded bg-white px-2 py-1 font-medium text-slate-800">{{ site }}</span>
       </p>
     } @else {
-    <label class="flex items-center gap-2 text-sm text-slate-600">
-      Site
-      <select
-        class="rounded border border-slate-300 bg-white px-2 py-1"
-        [value]="value()"
-        (change)="changed.emit($any($event.target).value)"
-      >
-        <option value="">Tous les sites</option>
-        @for (site of sitesService.sites(); track site.site_id) {
-          <option [value]="site.site_id">{{ site.site_id }} · {{ site.site_name }}</option>
-        }
-      </select>
-    </label>
+      <label class="flex items-center gap-2 text-sm text-slate-600">
+        Site
+        <select
+          class="rounded border border-slate-300 bg-white px-2 py-1"
+          [value]="value()"
+          (change)="changed.emit($any($event.target).value)"
+        >
+          <option value="">Tous les sites</option>
+          @for (site of sitesService.sites(); track site.site_id) {
+            <option [value]="site.site_id">{{ site.site_id }} · {{ site.site_name }}</option>
+          }
+        </select>
+      </label>
     }
   `,
 })

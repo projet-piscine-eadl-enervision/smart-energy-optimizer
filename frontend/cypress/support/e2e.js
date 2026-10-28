@@ -47,12 +47,14 @@ Cypress.Commands.add('stubAccount', (email, account) => {
  */
 Cypress.Commands.add('loginAsNewUser', (path = '/', account = ADMIN) => {
   const email = uniqueEmail();
-  return cy.createUser(email).then(() =>
-    cy.getToken(email).then((token) => {
+  return cy
+    .createUser(email)
+    .then(() => cy.getToken(email))
+    .then((token) => {
       if (account) cy.stubAccount(email, account);
-      return cy.visitAsLoggedIn(path, token).then(() => email);
+      return cy.visitAsLoggedIn(path, token);
     })
-  );
+    .then(() => email);
 });
 
 /** Remplit et envoie le formulaire de la page /login. */
