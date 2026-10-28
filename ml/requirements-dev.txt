@@ -10,7 +10,7 @@ iniconfig==2.3.1
     # via pytest
 packaging==26.3
     # via
-    #   -c ml/requirements.txt
+    #   -c requirements.txt
     #   pytest
 pluggy==1.7.0
     # via
@@ -20,9 +20,9 @@ pygments==2.21.0
     # via pytest
 pytest==9.1.1
     # via
-    #   -r ml/requirements-dev.in
+    #   -r requirements-dev.in
     #   pytest-cov
 pytest-cov==7.1.0
-    # via -r ml/requirements-dev.in
-ruff==0.17.1
-    # via -r ml/requirements-dev.in
+    # via -r requirements-dev.in
+ruff==0.17.2
+    # via -r requirements-dev.in
