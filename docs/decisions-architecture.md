@@ -133,7 +133,7 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 - **Décideurs** : le groupe
 - **Domaine** : Organisation
 
-**Contexte.** Il fallait dès le premier jour un outil pour répartir et suivre le travail. Notion avait été envisagé pour tenir ce rôle.
+**Contexte.** Il fallait dès le premier jour un outil pour répartir et suivre le travail. Notion avait été envisagé pour tenir ce rôle, mais nous étions limités et ne pouvions pas tous être Administrateur·ices du kanban, ce qui n'était pas compatible avec notre mode de fonctionnement.
 
 **Décision.** Abandonner Notion et tenir le Kanban dans GitHub Projects (« Kanban Enervision », projet de l'organisation), au même endroit que le code, les tickets et les PR.
 
