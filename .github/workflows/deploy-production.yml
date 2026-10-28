@@ -183,6 +183,9 @@ jobs:
           # Supervision (Prometheus, Grafana, exporteurs) : activée par « monitoring » dans COMPOSE_PROFILES
           # de production.env, avec GRAFANA_ADMIN_PASSWORD, comme au staging (update-staging.sh). Sans ce
           # mot, --remove-orphans retire les conteneurs de supervision d'un déploiement précédent.
+          # Minuteurs systemd du module ML (prévision, surveillance, entraînement) : ceux du tag déployé sont
+          # installés et relancés à chaque déploiement, une fois l'API saine. Un tag antérieur à l'un d'eux
+          # (retour arrière) laisse en place la version déjà installée.
           # Avant de changer de version, la base est sauvegardée (les 5 dernières sauvegardes sont
           # gardées) : revenir au code précédent ne défait pas les données déjà écrites.
           script=$(cat <<EOF
@@ -207,11 +210,23 @@ jobs:
           \$compose pull --ignore-buildable --quiet
           \$compose up -d --remove-orphans
           for i in \$(seq 1 30); do
-            if curl -fsS http://localhost:8000/health; then echo; exit 0; fi
+            if curl -fsS http://localhost:8000/health; then echo; break; fi
+            if [ "\$i" -eq 30 ]; then echo "L'API ne répond pas après le déploiement" >&2; exit 1; fi
             sleep 5
           done
-          echo "L'API ne répond pas après le déploiement" >&2
-          exit 1
+          timers=()
+          for task in predict monitor train; do
+            unit="\$task-ml-production"
+            [ -f "infra/scripts/\$unit.timer" ] || continue
+            install -m 644 "infra/scripts/\$unit.service" "infra/scripts/\$unit.timer" /etc/systemd/system/
+            timers+=("\$unit.timer")
+          done
+          if [ "\${#timers[@]}" -gt 0 ]; then
+            systemctl daemon-reload
+            systemctl enable --quiet "\${timers[@]}"
+            systemctl restart "\${timers[@]}"
+            systemctl list-timers --no-pager "\${timers[@]}"
+          fi
           EOF
           )
 
