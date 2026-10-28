@@ -81,7 +81,7 @@ describe('Navigation et pages de données', () => {
     });
 
     cy.loginAsNewUser('/sites');
-    cy.contains('li', 'SITE001').within(() => {
+    cy.contains('tbody tr', 'SITE001').within(() => {
       cy.contains('Usine Lyon');
       cy.contains('842.4');
       cy.contains('good');
@@ -134,7 +134,7 @@ describe('Navigation et pages de données', () => {
 
     cy.loginAsNewUser('/peaks');
     cy.wait('@peaks').its('request.url').should('include', 'hours=24');
-    cy.contains('tbody tr', 'SITE001').within(() => {
+    cy.contains('li', 'SITE001').within(() => {
       cy.contains('120.5');
       cy.contains('100.0');
       cy.contains('20.5');
