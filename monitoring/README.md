@@ -12,7 +12,7 @@ monitoring/
   prometheus/alerts.test.yml     tests des règles (promtool test rules)
   blackbox/blackbox.yml          façons de sonder les URL (http_2xx, http_frontend)
   alertmanager/alertmanager.yml  envoi des alertes dans Teams (regroupement, rappels)
-  grafana/provisioning/          source de données Prometheus et chargement des dashboards
+  grafana/provisioning/          sources de données (Prometheus, GitHub) et chargement des dashboards
   grafana/dashboards/*.json      dashboards, rangés dans le dossier « EnerVision » de Grafana
 ```
 
@@ -165,6 +165,35 @@ Le message arrive après `group_wait` (30 s). Une modification de `alertmanager/
 demande `docker compose ... restart alertmanager`. Vérification locale :
 `docker run --rm -v "$PWD/monitoring/alertmanager:/c:ro" -w /c --entrypoint amtool prom/alertmanager:v0.34.1 check-config alertmanager.yml`.
 
+## Dashboard de la CI
+
+*CI et livraisons* (`grafana/dashboards/ci.json`) ne lit pas Prometheus mais l'API GitHub, par le
+plugin officiel `grafana-github-datasource` (téléchargé au démarrage de Grafana, version épinglée dans
+`docker-compose.monitoring.yml`) et la source `GitHub` (`grafana/provisioning/datasources/github.yml`) :
+
+- dernier run de `ci.yml` sur `main`, nombre de runs, réussites, échecs et durées (cycle de facturation
+  GitHub en cours) ;
+- les 20 derniers runs de la CI, toutes branches, avec un lien vers chacun ;
+- les déploiements annoncés à GitHub (staging et production) et les PR mergées sur la période.
+
+Il demande un jeton GitHub **en lecture seule**, dans `GRAFANA_GITHUB_TOKEN` de `staging.env`,
+`production.env` ou `.env` (jamais dans le dépôt) :
+
+1. GitHub > *Settings* > *Developer settings* > *Fine-grained tokens* > *Generate new token*.
+2. *Resource owner* : `projet-piscine-eadl-enervision` ; *Repository access* : seulement
+   `smart-energy-optimizer` ; expiration : fin du projet.
+3. *Repository permissions*, toutes en **Read-only** : *Actions*, *Deployments*, *Pull requests*
+   (*Metadata* est ajouté d'office). Rien d'autre.
+4. Si l'organisation exige une approbation des jetons, un propriétaire de l'organisation la donne.
+5. Coller le jeton dans `GRAFANA_GITHUB_TOKEN`, puis recréer Grafana au déploiement suivant, ou à la main :
+   `docker compose ... up -d --force-recreate grafana`. Le jeton est relu à chaque démarrage.
+
+Vérifier : *Connections* > *Data sources* > *GitHub* > *Test*, qui doit répondre « Data source is
+working ». Sans jeton, ou jeton expiré, la source répond `401` et seul ce dashboard reste en erreur ; les
+autres ne dépendent que de Prometheus. Pas d'alerte sur la CI : GitHub notifie déjà les échecs.
+Rafraîchissement toutes les 5 minutes, bien en dessous du quota de l'API GitHub (5 000 requêtes par heure
+et par jeton).
+
 ## Ajouter ou modifier un dashboard
 
 Les dashboards ne se modifient pas dans l'interface (`allowUiUpdates: false`) : le dépôt est la seule
@@ -172,7 +201,8 @@ source.
 
 1. Construire ou ajuster le dashboard dans Grafana, puis *Export > Export as JSON*.
 2. Dans le JSON : `uid` stable et unique (`enervision-...`), toutes les sources de données sur
-   `{"type": "prometheus", "uid": "prometheus"}`, pas de variable de source (`${DS_PROMETHEUS}`), pas de
+   `{"type": "prometheus", "uid": "prometheus"}` (ou `{"type": "grafana-github-datasource", "uid": "github"}`
+   pour un dashboard GitHub), pas de variable de source (`${DS_PROMETHEUS}`), pas de
    bloc `__inputs` ni `__requires`.
 3. Le déposer dans `grafana/dashboards/` et vérifier :
    `python3 infra/scripts/check-dashboards.py monitoring/grafana/dashboards`.
@@ -200,6 +230,8 @@ images utilisées sont lues dans `docker-compose.monitoring.yml`.
 - **postgres-exporter** utilise l'utilisateur de l'application par défaut ; `MONITORING_DB_USER` et
   `MONITORING_DB_PASSWORD` permettent de passer à un utilisateur dédié en lecture seule (rôle
   `pg_monitor`).
+- **Dashboard de la CI** : il dépend d'un jeton personnel GitHub, lié à un compte et qui expire (à
+  renouveler). Grafana doit pouvoir télécharger le plugin au démarrage (sortie HTTPS, ouverte sur l'EC2).
 - **Minuteurs** : node-exporter ne connaît pas l'heure du prochain déclenchement
   (`systemctl list-timers` sur la machine). Sur un poste, le dashboard *Tâches planifiées* reste vide :
   les minuteurs n'y sont pas installés.
