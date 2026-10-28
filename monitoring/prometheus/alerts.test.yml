@@ -54,3 +54,23 @@ tests:
             exp_annotations:
               summary: "api ne répond plus à Prometheus"
               description: "La cible api:8000 (job api) n'est plus collectée depuis 2 minutes."
+
+  # Pic d'échecs de connexion : 5 par minute, soit 50 en 10 minutes ; le trafic normal ne sonne pas
+  - interval: 1m
+    input_series:
+      - series: auth_login_attempts_total{job="api", instance="api:8000", outcome="invalid_credentials"}
+        values: "0+5x20"
+      - series: auth_login_attempts_total{job="api", instance="api:8000", outcome="success"}
+        values: "0+50x20"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ConnexionsEnEchec
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: ConnexionsEnEchec
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Pic d'échecs de connexion sur l'API"
+              description: "50 connexions refusées en 10 minutes (mot de passe faux ou tentative bloquée). Voir les logs « login failed » et « login blocked » de l'API."

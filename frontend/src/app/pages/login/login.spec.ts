@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
@@ -29,8 +29,8 @@ describe('Login', () => {
     await fixture.whenStable();
   }
 
-  function httpError(status: number): Observable<never> {
-    return throwError(() => new HttpErrorResponse({ status }));
+  function httpError(status: number, headers?: HttpHeaders): Observable<never> {
+    return throwError(() => new HttpErrorResponse({ status, headers }));
   }
 
   beforeEach(async () => {
@@ -96,5 +96,19 @@ describe('Login', () => {
     expect(element.textContent).toContain(expectedMessage);
     expect(navigateSpy).not.toHaveBeenCalled();
     expect(element.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(false);
+  });
+
+  it.each([
+    ['900', 'Trop de tentatives, réessayez dans 15 min.'],
+    ['30', 'Trop de tentatives, réessayez dans 1 min.'],
+    [null, 'Trop de tentatives, réessayez dans quelques minutes.'],
+  ])('sur un 429, affiche le délai de Retry-After (%s)', async (retryAfter, expectedMessage) => {
+    const headers = retryAfter ? new HttpHeaders({ 'Retry-After': retryAfter }) : undefined;
+    authStub.login.mockReturnValue(httpError(429, headers));
+    fillForm('a@b.fr', 'password123');
+    await submitForm();
+
+    expect(element.textContent).toContain(expectedMessage);
+    expect(navigateSpy).not.toHaveBeenCalled();
   });
 });

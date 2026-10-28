@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     ALGORITHM: str = "HS256"
 
+    # Limitation des tentatives sur /auth/login (app/core/login_throttle.py) : échecs sur une fenêtre glissante
+    LOGIN_IP_MAX_FAILURES: int = 10
+    LOGIN_IP_WINDOW_SECONDS: int = 900
+    LOGIN_ACCOUNT_MAX_FAILURES: int = 5
+    LOGIN_ACCOUNT_WINDOW_SECONDS: int = 900
+
+    # Proxys dont l'API accepte X-Forwarded-For pour connaître l'IP du client (IP ou réseaux CIDR, séparés
+    # par des virgules). Vide : l'en-tête est ignoré et l'IP retenue est celle de la connexion.
+    TRUSTED_PROXY_IPS: str = ""
+
     # CORS
     FRONTEND_ORIGIN: str = "http://localhost:4200"
 

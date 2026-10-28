@@ -91,6 +91,16 @@ groups:
           summary: "API lente : 95e centile au-dessus d'1 s"
           description: "95 % des requêtes répondent en moins de {{ $value | humanizeDuration }}."
 
+      # Force brute ou bourrage d'identifiants sur /auth/login : échecs et blocages (401, 429) cumulés
+      - alert: ConnexionsEnEchec
+        expr: sum(increase(auth_login_attempts_total{job="api", outcome!="success"}[10m])) > 30
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pic d'échecs de connexion sur l'API"
+          description: "{{ $value | humanize }} connexions refusées en 10 minutes (mot de passe faux ou tentative bloquée). Voir les logs « login failed » et « login blocked » de l'API."
+
       # Ne sonne que si la base contient des mesures : sans collecteur (production par défaut), la table
       # est vide, la métrique est absente et l'alerte reste muette.
       - alert: EtlSansNouvelleMesure
