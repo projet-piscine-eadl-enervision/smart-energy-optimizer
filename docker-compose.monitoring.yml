@@ -60,6 +60,10 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # Source GitHub du dashboard « CI et livraisons » : plugin téléchargé au démarrage (version
+      # épinglée), jeton en lecture seule facultatif (vide : le dashboard de la CI reste en erreur)
+      GF_PLUGINS_PREINSTALL_SYNC: grafana-github-datasource@2.9.4
+      GRAFANA_GITHUB_TOKEN: ${GRAFANA_GITHUB_TOKEN:-}
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro

@@ -27,6 +27,7 @@ dashboard : [`monitoring/README.md`](../monitoring/README.md). Même chose pour 
    COMPOSE_PROFILES=apps,collector,mlflow,monitoring   # garder les profils déjà présents, ajouter monitoring
    GRAFANA_ADMIN_PASSWORD=...                          # openssl rand -base64 24 | tr -d '/+=' ; différent du staging
    TEAMS_WEBHOOK_URL=https://...                       # alertes dans Teams, voir monitoring/README.md
+   GRAFANA_GITHUB_TOKEN=github_pat_...                 # dashboard de la CI (facultatif), voir monitoring/README.md
    ```
 
    `NG_ALLOWED_HOSTS` doit aussi contenir `localhost` (en plus du nom CloudFront) : la sonde du

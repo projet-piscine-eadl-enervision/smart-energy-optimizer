@@ -2,7 +2,8 @@
 """Vérifie les dashboards Grafana versionnés avant leur chargement par le provisioning.
 
 Contrôles : chaque fichier est un JSON lisible, porte un uid unique, et toutes ses sources de données
-sont la source provisionnée (uid prometheus) ou une source interne de Grafana (annotations). Un
+sont une source provisionnée (uid prometheus, ou uid github pour le dashboard de la CI) ou une source
+interne de Grafana (annotations). Un
 dashboard importé de grafana.com sans adaptation garde ${DS_PROMETHEUS} et reste vide une fois chargé.
 
 Usage : check-dashboards.py <dossier-des-dashboards>
@@ -12,10 +13,12 @@ import sys
 from pathlib import Path
 
 GRAFANA_BUILTIN = {"grafana", "datasource"}
+# Sources provisionnées dans monitoring/grafana/provisioning/datasources : type -> uid
+PROVISIONED = {"prometheus": "prometheus", "grafana-github-datasource": "github"}
 
 
 def bad_datasources(node, path="$"):
-    """Chemins JSON des sources de données qui ne sont ni la source prometheus, ni une source interne."""
+    """Chemins JSON des sources de données qui ne sont ni une source provisionnée, ni une source interne."""
     if isinstance(node, dict):
         for key, value in node.items():
             if key == "datasource" and not is_allowed(value):
@@ -32,7 +35,8 @@ def is_allowed(datasource) -> bool:
     if isinstance(datasource, dict):
         if datasource.get("type") in GRAFANA_BUILTIN:
             return True
-        return datasource.get("type") == "prometheus" and datasource.get("uid") == "prometheus"
+        uid = PROVISIONED.get(datasource.get("type"))
+        return uid is not None and datasource.get("uid") == uid
     return False
 
 
