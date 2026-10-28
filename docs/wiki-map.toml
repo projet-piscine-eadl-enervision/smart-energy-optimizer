@@ -135,6 +135,11 @@ title = "Audit du dépôt"
 section = "Qualité et sécurité"
 
 [[page]]
+source = "docs/ressources.md"
+title = "Ressources"
+section = "Ressources"
+
+[[page]]
 source = "docs/rapport-collectif/README.md"
 title = "Rapport collectif"
 section = "Rapport collectif"
