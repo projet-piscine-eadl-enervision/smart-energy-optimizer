@@ -1,7 +1,7 @@
-# enervision
+# Smart Energy Optimizer
 Projet Piscine EADL
 
-EnerVision vend de l’optimisation énergétique à des industriels européens soumis à trois pressions : des prix de l’énergie volatils, un reporting extra-financier qui se durcit, et une demande interne de pilotage fin.
+La plateforme Smart Energy Optimizer propose à des industriels européens soumis à trois pressions (des prix de l’énergie volatils, un reporting extra-financier qui se durcit, et une demande interne de pilotage fin) d'optimiser leur consommation énergétique.
 
 Technos utilisées :
 
