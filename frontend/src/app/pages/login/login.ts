@@ -41,7 +41,9 @@ export class Login {
     const request =
       this.mode() === 'login'
         ? this.auth.login(email, password)
-        : this.auth.register(email, password).pipe(switchMap(() => this.auth.login(email, password)));
+        : this.auth
+            .register(email, password)
+            .pipe(switchMap(() => this.auth.login(email, password)));
 
     request.subscribe({
       next: () => this.router.navigate(['/']),

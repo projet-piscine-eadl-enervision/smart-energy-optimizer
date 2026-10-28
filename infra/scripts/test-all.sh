@@ -11,8 +11,8 @@
 # réinstallé seulement quand requirements.txt ou requirements-dev.txt change. Python 3.13 requis,
 # comme la CI (variable PYTHON pour en choisir un autre exécutable).
 #
-# Frontend : avec Node 24 dans WSL, les tests tournent en local ; sinon dans le conteneur frontend
-# (docker compose run), sans rien installer.
+# Frontend : ESLint et Prettier (infra/scripts/lint-frontend.sh) puis les tests. Avec Node 24 dans
+# WSL, tout tourne en local ; sinon dans le conteneur frontend (docker compose run), sans rien installer.
 #
 # Base de données : les tests qui la touchent (etl, ml) sont ignorés sans DATABASE_URL, comme
 # l'indique pytest. Pour les inclure, sur la base de dev :
@@ -111,6 +111,7 @@ run_frontend() {
   local test_args=(--watch=false --coverage --coverage-reporters=lcov --coverage-reporters=text-summary --coverage-reporters=html)
   local node_major=0
   command -v node >/dev/null 2>&1 && node_major="$(node -p 'process.versions.node.split(".")[0]')"
+  bash "$root/infra/scripts/lint-frontend.sh"
   cd "$root/frontend"
 
   if [ "$node_major" -ge "$REQUIRED_NODE_MAJOR" ]; then

@@ -34,11 +34,12 @@ export function buildUpstreamUrl(path: string, upstream: URL): URL | null {
   if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) return null;
 
   // Le chemin éventuel de API_UPSTREAM (ex. http://api:8000/v1) est conservé, comme avant.
-let end = upstream.pathname.length;
-while (end > 0 && upstream.pathname[end - 1] === '/') {
-  end--;
-}
-const basePath = upstream.pathname.slice(0, end);  let target: URL;
+  let end = upstream.pathname.length;
+  while (end > 0 && upstream.pathname[end - 1] === '/') {
+    end--;
+  }
+  const basePath = upstream.pathname.slice(0, end);
+  let target: URL;
   try {
     target = new URL(`${basePath}${path}`, upstream.origin);
   } catch {

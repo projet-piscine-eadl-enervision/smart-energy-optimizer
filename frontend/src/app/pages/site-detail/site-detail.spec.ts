@@ -56,7 +56,9 @@ describe('SiteDetail', () => {
 
   it('recharge la consommation sur la période choisie', async () => {
     const { fixture, element } = await render();
-    Array.from(element.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Mois')!.click();
+    Array.from(element.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Mois')!
+      .click();
     const requests = answer(ROUTES);
     await fixture.whenStable();
 
@@ -74,7 +76,10 @@ describe('SiteDetail', () => {
   });
 
   it('indique un site inconnu', async () => {
-    const { element } = await render({ ...ROUTES, '/api/sites/SITE003/consumption': new Failure(404) });
+    const { element } = await render({
+      ...ROUTES,
+      '/api/sites/SITE003/consumption': new Failure(404),
+    });
 
     expect(element.textContent).toContain('Site inconnu.');
   });
