@@ -56,7 +56,7 @@ Les scripts d'exploitation sont versionnés dans `infra/scripts/` et testés par
 
 ## La supervision (C24)
 
-Les sondes existent : `/health` publie la version, le commit et l'environnement ; les images `api`, `etl` et `frontend` ont un `HEALTHCHECK` Docker ; le collecteur de l'ETL écrit un signal de vivacité à chaque tour réussi, lu par une sonde qui le déclare `unhealthy` après trois intervalles sans tour ; le staging annonce ses déploiements à GitHub, et la production est contrôlée après chaque déploiement. Depuis la #202, prometheus et Grafana sont livrés (#202) : métriques de l'hôte, des conteneurs, de la base, de l'API et de l'ETL, quatre dashboards versionnés et des règles d'alerte testées avec `promtool`. La supervision est active au staging et pas encore branchée en production. Sans Alertmanager, aucune alerte n'est notifiée : elles se consultent dans Prometheus et Grafana, et l'échec du minuteur de mise à jour du staging n'a pas de règle. Le modèle n'est pas dans Grafana : sa dérive est calculée chaque jour par le module ML (`ml.drift_metric`, expérience MLflow `enervision-monitoring`).
+Les sondes existent : `/health` publie la version, le commit et l'environnement ; les images `api`, `etl` et `frontend` ont un `HEALTHCHECK` Docker ; le collecteur de l'ETL écrit un signal de vivacité à chaque tour réussi, lu par une sonde qui le déclare `unhealthy` après trois intervalles sans tour ; le staging annonce ses déploiements à GitHub, et la production est contrôlée après chaque déploiement. Depuis la #202, Prometheus et Grafana sont livrés : métriques de l'hôte, des conteneurs, de la base, de l'API et de l'ETL, quatre dashboards versionnés et des règles d'alerte testées avec `promtool`. La supervision est active au staging et en production (#213). Alertmanager envoie les alertes dans un canal Teams, y compris l'échec, l'arrêt ou le retard des minuteurs systemd (#221). Le modèle n'est pas dans Grafana : sa dérive est calculée chaque jour par le module ML (`ml.drift_metric`, expérience MLflow `enervision-monitoring`).
 
 ## La documentation (C20)
 
@@ -71,7 +71,7 @@ Les règles d'équipe sont dans `CONTRIBUTING.md` ; les procédures de bout en b
 
 ## Limites et évolutions envisagées
 
-- **Supervision** : notification des alertes (Alertmanager), branchement en production et modèle dans Grafana, voir plus haut (#150).
+- **Supervision** : modèle dans Grafana, voir plus haut.
 - **Scan dynamique** de l'application, par exemple OWASP ZAP contre le staging (#149), et tests de charge.
 - **Scan des images** publié mais non bloquant (#146) : il le devient une fois les deux alertes de l'image `db` assumées.
 - **`terraform plan` en CI**, en lecture seule, avec un rôle AWS distinct du rôle de déploiement ; le job `terraform` contrôle aujourd'hui le format et la validité.

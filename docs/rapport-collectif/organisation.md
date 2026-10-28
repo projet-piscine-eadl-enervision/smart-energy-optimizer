@@ -5,14 +5,14 @@
 
 ## a. Rôles et rotation
 - Product Owner : Laureline
-- Tech Lead : Antoine
-- Cloud/DevOps : Léa, Flavie
+- Tech Lead : Antoine, Flavie
+- Cloud/DevOps : Léa, Flavie, Antoine
 - Data & IA : Antoine, Carole, Flavie & Naycen
 - Fullstack Dev : Antoine, Carole, Flavie & Naycen
 
 ## b. Matrice RACI
 
-| Activité | Product Owner (Laureline) | Tech Lead (Antoine) | Cloud/DevOps (Léa, Flavie) | Data & IA (Antoine, Carole, Flavie, Naycen) | Fullstack Dev (Antoine, Carole, Flavie, Naycen) |
+| Activité | Product Owner (Laureline) | Tech Lead (Antoine, Flavie) | Cloud/DevOps (Léa, Flavie, Antoine) | Data & IA (Antoine, Carole, Flavie, Naycen) | Fullstack Dev (Antoine, Carole, Flavie, Naycen) |
 |---|:-:|:-:|:-:|:-:|:-:|
 | Vision produit et définition du besoin | A/R | C | I | C | C |
 | Rédaction et priorisation du backlog | A/R | C | I | C | C |

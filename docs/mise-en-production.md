@@ -27,7 +27,7 @@ Pour le reste : les règles de branches, de commits et de versions sont dans [`C
 
 Le merge d'une PR (squash) crée un `push` sur `main`. La CI s'exécute puis publie les images (job `publish` de `ci.yml`). La VM tire ensuite les nouvelles images (au plus 2 minutes de minuteur, mécanisme décrit dans `deploiement-staging.md`) et annonce à GitHub qu'elle fait tourner ce commit : un déploiement `staging` apparaît dans l'onglet *Deployments* du dépôt. **C'est le signal « le staging est à jour, la recette peut commencer ».** `version.sha` de http://10.43.43.50:8000/health (réseau de l'école) affiche alors le sha du commit de merge.
 
-Le module ML (prévision horaire, surveillance, entraînement hebdomadaire) tourne par des minuteurs systemd installés à la main sur la VM de staging et sur l'instance de production : un merge ne les installe ni ne les met à jour. Minuteurs systemd et non EventBridge : les tâches tournent sur l'instance, et le même mécanisme sert au staging (voir « Assumé ou écarté » dans [`audit-depot.md`](audit-depot.md)).
+Le module ML (prévision horaire, surveillance, entraînement hebdomadaire) tourne par des minuteurs systemd. En production, le déploiement installe et relance ceux du tag déployé (`infra/scripts/*-ml-production.{service,timer}`), une fois l'API saine ; sur la VM de staging, ils sont installés à la main et un merge ne les met pas à jour. Minuteurs systemd et non EventBridge : les tâches tournent sur l'instance, et le même mécanisme sert au staging (voir « Assumé ou écarté » dans [`audit-depot.md`](audit-depot.md)).
 
 Si l'annonce n'apparaît pas alors que `/health` est à jour, le jeton de la VM est absent ou expiré (voir `deploiement-staging.md`, section « Annonce du staging à GitHub »).
 
@@ -86,13 +86,11 @@ Pour activer la production, la liste ordonnée des opérations (Terraform, `prod
 
 Le collecteur de l'ETL (profil `collector`) interroge le mock public toutes les minutes ; MLflow (profil `mlflow`) suit les modèles. Ils sont actifs en production par `COMPOSE_PROFILES=apps,collector,mlflow` dans `/etc/enervision/production.env`. Première mise en service de la production, une fois : `run --rm etl python -m pipeline backfill` (historique), puis `run --rm ml` (entraînement) et `run --rm ml python -m enervision_ml.predict` (première prévision), avec `IMAGE_TAG` de la version déployée.
 
-Prévision horaire : installer une fois, en `root` sur l'instance (par Session Manager), `infra/scripts/predict-ml-production.service` et `.timer` dans `/etc/systemd/system/`, puis `systemctl daemon-reload && systemctl enable --now predict-ml-production.timer`. Le service lit le tag de la version déployée dans `/opt/enervision`. Contrôle : `systemctl list-timers predict-ml-production.timer` et `journalctl -u predict-ml-production.service -n 20`.
+Minuteurs du module ML : prévision chaque heure (`hh:05`), surveillance chaque jour à 06:30, entraînement chaque lundi à 03:30 (`infra/scripts/{predict,monitor,train}-ml-production.{service,timer}`). Le déploiement les copie dans `/etc/systemd/system/` depuis le tag déployé, puis les active et les relance, une fois `/health` répondu : rien à installer à la main, et une modification d'un minuteur arrive en production avec la release suivante. Un retour arrière vers un tag qui ne contient pas l'un d'eux laisse la version déjà installée. Chaque service lit le tag de la version déployée dans `/opt/enervision`. Leur état est dans le dashboard *Tâches planifiées* de Grafana (alertes `TachePlanifieeEnEchec`, `MinuteurArrete`, `MinuteurEnRetard`).
 
-Surveillance (chaque jour à 06:30) et entraînement (chaque lundi à 03:30) : mêmes fichiers avec le suffixe `-production` (`monitor-ml-production`, `train-ml-production`). À installer **après** la release qui contient le module de surveillance : ses migrations s'appliquent au déploiement, et l'image du tag déployé doit contenir `enervision_ml.monitor`.
+Contrôle, en `root` sur l'instance (par Session Manager) :
 
 ```bash
-cp /opt/enervision/infra/scripts/{monitor,train}-ml-production.{service,timer} /etc/systemd/system/
-systemctl daemon-reload && systemctl enable --now monitor-ml-production.timer train-ml-production.timer
 systemctl list-timers 'predict-ml-production*' 'monitor-ml-production*' 'train-ml-production*'   # trois lignes
 systemctl start monitor-ml-production.service; journalctl -u monitor-ml-production.service -n 30 --no-pager   # « insufficient » est normal les premiers jours
 systemctl is-failed predict-ml-production.service train-ml-production.service   # « inactive » attendu

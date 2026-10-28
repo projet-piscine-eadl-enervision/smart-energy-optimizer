@@ -201,4 +201,4 @@ Les migrations (dbmate) créent un rôle par module, `enervision_api`, `enervisi
 
 ## Ce qui reste
 
-Le détail, hiérarchisé, est dans l'[audit du dépôt](audit-depot.md). Les écarts les plus visibles : comptes de connexion par module (#145), scan des images bloquant (#146), pas de scan dynamique (#149) ni de notification des alertes de supervision (#150), inscription ouverte sans limite d'essais.
+Le détail, hiérarchisé, est dans l'[audit du dépôt](audit-depot.md). Les écarts les plus visibles : comptes de connexion par module (#145), scan des images bloquant (#146). Le scan dynamique (#149, OWASP ZAP), la notification des alertes de supervision (#150) et la limite d'essais de connexion (#215) sont livrés.

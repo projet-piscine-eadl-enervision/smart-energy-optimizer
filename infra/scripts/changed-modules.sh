@@ -25,6 +25,7 @@ else
   while IFS= read -r path; do
     case "$path" in
       api/*) api=true ;;
+      infra/k6/*) api=true ;; # scénarios de charge : jobs de l'API (dont load)
       etl/*) etl=true ;;
       ml/*) ml=true ;;
       frontend/*) frontend=true ;;
