@@ -130,6 +130,11 @@ title = "Qualité et sécurité de la CI"
 section = "Qualité et sécurité"
 
 [[page]]
+source = "docs/tests.md"
+title = "Tests"
+section = "Qualité et sécurité"
+
+[[page]]
 source = "docs/audit-depot.md"
 title = "Audit du dépôt"
 section = "Qualité et sécurité"
