@@ -69,7 +69,7 @@ jobs:
           format: cyclonedx
           output: sbom-${{ matrix.module }}.cdx.json
           exit-code: "0"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom-${{ matrix.module }}
           path: sbom-${{ matrix.module }}.cdx.json
@@ -81,7 +81,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: sbom-*
           merge-multiple: true
