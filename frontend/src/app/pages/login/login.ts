@@ -63,7 +63,17 @@ function errorMessage(err: HttpErrorResponse): string {
       return 'Cet email est déjà utilisé.';
     case 422:
       return 'Données invalides (email incorrect ou mot de passe trop court).';
+    case 429:
+      return `Trop de tentatives, réessayez dans ${retryDelay(err)}.`;
     default:
       return 'Erreur inattendue, réessaie plus tard.';
   }
+}
+
+/** Délai de l'en-tête Retry-After (en secondes), arrondi à la minute supérieure. */
+function retryDelay(err: HttpErrorResponse): string {
+  const seconds = Number(err.headers?.get('Retry-After'));
+  if (!Number.isFinite(seconds) || seconds <= 0) return 'quelques minutes';
+  const minutes = Math.ceil(seconds / 60);
+  return minutes === 1 ? '1 min' : `${minutes} min`;
 }

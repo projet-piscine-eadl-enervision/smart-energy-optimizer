@@ -39,13 +39,20 @@ function fakeRequest(
     method = 'GET',
     headers = {},
     body = '',
-  }: { method?: string; headers?: Record<string, string | string[]>; body?: string } = {},
+    remoteAddress = '203.0.113.7',
+  }: {
+    method?: string;
+    headers?: Record<string, string | string[]>;
+    body?: string;
+    remoteAddress?: string;
+  } = {},
 ): Request {
   const req = Readable.from(body ? [Buffer.from(body)] : []);
   return Object.assign(req, {
     url,
     method,
     protocol: 'https',
+    socket: { remoteAddress },
     headers: { host: 'enervision.example.org', ...headers },
   }) as unknown as Request;
 }
@@ -123,6 +130,26 @@ describe('apiProxy', () => {
     expect(res.headers['x-total']).toBe('2');
     expect(res.headers['connection']).toBeUndefined();
     expect(res.headers['set-cookie']).toEqual(['a=1', 'b=2']);
+  });
+
+  it("ajoute l'IP du client à X-Forwarded-For", async () => {
+    const { apiProxy } = await loadProxy('http://api:8000');
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await callProxy(apiProxy, fakeRequest('/sites', { remoteAddress: '::ffff:203.0.113.7' }));
+
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect((init.headers as Headers).get('x-forwarded-for')).toBe('203.0.113.7');
+  });
+
+  it('garde un X-Forwarded-For reçu à gauche, et ajoute la vraie IP à droite', async () => {
+    const { apiProxy } = await loadProxy('http://api:8000');
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await callProxy(apiProxy, fakeRequest('/sites', { headers: { 'x-forwarded-for': '1.2.3.4' } }));
+
+    const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+    expect((init.headers as Headers).get('x-forwarded-for')).toBe('1.2.3.4, 203.0.113.7');
   });
 
   it('transmet le corps des requêtes autres que GET et HEAD', async () => {
