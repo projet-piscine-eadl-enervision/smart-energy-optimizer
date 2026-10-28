@@ -38,7 +38,7 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 - **Statut** : accepté
 - **Décision prise le** : 22/10/2026, dans le ticket [105](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/issues/105), confirmée au daily du 23/10
 - **Rédigé le** : 28/10/2026, a posteriori
-- **Décideurs** : Flavie (proposition et mise en place), l'équipe
+- **Décideurs** : le groupe, sur proposition de Flavie qui l'a mis en place
 - **Domaine** : Données, CI/CD
 
 **Contexte.** La base TimescaleDB démarrait vide depuis l'image officielle : aucun schéma n'était versionné, et le développement, le staging et la production risquaient de diverger. Trois modules s'y connectent avec des outils différents : `api` (SQLAlchemy), `ml` (psycopg) et `etl`.
@@ -47,7 +47,7 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 
 **Alternatives examinées.**
 - **Alembic** : écarté. Il aurait imposé un outil lié à un seul des trois modules, et sa génération automatique ne comprend pas les hypertables de TimescaleDB.
-- **Flyway** : essayé sur une base TimescaleDB jetable. Il demande `outOfOrder=true` pour des PR parallèles, son image pèse environ 940 Mo et l'URL de connexion est à part. Son contrôle d'empreinte des migrations est un vrai avantage.
+- **Flyway** : écarté. Il demande une configuration propre pour appliquer des migrations de PR parallèles dans le désordre et son image est bien plus lourde, alors que son contrôle d'empreinte des migrations est un vrai avantage.
 
 **Conséquences.**
 - L'image fait environ 136 Mo, réutilise `DATABASE_URL` et applique toute migration manquante quel que soit l'ordre des PR.
@@ -62,7 +62,7 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 - **Statut** : décision du 19/10 prolongée le 21/10 par une release manuelle approuvée (PR [81](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/81))
 - **Décision prise le** : 19/10/2026, en PR [30](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/30)
 - **Rédigé le** : 28/10/2026, a posteriori
-- **Décideurs** : Flavie, l'équipe
+- **Décideurs** : le groupe
 - **Domaine** : CI/CD
 
 **Contexte.** Les versions devaient se calculer à partir des commits conventionnels et déclencher le déploiement. Nous avons d'abord utilisé release-please (versions 1.0.0 et 1.0.1 publiées).
@@ -85,7 +85,7 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 - **Statut** : accepté
 - **Décision prise le** : 20/10/2026, en séance à deux, mise en œuvre dans la PR [61](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/61)
 - **Rédigé le** : 28/10/2026, a posteriori
-- **Décideurs** : Flavie, l'équipe
+- **Décideurs** : le groupe
 - **Domaine** : CI/CD, Cloud
 
 **Contexte.** Le staging tourne sur la VM de l'école, dans un réseau interne. Le dépôt est public, et un utilisateur du groupe `docker` y équivaut à `root`.
@@ -107,15 +107,15 @@ Copier le modèle ci-dessous à la suite, prendre le numéro suivant et complét
 - **Statut** : accepté
 - **Décision prise le** : 21/10/2026, en PR [79](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/79)
 - **Rédigé le** : 28/10/2026, a posteriori
-- **Décideurs** : l'équipe ; mise en œuvre Flavie (Terraform), Léa (accès et déploiement)
+- **Décideurs** : le groupe ; mise en œuvre Flavie (Terraform), Léa (accès et déploiement)
 - **Domaine** : Cloud
 
-**Contexte.** Le dossier de conception prévoyait d'abord Azure, avec un squelette Terraform (PR [60](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/60)). Les quotas Azure du groupe étaient serrés : deux machines virtuelles, une adresse IP publique.
+**Contexte.** Le dossier de conception prévoyait d'abord Azure, avec un squelette Terraform (PR [60](https://github.com/projet-piscine-eadl-enervision/smart-energy-optimizer/pull/60)). Les comptes Azure fournis par l'école n'étaient pas prêts à accueillir l'infrastructure (paramétrage du compte inadapté, quotas serrés).
 
 **Décision.** Remplacer Azure par AWS pour la production : instance EC2, accès par Session Manager sans SSH, déploiement par OIDC limité à l'environnement `production`, Terraform sous `infra/terraform/aws/`.
 
 **Alternatives examinées.**
-- **Azure** : abandonné. [À confirmer : raison exacte du changement, non tracée dans le dépôt.]
+- **Azure** : abandonné. Les comptes fournis par l'école n'étaient pas suffisamment prêts pour déployer notre infrastructure et leur paramétrage ne convenait pas ; AWS a permis de la mettre en place sans attendre.
 
 **Conséquences.**
 - Production isolée du staging, accès sans port d'administration ouvert.
