@@ -34,6 +34,34 @@ Trois vérifications avant toute release (commit annoncé par le staging, CI ver
 
 Des sources de l'ETL aux expériences MLflow, avec les tables lues et écrites par le ML.
 
+## Base de données
+
+### Schémas, tables et clés
+
+![Schémas, tables et clés](ressources/donnees-schemas-tables-cles.png)
+
+Huit schémas, 21 tables et 5 vues du schéma `analytics`, issus des migrations dbmate au 28/10. Les couleurs distinguent les données brutes, les mesures, les référentiels, l'application et le ML. Les migrations sont décrites dans [migrations de la base](migrations-base-de-donnees.md).
+
+### Modèle détaillé
+
+![Modèle de données détaillé](ressources/donnees-modele-detaille.png)
+
+Les mêmes schémas avec toutes les colonnes, les droits de chaque rôle de base (sans connexion) et les vues de suivi du modèle lues par Grafana et l'API.
+
+### Contenu des schémas
+
+![Schéma raw](ressources/dbeaver-raw.png)
+
+`raw.api_response` conserve chaque réponse de l'API Mock avec son point d'accès, son état HTTP, la date de collecte et le contenu JSON, avant toute transformation.
+
+![Schéma core](ressources/dbeaver-core.png)
+
+Dans `core`, `sensor_status` garde les pannes de capteurs (site, capteur, début, fin prévue), à côté des mesures et des alertes.
+
+![Schéma ref](ressources/dbeaver-ref.png)
+
+Dans `ref`, les référentiels : ici les 23 recommandations types, rattachées à un type de site et à une règle de déclenchement (seuil, pic, plateau, chute, coupure, anomalie, capteur).
+
 ## Livraison et suivi
 
 ### CI
@@ -41,6 +69,10 @@ Des sources de l'ETL aux expériences MLflow, avec les tables lues et écrites p
 ![Exécution de la CI sur main](ressources/ci-execution.png)
 
 Une exécution complète de `ci.yml`. `changes` détecte les modules touchés, les contrôles utiles s'enchaînent, `ci-ok` regroupe le résultat exigé par la règle de `main`, puis `publish` construit les cinq images.
+
+![Résultat des tests Cypress](ressources/ci-cypress.png)
+
+Fin du job `e2e` : cinq fichiers de scénarios (garde d'authentification, tableau de bord, connexion, navigation, inscription), 26 tests passés en 18 secondes.
 
 ### Kanban
 
@@ -54,9 +86,19 @@ Vue exportée du même Kanban, avec les filtres par personne et par étiquette (
 
 ### SonarQube Cloud
 
+![Synthèse SonarQube Cloud](ressources/sonarqube-synthese.png)
+
+Synthèse du projet : porte de qualité passée, couverture de 96,2 % sur l'ensemble du code, 0 % de duplication, note de sécurité A, 13 problèmes de sécurité fermés sur 30 jours pour un délai de correction moyen de 2,5 jours.
+
 ![Risques de dépendances dans SonarQube Cloud](ressources/sonarqube-risques.png)
 
 Vue « Dependency risks » d'une branche : chaque risque indique le paquet, la gravité, le score CVSS et le type de dépendance.
+
+## Wiki
+
+![Page Contribuer du wiki](ressources/wiki-contribuer.png)
+
+Une page générée depuis `CONTRIBUTING.md`, avec son bandeau d'origine et la barre latérale par sections. Mécanisme : `docs/wiki-map.toml` et `infra/scripts/sync-wiki.py`.
 
 ## Supervision
 
