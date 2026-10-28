@@ -15,8 +15,8 @@ La chaîne qui mène une modification de la branche à la production est en plac
 
 ## Non livré, et pourquoi
 
-- **Supervision.** Les sondes de santé existent (`/health`, `HEALTHCHECK` des images, signal de vivacité du collecteur), mais il n'y a ni collecte de métriques, ni Prometheus et Grafana, ni alerte (#150). Le temps a manqué pour l'outillage complet ; l'échec du minuteur de mise à jour du staging ne se lit que dans le journal systemd.
-- **Scan dynamique** de l'application (#149), **scan des images non bloquant** (#146), **linter du frontend** (#148), **tests de bout en bout** dans la CI et **`terraform plan`** en CI : repoussés après les livrables fonctionnels.
+- **Supervision, livrée en partie.** Prometheus et Grafana sont livrés (#202) : métriques de l'hôte, des conteneurs, de la base, de l'API et de l'ETL, quatre dashboards versionnés et des règles d'alerte testées avec `promtool`. La supervision est active au staging et pas encore branchée en production. Sans Alertmanager, aucune alerte n'est notifiée : elles se consultent dans Prometheus et Grafana, et l'échec du minuteur de mise à jour du staging n'a pas de règle. Le modèle n'est pas dans Grafana : sa dérive est calculée chaque jour par le module ML (`ml.drift_metric`, expérience MLflow `enervision-monitoring`).
+- **Scan dynamique** de l'application (#149), **scan des images non bloquant** (#146), **linter du frontend** (#148) et **`terraform plan`** en CI : repoussés après les livrables fonctionnels.
 
 ## Outils
 
