@@ -2,8 +2,8 @@
 """Vérifie les dashboards Grafana versionnés avant leur chargement par le provisioning.
 
 Contrôles : chaque fichier est un JSON lisible, porte un uid unique, et toutes ses sources de données
-sont une source provisionnée (uid prometheus ou timescaledb-ml) ou une source interne de Grafana
-(annotations). Un dashboard importé de grafana.com sans adaptation garde ${DS_PROMETHEUS} et reste vide
+sont une source provisionnée (uid prometheus, github pour le dashboard de la CI, timescaledb-ml pour
+celui du modèle) ou une source interne de Grafana (annotations). Un dashboard importé de grafana.com sans adaptation garde ${DS_PROMETHEUS} et reste vide
 une fois chargé.
 
 Usage : check-dashboards.py <dossier-des-dashboards>
@@ -16,6 +16,7 @@ GRAFANA_BUILTIN = {"grafana", "datasource"}
 # Sources de monitoring/grafana/provisioning/datasources : (type, uid)
 PROVISIONED = {
     ("prometheus", "prometheus"),
+    ("grafana-github-datasource", "github"),
     ("grafana-postgresql-datasource", "timescaledb-ml"),
 }
 
