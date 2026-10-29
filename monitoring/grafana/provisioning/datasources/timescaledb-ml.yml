@@ -1,0 +1,25 @@
+# Base TimescaleDB, en lecture seule : suivi du modèle ML (vues du schéma ml, sites de ref).
+# Compte du rôle enervision_grafana_ml (db/migrations), créé hors dépôt ; identifiants passés au conteneur
+# par docker-compose.monitoring.yml. Le mot de passe n'est jamais dans le dépôt.
+apiVersion: 1
+
+datasources:
+  - name: TimescaleDB ML
+    # Identifiant fixe : le dashboard ml.json y fait référence
+    uid: timescaledb-ml
+    type: grafana-postgresql-datasource
+    # Grafana interroge la base côté serveur, sur le réseau Docker : le navigateur n'a pas à la joindre
+    access: proxy
+    url: db:5432
+    user: ${GRAFANA_ML_DB_USER}
+    secureJsonData:
+      password: ${GRAFANA_ML_DB_PASSWORD}
+    jsonData:
+      database: ${POSTGRES_DB}
+      # Même réseau Docker que la base, sans TLS (comme l'API, l'ETL et postgres-exporter)
+      sslmode: disable
+      # $__timeGroup s'appuie sur time_bucket
+      timescaledb: true
+      postgresVersion: 1600
+    # Modifiable seulement dans le dépôt
+    editable: false
