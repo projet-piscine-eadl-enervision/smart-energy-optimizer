@@ -152,7 +152,7 @@ jobs:
       - name: Préparer la couverture pour Sonar
         if: hashFiles(format('{0}/coverage.xml', matrix.component)) != ''
         run: python3 ../infra/scripts/prefix-coverage.py coverage.xml "${{ matrix.component }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: hashFiles(format('{0}/coverage.xml', matrix.component)) != ''
         with:
           name: coverage-${{ matrix.component }}
@@ -190,7 +190,7 @@ jobs:
         if: hashFiles('frontend/coverage/enervision/lcov.info') != ''
         # Sonar lit les chemins depuis la racine du dépôt : src/app/app.ts devient frontend/src/app/app.ts
         run: sed -i 's#^SF:#SF:frontend/#' coverage/enervision/lcov.info
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: hashFiles('frontend/coverage/enervision/lcov.info') != ''
         with:
           name: coverage-frontend
@@ -231,7 +231,7 @@ jobs:
         run: |
           chmod -R a+w frontend/cypress
           docker compose --profile e2e run --rm e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-screenshots
@@ -277,7 +277,7 @@ jobs:
           docker compose --profile dast run --rm zap
       - name: Alertes hautes
         run: python3 infra/scripts/check-zap-report.py infra/zap/zap-report.json infra/zap/rules.tsv
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: zap-report
@@ -377,7 +377,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.10.5
           terraform_wrapper: false
@@ -499,14 +499,14 @@ jobs:
         if: env.SONAR_TOKEN != ''
         with:
           fetch-depth: 0 # Sonar attribue les lignes nouvelles à partir de l'historique
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: env.SONAR_TOKEN != ''
         with:
           pattern: coverage-*
           path: coverage-reports
       - name: Analyse Sonar
         if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
         with:
           # La porte de qualité bloque les PR. Sur main, l'analyse est publiée sans bloquer : un défaut
           # déjà fusionné ne doit pas empêcher la publication des images ni le staging.
