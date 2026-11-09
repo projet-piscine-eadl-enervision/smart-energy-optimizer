@@ -1,7 +1,7 @@
 # Applique les migrations de la base (dbmate). Une image publiée par la CI comme les autres modules :
 # les migrations voyagent avec l'image, donc un retour arrière du staging ou de la production
 # lance l'ancien jeu de migrations, déjà appliqué, et ne change rien.
-FROM ghcr.io/amacneil/dbmate:2.37.0
+FROM ghcr.io/amacneil/dbmate:2.38.0
 
 # Utilisateur non-root pour exécuter les migrations
 RUN addgroup -S -g 1000 app \
